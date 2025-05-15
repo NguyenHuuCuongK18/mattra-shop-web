@@ -3,6 +3,7 @@ const BlacklistedToken = require("../models/blacklistedTokens.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const { sendMail } = require("./mail.controller");
 
 exports.register = async (req, res) => {
   try {
@@ -44,7 +45,7 @@ exports.register = async (req, res) => {
         id: newUser._id,
         username: newUser.username,
         name: newUser.name,
-        email: newUser.email,
+        email: NewUser.email,
         address: newUser.address,
         role: newUser.role,
       },
@@ -173,10 +174,13 @@ exports.requestPasswordReset = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // Simulate sending email (replace with actual email service like Nodemailer)
-    const resetLink = `https://yourwebsite.com/reset-password?token=${token}`;
-    console.log(`Password reset link for ${email}: ${resetLink}`);
-    // Example: await sendEmail(user.email, 'Password Reset', `Click to reset: ${resetLink}`);
+    // Send email using sendMail
+    const resetLink = `http://localhost:9999/api/user/reset-password?token=${token}`;
+    await sendMail(
+      user.email,
+      "Password Reset Request",
+      `Click the following link to reset your password: ${resetLink}\nThis link will expire in 1 hour.`
+    );
 
     res.status(200).json({ message: "Password reset email sent" });
   } catch (error) {
@@ -186,33 +190,31 @@ exports.requestPasswordReset = async (req, res) => {
 
 exports.resetPassword = async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
-
-    // Validation
-    if (!token || !newPassword) {
+    const { token } = req.query;
+    const { newPassword } = req.body;
+    if (!token) {
       return res
         .status(400)
-        .json({ message: "Token and new password are required" });
+        .json({ message: "Token is required in query parameter" });
     }
-
-    // Find user by token and check expiration
+    if (!newPassword) {
+      return res
+        .status(400)
+        .json({ message: "New password is required in request body" });
+    }
     const user = await User.findOne({
       resetPasswordToken: token,
       resetPasswordExpires: { $gt: Date.now() },
     });
-
     if (!user) {
       return res
         .status(400)
         .json({ message: "Token is invalid or has expired" });
     }
-
-    // Update password and clear reset fields
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
-
     res.status(200).json({ message: "Password reset successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });

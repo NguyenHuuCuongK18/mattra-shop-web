@@ -19,8 +19,8 @@ router.get("/profile", authMiddleware, userController.getProfile);
 // This route is protected by authMiddleware
 router.post("/change-password", authMiddleware, userController.changePassword);
 // To be implemented
-// router.post("/request-password-reset", userController.requestPasswordReset);
-// router.post("/reset-password", userController.resetPassword);
+router.post("/request-password-reset", userController.requestPasswordReset);
+router.post("/reset-password", userController.resetPassword);
 
 // Update user profile
 router.post("/update-info", authMiddleware, userController.updateUserInfo);
