@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const connectDB = require("./config/db");
+const cors = require("cors");
 require("dotenv").config(); // load .env variables, only load once and trust that it will be available globally
 // Register models
 require("./models/users.model");
@@ -25,7 +26,7 @@ app.get("/", async (req, res) => {
 
 connectDB();
 app.use(express.json());
-app.use("/api/users", userRoute);
+app.use("/api/user", userRoute);
 
 const PORT = process.env.PORT || 9999;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
