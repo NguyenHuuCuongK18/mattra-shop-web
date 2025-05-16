@@ -3,28 +3,38 @@ const router = express.Router();
 const userController = require("../controllers/user.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 
-// User routes
-// Register a new user
-// Register also logs in the user
+// Register user
 router.post("/register", userController.register);
 
-// Login a user
+// Login user
 router.post("/login", userController.login);
 
 // Get user profile
-// This route is protected by authMiddleware
 router.get("/profile", authMiddleware, userController.getProfile);
 
-// change user password
-// This route is protected by authMiddleware
-router.post("/change-password", authMiddleware, userController.changePassword);
-// To be implemented
+// Change password
+router.put("/change-password", authMiddleware, userController.changePassword);
+
+// Request password reset
 router.post("/request-password-reset", userController.requestPasswordReset);
+
+// Reset password
 router.post("/reset-password", userController.resetPassword);
 
-// Update user profile
-router.post("/update-info", authMiddleware, userController.updateUserInfo);
+// Update user info
+router.put("/update", authMiddleware, userController.updateUserInfo);
 
-// Logout user
+// Logout
 router.post("/logout", authMiddleware, userController.logout);
+
+// Get all users (admin only)
+router.get("/", authMiddleware, userController.getAllUsers);
+
+// Update subscription status (admin only)
+router.put(
+  "/:id/subscription",
+  authMiddleware,
+  userController.updateSubscriptionStatus
+);
+
 module.exports = router;
