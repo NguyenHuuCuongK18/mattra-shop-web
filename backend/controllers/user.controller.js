@@ -1,5 +1,6 @@
-const User = require("../models/users.model");
-const BlacklistedToken = require("../models/blacklistedTokens.model");
+const User = require("../models/user.model");
+const BlacklistedToken = require("../models/blacklistedToken.model");
+const Subscription = require("../models/subscription.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -8,21 +9,16 @@ const { sendMail } = require("./mail.controller");
 exports.register = async (req, res) => {
   try {
     const { username, name, email, password, address } = req.body;
-
-    // Register validation
     if (!username || !name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
-
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res
         .status(400)
         .json({ message: "Username or email already exists" });
     }
-
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const newUser = new User({
       username,
       name,
@@ -30,14 +26,14 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       address,
       role: "user",
+      subscription: { status: "inactive" },
     });
-
     await newUser.save();
-
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
+    const token = jwt.sign(
+      { id: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
     res.status(201).json({
       message: "User registered successfully",
       token,
@@ -45,9 +41,10 @@ exports.register = async (req, res) => {
         id: newUser._id,
         username: newUser.username,
         name: newUser.name,
-        email: NewUser.email,
+        email: newUser.email,
         address: newUser.address,
         role: newUser.role,
+        subscription: newUser.subscription,
       },
     });
   } catch (error) {
@@ -57,31 +54,27 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
-
-    // Login validation
-    if (!identifier || !password) {
+    const { identification, password } = req.body;
+    if (!identification || !password) {
       return res
         .status(400)
-        .json({ message: "Identifier and password are required" });
+        .json({ message: "Identification and password are required" });
     }
-
     const user = await User.findOne({
-      $or: [{ email: identifier }, { username: identifier }],
+      $or: [{ email: identification }, { username: identification }],
     });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
-
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
-
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
     res.status(200).json({
       message: "User logged in successfully",
       token,
@@ -92,6 +85,7 @@ exports.login = async (req, res) => {
         email: user.email,
         address: user.address,
         role: user.role,
+        subscription: user.subscription,
       },
     });
   } catch (error) {
@@ -101,10 +95,12 @@ exports.login = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    // req.user was set by auth.middleware
-    const user = await User.findById(req.user.id).select(
-      "-password -resetPasswordToken -resetPasswordExpires"
-    );
+    const user = await User.findById(req.user.id)
+      .select("-password -resetPasswordToken -resetPasswordExpires")
+      .populate(
+        "subscription.subscriptionId",
+        "name price duration description"
+      );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -115,6 +111,7 @@ exports.getProfile = async (req, res) => {
       email: user.email,
       address: user.address,
       role: user.role,
+      subscription: user.subscription,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -124,30 +121,21 @@ exports.getProfile = async (req, res) => {
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-
-    // Validation
     if (!currentPassword || !newPassword) {
       return res
         .status(400)
         .json({ message: "Current and new passwords are required" });
     }
-
-    // Find user by ID from JWT
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Verify current password
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Current password is incorrect" });
     }
-
-    // Hash and update new password
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
-
     res.status(200).json({ message: "Password changed successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -157,31 +145,23 @@ exports.changePassword = async (req, res) => {
 exports.requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
-
-    // Validation
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
-
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Generate reset token
     const token = crypto.randomBytes(20).toString("hex");
     user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
-
-    // Send email using sendMail
     const resetLink = `http://localhost:9999/api/user/reset-password?token=${token}`;
     await sendMail(
       user.email,
       "Password Reset Request",
       `Click the following link to reset your password: ${resetLink}\nThis link will expire in 1 hour.`
     );
-
     res.status(200).json({ message: "Password reset email sent" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -224,27 +204,18 @@ exports.resetPassword = async (req, res) => {
 exports.updateUserInfo = async (req, res) => {
   try {
     const { name, address } = req.body;
-
-    // Validation: Ensure at least one field is provided
     if (!name && !address) {
       return res.status(400).json({
         message: "At least one field (name or address) must be provided",
       });
     }
-
-    // Find user by ID from JWT
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Update fields if provided and non-empty
     if (name) user.name = name;
     if (address) user.address = address;
-
     await user.save();
-
-    // Return updated user details
     res.status(200).json({
       message: "User information updated successfully",
       user: {
@@ -254,6 +225,7 @@ exports.updateUserInfo = async (req, res) => {
         email: user.email,
         address: user.address,
         role: user.role,
+        subscription: user.subscription,
       },
     });
   } catch (error) {
@@ -263,26 +235,119 @@ exports.updateUserInfo = async (req, res) => {
 
 exports.logout = async (req, res) => {
   try {
-    // Extract token from Authorization header
     const token = req.header("Authorization")?.replace("Bearer ", "");
     if (!token) {
       return res.status(400).json({ message: "No token provided" });
     }
-
-    // Decode token to get expiration (without verifying, as middleware already did)
     const decoded = jwt.decode(token);
     if (!decoded || !decoded.exp) {
       return res.status(400).json({ message: "Invalid token" });
     }
-
-    // Add token to blacklistedTokens collection
     const blacklistedToken = new BlacklistedToken({
       token,
-      expiresAt: new Date(decoded.exp * 1000), // Convert seconds to milliseconds
+      expiresAt: new Date(decoded.exp * 1000),
     });
     await blacklistedToken.save();
-
     res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const users = await User.find({})
+      .select("-password -resetPasswordToken -resetPasswordExpires")
+      .populate(
+        "subscription.subscriptionId",
+        "name price duration description"
+      );
+    res.status(200).json({
+      message: "Users retrieved successfully",
+      users,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateSubscriptionStatus = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    const { subscriptionId, status, startDate } = req.body;
+    if (!status || !["active", "inactive"].includes(status)) {
+      return res
+        .status(400)
+        .json({ message: "Valid status (active/inactive) is required" });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.role === "admin") {
+      return res
+        .status(400)
+        .json({ message: "Cannot modify admin subscription" });
+    }
+
+    if (status === "active") {
+      if (!subscriptionId) {
+        return res
+          .status(400)
+          .json({ message: "subscriptionId is required for active status" });
+      }
+      const subscription = await Subscription.findById(subscriptionId);
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      const start = startDate ? new Date(startDate) : new Date();
+      if (isNaN(start.getTime())) {
+        return res.status(400).json({ message: "Invalid startDate" });
+      }
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + subscription.duration);
+
+      user.subscription = {
+        subscriptionId,
+        status: "active",
+        startDate: start,
+        endDate: end,
+      };
+      user.role = "subscriber";
+    } else {
+      user.subscription = { status: "inactive" };
+      user.role = "user";
+    }
+
+    await user.save();
+
+    const populatedUser = await User.findById(user._id)
+      .select("-password -resetPasswordToken -resetPasswordExpires")
+      .populate(
+        "subscription.subscriptionId",
+        "name price duration description"
+      );
+
+    res.status(200).json({
+      message: `User subscription updated to ${status}`,
+      user: {
+        id: populatedUser._id,
+        username: populatedUser.username,
+        email: populatedUser.email,
+        name: populatedUser.name,
+        address: populatedUser.address,
+        role: populatedUser.role,
+        subscription: populatedUser.subscription,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
