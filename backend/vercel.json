@@ -8,7 +8,11 @@
   ],
   "routes": [
     {
-      "src": "/api-docs/(.*)",
+      "src": "/swagger-ui/(.*)",
+      "dest": "/server.js"
+    },
+    {
+      "src": "/swagger.json",
       "dest": "/server.js"
     },
     {
