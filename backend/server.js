@@ -1,10 +1,10 @@
 const express = require("express");
 const app = express();
-const connectDB = require("./config/db");
 const cors = require("cors");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./swagger.json");
+const mongoose = require("mongoose");
 
 require("dotenv").config(); // load .env variables, only load once and trust that it will be available globally
 // Register models
@@ -51,6 +51,17 @@ const subscriptionRoute = require("./routes/subscription.route");
 const voucherRoute = require("./routes/voucher.route");
 const geminiAIRoute = require("./routes/geminiAI.route");
 const promptCategoryRoute = require("./routes/promptCategory.route");
+
+// Connect to MongoDB
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected successfully");
+  } catch (error) {
+    console.error("MongoDB connection failed: ", error);
+    process.exit(1);
+  }
+};
 connectDB();
 
 // Middleware to log requests
