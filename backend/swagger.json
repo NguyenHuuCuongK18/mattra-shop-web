@@ -9,7 +9,7 @@
     {
       "url": "http://localhost:9999",
       "description": "Local server"
-    }
+    },
     {
       "url": "https://mattra-shop-web.vercel.app",
       "description": "Production server"
