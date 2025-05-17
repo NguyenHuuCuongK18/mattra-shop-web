@@ -78,13 +78,42 @@ app.use("/api/voucher", voucherRoute);
 app.use("/api/geminiAI", geminiAIRoute);
 app.use("/api/promptCategory", promptCategoryRoute);
 
-// Swagger setup
-app.use("/api-docs", swaggerUi.serve);
-app.get("/api-docs", swaggerUi.setup(swaggerDocument));
+// Swagger setup with options
+try {
+  app.use("/api-docs", swaggerUi.serve);
+  app.get(
+    "/api-docs",
+    swaggerUi.setup(swaggerDocument, {
+      swaggerOptions: {
+        persistAuthorization: true, // Keep auth tokens between page refreshes
+        displayOperationId: true, // Show operation IDs for debugging
+        tryItOutEnabled: process.env.NODE_ENV !== "production", // Disable "Try it out" in production
+      },
+      customSiteTitle: "Mạt Trà API Documentation",
+    })
+  );
+} catch (error) {
+  console.error("Failed to setup Swagger UI:", error.message);
+  app.get("/api-docs", (req, res) => {
+    res.status(500).json({
+      message: "Failed to load API documentation",
+      error: error.message,
+    });
+  });
+}
 
-const PORT = process.env.PORT || 9999;
-app.listen(PORT, () =>
-  console.log(
-    `Server running at: http://localhost:${PORT}\n API Docs: http://localhost:${PORT}/api-docs`
-  )
-);
+// 404 handler
+app.use((req, res, next) => {
+  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("Server error:", err.stack);
+  res
+    .status(500)
+    .json({ message: "Internal server error", error: err.message });
+});
+
+// Export for Vercel
+module.exports = app;
