@@ -79,9 +79,16 @@ app.use("/api/geminiAI", geminiAIRoute);
 app.use("/api/promptCategory", promptCategoryRoute);
 
 // Swagger setup
-app.use("/api-docs", swaggerUi.serve);
-app.get("/api-docs", swaggerUi.setup(swaggerDocument));
-
+try {
+  app.use("/api-docs", swaggerUi.serve);
+  app.get("/api-docs", swaggerUi.setup(swaggerDocument, {
+    swaggerOptions: {
+      persistAuthorization: true, // Keep auth tokens between page refreshes
+      displayOperationId: true, // Show operation IDs for debugging
+      tryItOutEnabled: process.env.NODE_ENV !== "production" // Disable "Try it out" in production
+    },
+    customSiteTitle: "Mạt Trà API Documentation"
+  }));
 const PORT = process.env.PORT || 9999;
 app.listen(PORT, () =>
   console.log(
