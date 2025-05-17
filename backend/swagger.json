@@ -3084,10 +3084,11 @@
         }
       }
     },
-    "/api/geminiAI/generateResponse": {
+    "/api/geminiAI/generate/default": {
       "post": {
         "tags": ["GeminiAI"],
-        "summary": "Generate AI response using Gemini",
+        "summary": "Generate default AI response (user prompt only)",
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -3119,6 +3120,68 @@
           },
           "400": {
             "description": "Prompt is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/geminiAI/generate/combined": {
+      "post": {
+        "tags": ["GeminiAI"],
+        "summary": "Generate combined AI response (prompt category + user prompt)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "prompt": { "type": "string" },
+                  "promptCategoryId": { "type": "string" }
+                },
+                "required": ["prompt"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "response": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Prompt is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Prompt category not found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }
