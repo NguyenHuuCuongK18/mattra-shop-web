@@ -14,9 +14,10 @@ require("./models/product.model");
 require("./models/order.model");
 require("./models/cart.model");
 require("./models/category.model");
-require("./models/faq.model");
 require("./models/review.model");
 require("./models/voucher.model");
+require("./models/subscription.model");
+require("./models/promptCategory.model");
 
 app.get("/", async (req, res) => {
   try {
@@ -40,6 +41,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// Import routes
 const userRoute = require("./routes/user.route");
 const productRoute = require("./routes/product.route");
 const categoryRoute = require("./routes/category.route");
@@ -47,9 +49,14 @@ const cartRoute = require("./routes/cart.route");
 const orderRoute = require("./routes/order.route");
 const subscriptionRoute = require("./routes/subscription.route");
 const voucherRoute = require("./routes/voucher.route");
+const geminiAIRoute = require("./routes/geminiAI.route");
+const promptCategoryRoute = require("./routes/promptCategory.route");
 connectDB();
+
+// Middleware to log requests
 app.use(express.json());
 app.use(morgan("dev"));
+
 app.use("/api/user", userRoute);
 app.use("/api/product", productRoute);
 app.use("/api/category", categoryRoute);
@@ -57,10 +64,16 @@ app.use("/api/cart", cartRoute);
 app.use("/api/order", orderRoute);
 app.use("/api/subscription", subscriptionRoute);
 app.use("/api/voucher", voucherRoute);
+app.use("/api/geminiAI", geminiAIRoute);
+app.use("/api/promptCategory", promptCategoryRoute);
 
 // Swagger setup
 app.use("/api-docs", swaggerUi.serve);
 app.get("/api-docs", swaggerUi.setup(swaggerDocument));
 
 const PORT = process.env.PORT || 9999;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(
+    `Server running at: http://localhost:${PORT}\n API Docs: http://localhost:${PORT}/api-docs`
+  )
+);
