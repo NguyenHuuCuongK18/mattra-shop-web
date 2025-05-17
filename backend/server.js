@@ -4,9 +4,11 @@ const cors = require("cors");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./swagger.json");
+const path = require("path");
 const mongoose = require("mongoose");
 
-require("dotenv").config(); // load .env variables, only load once and trust that it will be available globally
+require("dotenv").config();
+
 // Register models
 require("./models/user.model");
 require("./models/blacklistedToken.model");
@@ -27,6 +29,7 @@ app.get("/", async (req, res) => {
   }
 });
 
+// Enable CORS
 app.use(cors());
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -41,7 +44,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// Import routes
+// MongoDB Connection
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB connected successfully");
+  } catch (error) {
+    console.error("MongoDB connection failed:", error);
+    process.exit(1);
+  }
+};
+connectDB();
+
+// Middleware
+app.use(express.json());
+app.use(morgan("dev"));
+
+// Routes
 const userRoute = require("./routes/user.route");
 const productRoute = require("./routes/product.route");
 const categoryRoute = require("./routes/category.route");
@@ -51,22 +70,6 @@ const subscriptionRoute = require("./routes/subscription.route");
 const voucherRoute = require("./routes/voucher.route");
 const geminiAIRoute = require("./routes/geminiAI.route");
 const promptCategoryRoute = require("./routes/promptCategory.route");
-
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("MongoDB connected successfully");
-  } catch (error) {
-    console.error("MongoDB connection failed: ", error);
-    process.exit(1);
-  }
-};
-connectDB();
-
-// Middleware to log requests
-app.use(express.json());
-app.use(morgan("dev"));
 
 app.use("/api/user", userRoute);
 app.use("/api/product", productRoute);
@@ -78,29 +81,35 @@ app.use("/api/voucher", voucherRoute);
 app.use("/api/geminiAI", geminiAIRoute);
 app.use("/api/promptCategory", promptCategoryRoute);
 
-// Swagger setup with options
-try {
-  app.use("/api-docs", swaggerUi.serve);
-  app.get(
-    "/api-docs",
-    swaggerUi.setup(swaggerDocument, {
-      swaggerOptions: {
-        persistAuthorization: true, // Keep auth tokens between page refreshes
-        displayOperationId: true, // Show operation IDs for debugging
-        tryItOutEnabled: process.env.NODE_ENV !== "production", // Disable "Try it out" in production
-      },
-      customSiteTitle: "Mạt Trà API Documentation",
-    })
-  );
-} catch (error) {
-  console.error("Failed to setup Swagger UI:", error.message);
-  app.get("/api-docs", (req, res) => {
-    res.status(500).json({
-      message: "Failed to load API documentation",
-      error: error.message,
-    });
-  });
-}
+// Serve Swagger UI static assets
+const swaggerUiAssetPath = require("swagger-ui-dist").getAbsoluteFSPath();
+app.use("/swagger-ui", express.static(swaggerUiAssetPath));
+
+// Serve swagger.json directly
+app.get("/swagger.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerDocument);
+});
+
+// Swagger UI endpoint
+app.use("/api-docs", swaggerUi.serve);
+app.get(
+  "/api-docs",
+  swaggerUi.setup(swaggerDocument, {
+    swaggerOptions: {
+      url: "/swagger.json",
+      persistAuthorization: true,
+      displayOperationId: true,
+      tryItOutEnabled: process.env.NODE_ENV !== "production",
+    },
+    customCssUrl: "/swagger-ui/swagger-ui.css",
+    customJs: [
+      "/swagger-ui/swagger-ui-bundle.js",
+      "/swagger-ui/swagger-ui-standalone-preset.js",
+    ],
+    customSiteTitle: "Mạt Trà API Documentation",
+  })
+);
 
 // 404 handler
 app.use((req, res, next) => {
@@ -115,5 +124,14 @@ app.use((err, req, res, next) => {
     .json({ message: "Internal server error", error: err.message });
 });
 
+// Start server locally
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 9999;
+  app.listen(PORT, () => {
+    console.log(
+      `Server is running at http://localhost:${PORT}\n API Docs: http://localhost:${PORT}/api-docs`
+    );
+  });
+}
 // Export for Vercel
 module.exports = app;
