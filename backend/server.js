@@ -81,17 +81,14 @@ app.use("/api/voucher", voucherRoute);
 app.use("/api/geminiAI", geminiAIRoute);
 app.use("/api/promptCategory", promptCategoryRoute);
 
-// Serve Swagger UI static assets
-const swaggerUiAssetPath = require("swagger-ui-dist").getAbsoluteFSPath();
-app.use("/swagger-ui", express.static(swaggerUiAssetPath));
+// Serve static files from the React app
+const CSS_CDN =
+  "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.1.0/swagger-ui.min.css";
+const JS_BUNDLE_CDN =
+  "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.1.0/swagger-ui-bundle.min.js";
+const JS_PRESET_CDN =
+  "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.1.0/swagger-ui-standalone-preset.min.js";
 
-// Serve swagger.json directly
-app.get("/swagger.json", (req, res) => {
-  res.setHeader("Content-Type", "application/json");
-  res.send(swaggerDocument);
-});
-
-// Swagger UI endpoint
 app.use("/api-docs", swaggerUi.serve);
 app.get(
   "/api-docs",
@@ -102,11 +99,8 @@ app.get(
       displayOperationId: true,
       tryItOutEnabled: process.env.NODE_ENV !== "production",
     },
-    customCssUrl: "/swagger-ui/swagger-ui.css",
-    customJs: [
-      "/swagger-ui/swagger-ui-bundle.js",
-      "/swagger-ui/swagger-ui-standalone-preset.js",
-    ],
+    customCssUrl: CSS_CDN,
+    customJs: [JS_BUNDLE_CDN, JS_PRESET_CDN],
     customSiteTitle: "Mạt Trà API Documentation",
   })
 );
