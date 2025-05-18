@@ -4,9 +4,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./swagger.json");
-const path = require("path");
 const mongoose = require("mongoose");
-
 require("dotenv").config();
 
 // Register models
@@ -21,31 +19,6 @@ require("./models/voucher.model");
 require("./models/subscription.model");
 require("./models/promptCategory.model");
 
-app.get("/", async (req, res) => {
-  try {
-    res.send({ message: "Welcome to Mạt Trà" });
-  } catch (error) {
-    res.send({ error: error.message });
-  }
-});
-
-// Enable CORS
-app.use(cors());
-app.use((req, res, next) => {
-  // Allow CORS for all origins
-  res.header("Access-Control-Allow-Credentials", true);
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  if (req.method === "OPTIONS") {
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-    return res.status(200).json({});
-  }
-  next();
-});
-
 // MongoDB Connection
 const connectDB = async () => {
   try {
@@ -58,7 +31,26 @@ const connectDB = async () => {
 };
 connectDB();
 
+// CORS Configuration
+const corsOptions = {
+  origin: [
+    "http://localhost:3000", // Local development
+    "https://mattra-shop-web.vercel.app", // Production frontend
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200, // For legacy browser support
+};
+
 // Middleware
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(morgan("dev"));
 
@@ -83,7 +75,12 @@ app.use("/api/voucher", voucherRoute);
 app.use("/api/geminiAI", geminiAIRoute);
 app.use("/api/promptCategory", promptCategoryRoute);
 
-// Serve static files from the React app
+// Root endpoint
+app.get("/", (req, res) => {
+  res.send({ message: "Welcome to Mạt Trà" });
+});
+
+// Swagger UI Configuration
 const CSS_CDN =
   "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.1.0/swagger-ui.min.css";
 const JS_BUNDLE_CDN =
@@ -107,12 +104,11 @@ app.get(
   })
 );
 
-// 404 handler
+// Error Handling
 app.use((req, res, next) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error("Server error:", err.stack);
   res
@@ -120,14 +116,14 @@ app.use((err, req, res, next) => {
     .json({ message: "Internal server error", error: err.message });
 });
 
-// Start server locally
+// Server Startup
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 9999;
   app.listen(PORT, () => {
     console.log(
-      `Server is running at http://localhost:${PORT}\n API Docs: http://localhost:${PORT}/api-docs`
+      `Server is running at http://localhost:${PORT}\nAPI Docs: http://localhost:${PORT}/api-docs`
     );
   });
 }
-// Export for Vercel
+
 module.exports = app;
