@@ -2150,6 +2150,69 @@
         }
       }
     },
+    "/api/subscription/subscribed-users": {
+      "get": {
+        "tags": ["Subscription"],
+        "summary": "Get all subscribed users (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Subscribed users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "username": { "type": "string" },
+                          "email": { "type": "string", "format": "email" },
+                          "name": { "type": "string" },
+                          "subscription": {
+                            "type": "object",
+                            "properties": {
+                              "status": { "type": "string", "enum": ["active", "inactive"] },
+                              "subscriptionId": {
+                                "type": "object",
+                                "properties": {
+                                  "name": { "type": "string" },
+                                  "price": { "type": "number" },
+                                  "duration": { "type": "integer" }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/voucher/create": {
       "post": {
         "tags": ["Voucher"],

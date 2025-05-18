@@ -30,4 +30,11 @@ router.delete(
   subscriptionController.deleteSubscription
 );
 
+// Get subscribed users (admin only)
+router.get(
+  "/subscribed-users",
+  authMiddleware,
+  subscriptionController.getSubscribedUsers
+);
+
 module.exports = router;

@@ -1,13 +1,174 @@
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-top: 70px; /* Add padding to account for fixed navbar */
+  background-color: #f8f9fa;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Bootstrap is imported in index.js, so we don't need to import it here */
+
+/* Page Transitions */
+.page-transition {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Active Navigation Styles */
+.nav-link.active {
+  font-weight: 600;
+  color: var(--bs-success) !important;
+}
+
+/* Navbar Transition */
+.navbar {
+  transition: all 0.3s ease;
+}
+
+/* Mobile Menu Improvements */
+.offcanvas-body .nav-link {
+  border-radius: 0.25rem;
+}
+
+.offcanvas-body .nav-link:hover {
+  background-color: rgba(25, 135, 84, 0.1);
+}
+
+.offcanvas-body .nav-link.active {
+  background-color: rgba(25, 135, 84, 0.1);
+}
+
+/* Modern Card Styles */
+.card {
+  border: none;
+  border-radius: 1rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.product-title {
+  transition: color 0.2s ease;
+}
+
+.product-title:hover {
+  color: var(--bs-success);
+}
+
+/* Button Styles */
+.btn {
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-success {
+  background-color: #198754;
+}
+
+.btn-success:hover {
+  background-color: #157347;
+}
+
+.btn-outline-success {
+  border-color: #198754;
+  color: #198754;
+}
+
+.btn-outline-success:hover {
+  background-color: #198754;
+  color: white;
+}
+
+/* Form Controls */
+.form-control {
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+}
+
+.form-control:focus {
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25);
+  border-color: #198754;
+}
+
+/* Badge Styles */
+.badge {
+  font-weight: 500;
+  padding: 0.35em 0.65em;
+}
+
+/* Tabs Styling */
+.nav-tabs {
+  border-bottom: none;
+}
+
+.nav-tabs .nav-link {
+  border: none;
+  color: #6c757d;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  margin-right: 0.5rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.nav-tabs .nav-link:hover {
+  border: none;
+  color: #198754;
+}
+
+.nav-tabs .nav-link.active {
+  color: #198754;
+  background-color: white;
+  border-bottom: 2px solid #198754;
+}
+
+/* Table Styles */
+.table {
+  color: #212529;
+}
+
+.table th {
+  font-weight: 600;
+  color: #6c757d;
+}
+
+/* Custom Rounded Corners */
+.rounded-4 {
+  border-radius: 1rem !important;
+}
+
+/* Custom Shadows */
+.shadow-sm {
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+/* Hover Effects */
+.hover-lift {
+  transition: transform 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
 }
