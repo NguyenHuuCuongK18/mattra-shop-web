@@ -1,4 +1,5 @@
 const Subscription = require("../models/subscription.model");
+const User = require("../models/user.model");
 
 exports.createSubscription = async (req, res) => {
   try {
@@ -138,6 +139,29 @@ exports.deleteSubscription = async (req, res) => {
 
     res.status(200).json({
       message: "Subscription deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getSubscribedUsers = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    const subscribedUsers = await User.find({
+      role: "subscriber",
+      "subscription.status": "active",
+    })
+      .select("username email name subscription")
+      .populate("subscription.subscriptionId", "name price duration")
+      .lean();
+
+    res.status(200).json({
+      message: "Subscribed users retrieved successfully",
+      users: subscribedUsers,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
