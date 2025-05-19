@@ -1,20 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { productAPI, categoryAPI } from "../../utils/api";
-import Button from "../../components/ui/Button";
-import Card from "../../components/ui/Card";
-import Input from "../../components/ui/Input";
+import {
+  Container,
+  Row,
+  Col,
+  Form,
+  Button,
+  Table,
+  Modal,
+  Spinner,
+  Badge,
+  Card,
+  InputGroup,
+} from "react-bootstrap";
 import { toast } from "react-hot-toast";
+import { productAPI, categoryAPI } from "../../utils/api";
 
-function AdminProductsPage() {
+const ProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -24,64 +35,141 @@ function AdminProductsPage() {
     imageUrl: "",
   });
   const [formErrors, setFormErrors] = useState({});
-  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [productsResponse, categoriesResponse] = await Promise.all([
-          productAPI.getAllProducts(),
-          categoryAPI.getAllCategories(),
-        ]);
-        setProducts(productsResponse.data.products || []);
-        setCategories(categoriesResponse.data.categories || []);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to load products. Please try again later.");
-        toast.error("Failed to load products");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetchProducts();
+    fetchCategories();
   }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await productAPI.getAllProducts();
+      setProducts(response.data.products || []);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      toast.error("Failed to load products");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await categoryAPI.getAllCategories();
+      setCategories(response.data.categories || []);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      toast.error("Failed to load categories");
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value,
+      [name]:
+        name === "price" || name === "stock" ? Number.parseFloat(value) : value,
     });
-    // Clear error when user types
-    if (formErrors[name]) {
-      setFormErrors({
-        ...formErrors,
-        [name]: "",
-      });
-    }
   };
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.name.trim()) errors.name = "Product name is required";
     if (!formData.description.trim())
       errors.description = "Description is required";
-    if (!formData.price) errors.price = "Price is required";
-    else if (isNaN(formData.price) || Number.parseFloat(formData.price) <= 0)
-      errors.price = "Price must be a positive number";
-    if (!formData.stock) errors.stock = "Stock is required";
-    else if (isNaN(formData.stock) || Number.parseInt(formData.stock) < 0)
-      errors.stock = "Stock must be a non-negative number";
+    if (!formData.price || formData.price <= 0)
+      errors.price = "Price must be greater than 0";
+    if (!formData.stock || formData.stock < 0)
+      errors.stock = "Stock must be 0 or greater";
     if (!formData.category) errors.category = "Category is required";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleAddProduct = () => {
-    setCurrentProduct(null);
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    try {
+      setSubmitting(true);
+      await productAPI.createProduct(formData);
+      toast.success("Product added successfully");
+      setShowAddModal(false);
+      resetForm();
+      fetchProducts();
+    } catch (error) {
+      console.error("Error adding product:", error);
+      toast.error(error.response?.data?.message || "Failed to add product");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditProduct = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    try {
+      setSubmitting(true);
+      await productAPI.updateProduct(
+        currentProduct._id || currentProduct.id,
+        formData
+      );
+      toast.success("Product updated successfully");
+      setShowEditModal(false);
+      resetForm();
+      fetchProducts();
+    } catch (error) {
+      console.error("Error updating product:", error);
+      toast.error(error.response?.data?.message || "Failed to update product");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    try {
+      setSubmitting(true);
+      await productAPI.deleteProduct(currentProduct._id || currentProduct.id);
+      toast.success("Product deleted successfully");
+      setShowDeleteModal(false);
+      fetchProducts();
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast.error(error.response?.data?.message || "Failed to delete product");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    setShowAddModal(true);
+  };
+
+  const openEditModal = (product) => {
+    setCurrentProduct(product);
+    setFormData({
+      name: product.name,
+      description: product.description || "",
+      price: product.price,
+      stock: product.stock,
+      category:
+        product.category?._id || product.category?.id || product.category,
+      imageUrl: product.imageUrl || "",
+    });
+    setShowEditModal(true);
+  };
+
+  const openDeleteModal = (product) => {
+    setCurrentProduct(product);
+    setShowDeleteModal(true);
+  };
+
+  const resetForm = () => {
     setFormData({
       name: "",
       description: "",
@@ -91,479 +179,485 @@ function AdminProductsPage() {
       imageUrl: "",
     });
     setFormErrors({});
-    setIsModalOpen(true);
   };
 
-  const handleEditProduct = (product) => {
-    setCurrentProduct(product);
-    setFormData({
-      name: product.name,
-      description: product.description || "",
-      price: product.price.toString(),
-      stock: product.stock.toString(),
-      category: product.category || "",
-      imageUrl: product.imageUrl || "",
-    });
-    setFormErrors({});
-    setIsModalOpen(true);
-  };
-
-  const handleDeleteProduct = (product) => {
-    setCurrentProduct(product);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) return;
-
-    setFormSubmitting(true);
-    try {
-      const productData = {
-        ...formData,
-        price: Number.parseFloat(formData.price),
-        stock: Number.parseInt(formData.stock),
-      };
-
-      let response;
-      if (currentProduct) {
-        // Update existing product
-        response = await productAPI.updateProduct(
-          currentProduct.id,
-          productData
-        );
-        toast.success("Product updated successfully");
-      } else {
-        // Create new product
-        response = await productAPI.createProduct(productData);
-        toast.success("Product created successfully");
-      }
-
-      // Update products list
-      if (currentProduct) {
-        setProducts(
-          products.map((p) =>
-            p.id === currentProduct.id ? response.data.product : p
-          )
-        );
-      } else {
-        setProducts([...products, response.data.product]);
-      }
-
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error("Error saving product:", error);
-      const errorMsg =
-        error.response?.data?.message || "Failed to save product";
-      setError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setFormSubmitting(false);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!currentProduct) return;
-
-    setFormSubmitting(true);
-    try {
-      await productAPI.deleteProduct(currentProduct.id);
-
-      // Remove product from list
-      setProducts(products.filter((p) => p.id !== currentProduct.id));
-      setIsDeleteModalOpen(false);
-      toast.success("Product deleted successfully");
-    } catch (error) {
-      console.error("Error deleting product:", error);
-      const errorMsg =
-        error.response?.data?.message || "Failed to delete product";
-      setError(errorMsg);
-      toast.error(errorMsg);
-    } finally {
-      setFormSubmitting(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.description &&
+        product.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-        <Button onClick={handleAddProduct}>Add Product</Button>
-      </div>
-
-      {error && (
-        <div className="mb-6 bg-red-50 p-4 rounded-md">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-red-400"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
-            </div>
+    <Container fluid className="py-4">
+      <Card className="shadow-sm border-0 mb-4">
+        <Card.Body>
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <h1 className="h3 mb-0 text-gray-800">Product Management</h1>
+            <Button
+              variant="success"
+              onClick={openAddModal}
+              className="d-flex align-items-center"
+            >
+              <i className="bi bi-plus-circle me-2"></i>
+              Add Product
+            </Button>
           </div>
-        </div>
-      )}
 
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Product
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Category
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Price
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Stock
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {products.length > 0 ? (
-                products.map((product) => (
-                  <tr key={product.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0">
-                          <img
-                            className="h-10 w-10 rounded-md object-cover"
-                            src={
-                              product.imageUrl ||
-                              "https://images.unsplash.com/photo-1523920290228-4f321a939b4c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60" ||
-                              "/placeholder.svg" ||
-                              "/placeholder.svg"
-                            }
-                            alt={product.name}
-                          />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {product.name}
-                          </div>
-                          <div className="text-sm text-gray-500 truncate max-w-xs">
-                            {product.description}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {product.category || "Uncategorized"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      ${product.price.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {product.stock}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditProduct(product)}
-                        className="text-primary-600 hover:text-primary-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
+          <Row className="mb-4">
+            <Col md={6}>
+              <InputGroup>
+                <InputGroup.Text className="bg-light border-end-0">
+                  <i className="bi bi-search text-muted"></i>
+                </InputGroup.Text>
+                <Form.Control
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="border-start-0 bg-light"
+                />
+              </InputGroup>
+            </Col>
+          </Row>
+
+          {loading ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" variant="success" />
+              <p className="mt-2 text-muted">Loading products...</p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="text-center py-5 bg-light rounded">
+              <i className="bi bi-box-seam display-1 text-muted"></i>
+              <h5 className="mt-3">No products found</h5>
+              <p className="text-muted">
+                {searchTerm
+                  ? "Try a different search term"
+                  : "Add your first product to get started"}
+              </p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <Table hover className="align-middle">
+                <thead className="bg-light">
+                  <tr>
+                    <th style={{ width: "60px" }}>#</th>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th style={{ width: "150px" }}>Actions</th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-4 text-center text-sm text-gray-500"
-                  >
-                    No products found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {filteredProducts.map((product, index) => (
+                    <tr key={product._id || product.id}>
+                      <td>{index + 1}</td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          {product.imageUrl ? (
+                            <div
+                              className="product-img me-3"
+                              style={{
+                                width: "40px",
+                                height: "40px",
+                                backgroundImage: `url(${product.imageUrl})`,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center",
+                                borderRadius: "4px",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="product-img-placeholder me-3 bg-light d-flex align-items-center justify-content-center"
+                              style={{
+                                width: "40px",
+                                height: "40px",
+                                borderRadius: "4px",
+                              }}
+                            >
+                              <i className="bi bi-image text-muted"></i>
+                            </div>
+                          )}
+                          <div>
+                            <div className="fw-medium">{product.name}</div>
+                            {product.description && (
+                              <div
+                                className="small text-muted text-truncate"
+                                style={{ maxWidth: "300px" }}
+                              >
+                                {product.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        {product.category?.name ? (
+                          <Badge bg="light" text="dark" className="px-2 py-1">
+                            {product.category.name}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className="fw-medium">
+                          ${product.price.toFixed(2)}
+                        </span>
+                      </td>
+                      <td>
+                        <Badge
+                          bg={
+                            product.stock > 10
+                              ? "success"
+                              : product.stock > 0
+                              ? "warning"
+                              : "danger"
+                          }
+                          className="px-2 py-1"
+                        >
+                          {product.stock} in stock
+                        </Badge>
+                      </td>
+                      <td>
+                        <div className="d-flex gap-2">
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => openEditModal(product)}
+                            className="d-flex align-items-center"
+                          >
+                            <i className="bi bi-pencil-square"></i>
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => openDeleteModal(product)}
+                            className="d-flex align-items-center"
+                          >
+                            <i className="bi bi-trash"></i>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          )}
+        </Card.Body>
       </Card>
 
-      {/* Product Form Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div
-              className="fixed inset-0 transition-opacity"
-              aria-hidden="true"
-            >
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
+      {/* Add Product Modal */}
+      <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Add New Product</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleAddProduct}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Product Name</Form.Label>
+              <Form.Control
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                isInvalid={!!formErrors.name}
+              />
+              <Form.Control.Feedback type="invalid">
+                {formErrors.name}
+              </Form.Control.Feedback>
+            </Form.Group>
 
-            <span
-              className="hidden sm:inline-block sm:align-middle sm:h-screen"
-              aria-hidden="true"
-            >
-              &#8203;
-            </span>
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                isInvalid={!!formErrors.description}
+              />
+              <Form.Control.Feedback type="invalid">
+                {formErrors.description}
+              </Form.Control.Feedback>
+            </Form.Group>
 
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <form onSubmit={handleSubmit}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {currentProduct ? "Edit Product" : "Add Product"}
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                    <Input
-                      label="Name"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      error={formErrors.name}
-                      required
-                    />
-                    <div>
-                      <label
-                        htmlFor="description"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Description
-                      </label>
-                      <textarea
-                        id="description"
-                        name="description"
-                        rows="3"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.description
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-                        required
-                      ></textarea>
-                      {formErrors.description && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {formErrors.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input
-                        label="Price"
-                        id="price"
-                        name="price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.price}
-                        onChange={handleInputChange}
-                        error={formErrors.price}
-                        required
-                      />
-                      <Input
-                        label="Stock"
-                        id="stock"
-                        name="stock"
-                        type="number"
-                        min="0"
-                        value={formData.stock}
-                        onChange={handleInputChange}
-                        error={formErrors.stock}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="category"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                      >
-                        Category
-                      </label>
-                      <select
-                        id="category"
-                        name="category"
-                        value={formData.category}
-                        onChange={handleInputChange}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.category
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        } rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500`}
-                        required
-                      >
-                        <option value="">Select a category</option>
-                        {categories.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                      {formErrors.category && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {formErrors.category}
-                        </p>
-                      )}
-                    </div>
-                    <Input
-                      label="Image URL"
-                      id="imageUrl"
-                      name="imageUrl"
-                      value={formData.imageUrl}
-                      onChange={handleInputChange}
-                      error={formErrors.imageUrl}
-                    />
-                  </div>
-                </div>
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <Button
-                    type="submit"
-                    className="w-full sm:w-auto sm:ml-3"
-                    loading={formSubmitting}
-                    disabled={formSubmitting}
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Price ($)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    isInvalid={!!formErrors.price}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {formErrors.price}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Stock</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    name="stock"
+                    value={formData.stock}
+                    onChange={handleInputChange}
+                    isInvalid={!!formErrors.stock}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {formErrors.stock}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Category</Form.Label>
+              <Form.Select
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                isInvalid={!!formErrors.category}
+              >
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option
+                    key={category._id || category.id}
+                    value={category._id || category.id}
                   >
-                    {currentProduct ? "Update" : "Create"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-3 w-full sm:mt-0 sm:w-auto"
-                    onClick={() => setIsModalOpen(false)}
-                    disabled={formSubmitting}
+                    {category.name}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Control.Feedback type="invalid">
+                {formErrors.category}
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Image URL</Form.Label>
+              <Form.Control
+                type="text"
+                name="imageUrl"
+                value={formData.imageUrl}
+                onChange={handleInputChange}
+              />
+              <Form.Text className="text-muted">
+                Enter a URL for the product image (optional)
+              </Form.Text>
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowAddModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="success" type="submit" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    className="me-2"
+                  />
+                  Adding...
+                </>
+              ) : (
+                "Add Product"
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Edit Product Modal */}
+      <Modal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Product</Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={handleEditProduct}>
+          <Modal.Body>
+            <Form.Group className="mb-3">
+              <Form.Label>Product Name</Form.Label>
+              <Form.Control
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                isInvalid={!!formErrors.name}
+              />
+              <Form.Control.Feedback type="invalid">
+                {formErrors.name}
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Description</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                isInvalid={!!formErrors.description}
+              />
+              <Form.Control.Feedback type="invalid">
+                {formErrors.description}
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Price ($)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="price"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    isInvalid={!!formErrors.price}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {formErrors.price}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Stock</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    name="stock"
+                    value={formData.stock}
+                    onChange={handleInputChange}
+                    isInvalid={!!formErrors.stock}
+                  />
+                  <Form.Control.Feedback type="invalid">
+                    {formErrors.stock}
+                  </Form.Control.Feedback>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Category</Form.Label>
+              <Form.Select
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                isInvalid={!!formErrors.category}
+              >
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option
+                    key={category._id || category.id}
+                    value={category._id || category.id}
                   >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+                    {category.name}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Control.Feedback type="invalid">
+                {formErrors.category}
+              </Form.Control.Feedback>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Image URL</Form.Label>
+              <Form.Control
+                type="text"
+                name="imageUrl"
+                value={formData.imageUrl}
+                onChange={handleInputChange}
+              />
+              <Form.Text className="text-muted">
+                Enter a URL for the product image (optional)
+              </Form.Text>
+            </Form.Group>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    className="me-2"
+                  />
+                  Updating...
+                </>
+              ) : (
+                "Update Product"
+              )}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div
-              className="fixed inset-0 transition-opacity"
-              aria-hidden="true"
-            >
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-
-            <span
-              className="hidden sm:inline-block sm:align-middle sm:h-screen"
-              aria-hidden="true"
-            >
-              &#8203;
-            </span>
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <svg
-                      className="h-6 w-6 text-red-600"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      Delete Product
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Are you sure you want to delete {currentProduct?.name}?
-                        This action cannot be undone.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <Button
-                  type="button"
-                  variant="danger"
-                  className="w-full sm:w-auto sm:ml-3"
-                  onClick={handleConfirmDelete}
-                  loading={formSubmitting}
-                  disabled={formSubmitting}
-                >
-                  Delete
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-3 w-full sm:mt-0 sm:w-auto"
-                  onClick={() => setIsDeleteModalOpen(false)}
-                  disabled={formSubmitting}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <Modal
+        show={showDeleteModal}
+        onHide={() => setShowDeleteModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Delete</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>
+            Are you sure you want to delete the product{" "}
+            <strong>{currentProduct?.name}</strong>?
+          </p>
+          <p className="text-danger mb-0">This action cannot be undone.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleDeleteProduct}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  className="me-2"
+                />
+                Deleting...
+              </>
+            ) : (
+              "Delete Product"
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </Container>
   );
-}
+};
 
-export default AdminProductsPage;
+export default ProductsPage;
