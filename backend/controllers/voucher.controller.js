@@ -1,6 +1,18 @@
 const Voucher = require("../models/voucher.model");
 const User = require("../models/user.model");
 
+// Utility function to generate a unique voucher code
+const generateVoucherCode = async () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const existingVoucher = await Voucher.findOne({ code });
+  if (existingVoucher) return generateVoucherCode(); // Recurse if code exists
+  return code;
+};
+
 exports.createVoucher = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -32,8 +44,9 @@ exports.createVoucher = async (req, res) => {
         .json({ message: "Expiration date must be a valid future date" });
     }
 
+    const code = await generateVoucherCode();
     const voucher = new Voucher({
-      userId: null,
+      code,
       discount_percentage,
       max_discount,
       subscriberOnly: !!subscriberOnly,
@@ -57,9 +70,7 @@ exports.getAllVouchers = async (req, res) => {
     const vouchers = await Voucher.find({
       expires_at: { $gt: new Date() },
       is_used: false,
-    })
-      .populate("userId", "username email")
-      .select("-__v");
+    }).select("-__v");
     res.status(200).json({
       message: "Vouchers retrieved successfully",
       vouchers,
@@ -71,9 +82,7 @@ exports.getAllVouchers = async (req, res) => {
 
 exports.getVoucherById = async (req, res) => {
   try {
-    const voucher = await Voucher.findById(req.params.id)
-      .populate("userId", "username email")
-      .select("-__v");
+    const voucher = await Voucher.findById(req.params.id).select("-__v");
     if (!voucher) {
       return res.status(404).json({ message: "Voucher not found" });
     }
@@ -95,7 +104,7 @@ exports.getUserVouchers = async (req, res) => {
       .populate({
         path: "vouchers.voucherId",
         select:
-          "discount_percentage max_discount subscriberOnly created_at expires_at",
+          "code discount_percentage max_discount subscriberOnly created_at expires_at",
       })
       .select("vouchers");
     if (!user) {
@@ -139,11 +148,9 @@ exports.assignVoucher = async (req, res) => {
       return res.status(400).json({ message: "Voucher is used or expired" });
     }
     if (voucher.subscriberOnly && user.role !== "subscriber") {
-      return res
-        .status(400)
-        .json({
-          message: "Cannot assign subscriber-only voucher to non-subscriber",
-        });
+      return res.status(400).json({
+        message: "Cannot assign subscriber-only voucher to non-subscriber",
+      });
     }
 
     if (user.vouchers.some((v) => v.voucherId.toString() === voucherId)) {
@@ -159,7 +166,7 @@ exports.assignVoucher = async (req, res) => {
       .populate({
         path: "vouchers.voucherId",
         select:
-          "discount_percentage max_discount subscriberOnly created_at expires_at",
+          "code discount_percentage max_discount subscriberOnly created_at expires_at",
       })
       .select("vouchers");
 
@@ -290,7 +297,7 @@ exports.claimVoucher = async (req, res) => {
       .populate({
         path: "vouchers.voucherId",
         select:
-          "discount_percentage max_discount subscriberOnly created_at expires_at",
+          "code discount_percentage max_discount subscriberOnly created_at expires_at",
       })
       .select("vouchers");
 
@@ -348,13 +355,9 @@ exports.updateVoucher = async (req, res) => {
     voucher.expires_at = expiresAtDate;
     await voucher.save();
 
-    const populatedVoucher = await Voucher.findById(voucher._id)
-      .populate("userId", "username email")
-      .select("-__v");
-
     res.status(200).json({
       message: "Voucher updated successfully",
-      voucher: populatedVoucher,
+      voucher,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
