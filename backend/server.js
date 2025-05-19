@@ -35,7 +35,7 @@ connectDB();
 const corsOptions = {
   origin: [
     "http://localhost:3000", // Local development
-    "https://mattra-shop-web.vercel.app", // Production frontend
+    "https://mattra-online-shop.vercel.app/", // Production
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: [
