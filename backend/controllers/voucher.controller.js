@@ -19,21 +19,29 @@ exports.createVoucher = async (req, res) => {
       return res.status(403).json({ message: "Admin access required" });
     }
 
-    const { discount_percentage, max_discount, subscriberOnly, expires_at } = req.body;
+    const { discount_percentage, max_discount, subscriberOnly, expires_at } =
+      req.body;
     if (!discount_percentage || !max_discount || !expires_at) {
       return res.status(400).json({
-        message: "Discount percentage, max discount, and expiration date are required",
+        message:
+          "Discount percentage, max discount, and expiration date are required",
       });
     }
     if (discount_percentage < 0 || discount_percentage > 100) {
-      return res.status(400).json({ message: "Discount percentage must be between 0 and 100" });
+      return res
+        .status(400)
+        .json({ message: "Discount percentage must be between 0 and 100" });
     }
     if (max_discount < 0) {
-      return res.status(400).json({ message: "Max discount must be non-negative" });
+      return res
+        .status(400)
+        .json({ message: "Max discount must be non-negative" });
     }
     const expiresAtDate = new Date(expires_at);
     if (isNaN(expiresAtDate.getTime()) || expiresAtDate <= new Date()) {
-      return res.status(400).json({ message: "Expiration date must be a valid future date" });
+      return res
+        .status(400)
+        .json({ message: "Expiration date must be a valid future date" });
     }
 
     const code = await generateVoucherCode();
@@ -95,7 +103,8 @@ exports.getUserVouchers = async (req, res) => {
     const user = await User.findById(req.user.id)
       .populate({
         path: "vouchers.voucherId",
-        select: "code discount_percentage max_discount subscriberOnly created_at expires_at",
+        select:
+          "code discount_percentage max_discount subscriberOnly created_at expires_at",
       })
       .select("vouchers");
     if (!user) {
@@ -121,7 +130,9 @@ exports.assignVoucher = async (req, res) => {
 
     const { userId, voucherId } = req.body;
     if (!userId || !voucherId) {
-      return res.status(400).json({ message: "userId and voucherId are required" });
+      return res
+        .status(400)
+        .json({ message: "userId and voucherId are required" });
     }
 
     const user = await User.findById(userId);
@@ -143,7 +154,9 @@ exports.assignVoucher = async (req, res) => {
     }
 
     if (user.vouchers.some((v) => v.voucherId.toString() === voucherId)) {
-      return res.status(400).json({ message: "Voucher already assigned to user" });
+      return res
+        .status(400)
+        .json({ message: "Voucher already assigned to user" });
     }
 
     user.vouchers.push({ voucherId, status: "available" });
@@ -152,7 +165,8 @@ exports.assignVoucher = async (req, res) => {
     const updatedUser = await User.findById(userId)
       .populate({
         path: "vouchers.voucherId",
-        select: "code discount_percentage max_discount subscriberOnly created_at expires_at",
+        select:
+          "code discount_percentage max_discount subscriberOnly created_at expires_at",
       })
       .select("vouchers");
 
@@ -223,26 +237,15 @@ exports.assignSubscribers = async (req, res) => {
       return res.status(400).json({ message: "Voucher is used or expired" });
     }
     if (!voucher.subscriberOnly) {
-      return res.status(400).json({ message: "Voucher must be subscriber-only" });
+      return res
+        .status(400)
+        .json({ message: "Voucher must be subscriber-only" });
     }
 
     const subscribers = await User.find({ role: "subscriber" });
     let assignedCount = 0;
 
     for (const user of subscribers) {
-      if (!user.vouchers.some((v) => v.voucherId.toString() === voucherId)) {
-        user.vouchers.push({ voucherId, status: "available" });
-        await user.save();
-        assignedCount++;
-      }
-    }
-
-    res.status(200).json({
-      message: `Voucher assigned to ${assignedCount} subscribers`,
-      assignedCount,
-    });
-  } catch (error) {
-    res.status(500 for (const user of subscribers) {
       if (!user.vouchers.some((v) => v.voucherId.toString() === voucherId)) {
         user.vouchers.push({ voucherId, status: "available" });
         await user.save();
@@ -274,7 +277,9 @@ exports.claimVoucher = async (req, res) => {
       return res.status(400).json({ message: "Voucher is used or expired" });
     }
     if (voucher.subscriberOnly && req.user.role !== "subscriber") {
-      return res.status(403).json({ message: "This voucher is exclusive to subscribers" });
+      return res
+        .status(403)
+        .json({ message: "This voucher is exclusive to subscribers" });
     }
 
     const user = await User.findById(req.user.id);
@@ -291,7 +296,8 @@ exports.claimVoucher = async (req, res) => {
     const updatedUser = await User.findById(req.user.id)
       .populate({
         path: "vouchers.voucherId",
-        select: "code discount_percentage max_discount subscriberOnly created_at expires_at",
+        select:
+          "code discount_percentage max_discount subscriberOnly created_at expires_at",
       })
       .select("vouchers");
 
@@ -310,21 +316,29 @@ exports.updateVoucher = async (req, res) => {
       return res.status(403).json({ message: "Admin access required" });
     }
 
-    const { discount_percentage, max_discount, subscriberOnly, expires_at } = req.body;
+    const { discount_percentage, max_discount, subscriberOnly, expires_at } =
+      req.body;
     if (!discount_percentage || !max_discount || !expires_at) {
       return res.status(400).json({
-        message: "Discount percentage, max discount, and expiration date are required",
+        message:
+          "Discount percentage, max discount, and expiration date are required",
       });
     }
     if (discount_percentage < 0 || discount_percentage > 100) {
-      return res.status(400).json({ message: "Discount percentage must be between 0 and 100" });
+      return res
+        .status(400)
+        .json({ message: "Discount percentage must be between 0 and 100" });
     }
     if (max_discount < 0) {
-      return res.status(400).json({ message: "Max discount must be non-negative" });
+      return res
+        .status(400)
+        .json({ message: "Max discount must be non-negative" });
     }
     const expiresAtDate = new Date(expires_at);
     if (isNaN(expiresAtDate.getTime()) || expiresAtDate <= new Date()) {
-      return res.status(400).json({ message: "Expiration date must be a valid future date" });
+      return res
+        .status(400)
+        .json({ message: "Expiration date must be a valid future date" });
     }
 
     const voucher = await Voucher.findById(req.params.id);

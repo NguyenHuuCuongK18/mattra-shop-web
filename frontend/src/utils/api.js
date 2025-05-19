@@ -173,16 +173,14 @@ export const voucherAPI = {
 };
 
 export const geminiAIApi = {
-  // Generate AI response
   generateDefaultResponse: (promptData) =>
-    api.post("/api/geminiAI/generate/default", promptData),
-  generateCombinedResponse: (promptData, categoryId) =>
+    api.post("/api/geminiAI/generate/default", { prompt: promptData }),
+  generateCombinedResponse: (promptData, promptCategoryId) =>
     api.post("/api/geminiAI/generate/combined", {
       prompt: promptData,
-      categoryId,
+      promptCategoryId,
     }),
 };
-
 export const promptCategoryAPI = {
   // Get all prompt categories
   getAllPromptCategories: () => api.get("/api/promptCategory"),
