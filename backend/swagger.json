@@ -81,80 +81,67 @@
       "Cart": {
         "type": "object",
         "properties": {
+          "id": { "type": "string" },
           "items": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "productId": {
-                  "type": "object",
-                  "properties": {
-                    "name": { "type": "string" },
-                    "price": { "type": "number" },
-                    "image": { "type": "string" }
-                  }
-                },
+                "productId": { "type": "string" },
                 "quantity": { "type": "integer", "minimum": 1 }
-              }
+              },
+              "required": ["productId", "quantity"]
             }
           }
-        }
+        },
+        "required": ["id", "items"]
       },
       "Order": {
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "userId": {
-            "type": "object",
-            "properties": {
-              "username": { "type": "string" },
-              "email": { "type": "string", "format": "email" }
-            }
-          },
+          "userId": { "type": "string" },
           "items": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "productId": {
-                  "type": "object",
-                  "properties": {
-                    "name": { "type": "string" },
-                    "price": { "type": "number" },
-                    "image": { "type": "string" }
-                  }
-                },
-                "quantity": { "type": "integer" },
-                "price": { "type": "number" }
-              }
+                "productId": { "type": "string" },
+                "quantity": { "type": "integer", "minimum": 1 },
+                "price": { "type": "number", "minimum": 0 }
+              },
+              "required": ["productId", "quantity", "price"]
             }
           },
-          "totalAmount": { "type": "number" },
-          "discountApplied": { "type": "number" },
+          "totalAmount": { "type": "number", "minimum": 0 },
+          "discountApplied": { "type": "number", "default": 0 },
           "voucherId": { "type": "string" },
-          "paymentMethod": { "type": "string", "enum": ["Online Banking", "Cash on Delivery"] },
-          "shippingAddress": { "type": "string" },
-          "status": { "type": "string", "enum": ["unverified", "pending", "shipping", "delivered", "cancelled"] }
+          "paymentMethod": { 
+            "type": "string", 
+            "enum": ["Online Banking", "Cash on Delivery"],
+            "default": "Cash on Delivery"
+          },
+          "status": { 
+            "type": "string", 
+            "enum": ["unverified", "pending", "shipping", "delivered", "cancelled"],
+            "default": "unverified"
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "shippingAddress": { "type": "string" }
         },
-        "required": ["id", "userId", "items", "totalAmount", "paymentMethod", "shippingAddress", "status"]
+        "required": ["userId", "items", "totalAmount", "paymentMethod", "shippingAddress"]
       },
       "Voucher": {
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "userId": {
-            "type": "object",
-            "properties": {
-              "username": { "type": "string" },
-              "email": { "type": "string", "format": "email" }
-            }
-          },
+          "code": { "type": "string" },
           "discount_percentage": { "type": "number", "minimum": 0, "maximum": 100 },
           "max_discount": { "type": "number", "minimum": 0 },
-          "subscriberOnly": { "type": "boolean" },
+          "is_used": { "type": "boolean", "default": false },
+          "subscriberOnly": { "type": "boolean", "default": false },
           "created_at": { "type": "string", "format": "date-time" },
-          "expires_at": { "type": "string", "format": "date-time" },
-          "is_used": { "type": "boolean" }
+          "expires_at": { "type": "string", "format": "date-time" }
         },
         "required": ["id", "discount_percentage", "max_discount", "expires_at"]
       },
@@ -186,6 +173,42 @@
           "updatedAt": { "type": "string", "format": "date-time" }
         },
         "required": ["id", "name", "promptText"]
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "productId": { "type": "string" },
+          "userId": { "type": "string" },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "comment": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "productId", "userId", "rating", "comment"]
+      },
+      "BlacklistedToken": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "token": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["token", "expiresAt"]
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { "type": "string" },
+          "amount": { "type": "number" },
+          "status": { 
+            "type": "string",
+            "enum": ["pending", "completed", "failed"]
+          },
+          "orderId": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["userId", "amount", "orderId"]
       }
     }
   },
@@ -3245,6 +3268,242 @@
           },
           "404": {
             "description": "Prompt category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/create": {
+      "post": {
+        "tags": ["Review"],
+        "summary": "Create a new review",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": { "type": "string" },
+                  "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+                  "comment": { "type": "string" }
+                },
+                "required": ["productId", "rating", "comment"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "review": { "$ref": "#/components/schemas/Review" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/{productId}": {
+      "get": {
+        "tags": ["Review"],
+        "summary": "Get all reviews for a product",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviews retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "reviews": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Review" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/update/{reviewId}": {
+      "put": {
+        "tags": ["Review"],
+        "summary": "Update a review",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+                  "comment": { "type": "string" }
+                },
+                "required": ["rating", "comment"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Review updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "review": { "$ref": "#/components/schemas/Review" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to update this review",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Review not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/delete/{reviewId}": {
+      "delete": {
+        "tags": ["Review"],
+        "summary": "Delete a review",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to delete this review",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Review not found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }

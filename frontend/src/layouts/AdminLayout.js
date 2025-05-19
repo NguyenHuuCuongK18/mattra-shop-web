@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, Link, useNavigate, useLocation } from "react-router-dom";
 import { Container, Navbar, Nav, Offcanvas } from "react-bootstrap";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,6 +10,16 @@ function AdminLayout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    // Add admin-body class to body
+    document.body.classList.add("admin-body");
+
+    // Cleanup: Remove the class when component unmounts
+    return () => {
+      document.body.classList.remove("admin-body");
+    };
+  }, []);
 
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);

@@ -64,6 +64,7 @@ const subscriptionRoute = require("./routes/subscription.route");
 const voucherRoute = require("./routes/voucher.route");
 const geminiAIRoute = require("./routes/geminiAI.route");
 const promptCategoryRoute = require("./routes/promptCategory.route");
+const reviewRoute = require("./routes/review.route");
 
 app.use("/api/user", userRoute);
 app.use("/api/product", productRoute);
@@ -74,6 +75,7 @@ app.use("/api/subscription", subscriptionRoute);
 app.use("/api/voucher", voucherRoute);
 app.use("/api/geminiAI", geminiAIRoute);
 app.use("/api/promptCategory", promptCategoryRoute);
+app.use("/api/review", reviewRoute);
 
 // Root endpoint
 app.get("/", (req, res) => {

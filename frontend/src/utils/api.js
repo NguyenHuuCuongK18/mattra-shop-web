@@ -181,6 +181,7 @@ export const geminiAIApi = {
       promptCategoryId,
     }),
 };
+
 export const promptCategoryAPI = {
   // Get all prompt categories
   getAllPromptCategories: () => api.get("/api/promptCategory"),

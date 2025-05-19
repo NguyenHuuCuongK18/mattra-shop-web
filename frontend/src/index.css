@@ -8,11 +8,13 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-top: 70px; /* Add padding to account for fixed navbar */
   background-color: #f8f9fa;
 }
 
-/* Bootstrap is imported in index.js, so we don't need to import it here */
+/* Add this class for admin layout */
+.admin-body {
+  padding-top: 0; /* Remove padding for admin layout */
+}
 
 /* Page Transitions */
 .page-transition {
