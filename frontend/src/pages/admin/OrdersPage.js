@@ -46,8 +46,10 @@ function OrdersPage() {
       });
 
       // Update order in the list
-      setOrders(
-        orders.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+      setOrders((prevOrders) =>
+        prevOrders.map((o) =>
+          o.id === orderId ? { ...o, status: newStatus } : o
+        )
       );
 
       if (currentOrder && currentOrder.id === orderId) {
@@ -167,11 +169,11 @@ function OrdersPage() {
             <tbody>
               {filteredOrders.length > 0 ? (
                 filteredOrders.map((order) => (
-                  <tr key={order.id}>
+                  <tr key={order._id}>
                     <td>
                       #
-                      {order.id
-                        ? order.id.substring(0, 8).toUpperCase()
+                      {order._id
+                        ? order._id.substring(0, 8).toUpperCase()
                         : "N/A"}
                     </td>
                     <td>{order.userId.username}</td>

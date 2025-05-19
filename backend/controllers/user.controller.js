@@ -156,7 +156,7 @@ exports.requestPasswordReset = async (req, res) => {
     user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
-    const resetLink = `http://localhost:9999/api/user/reset-password?token=${token}`;
+    const resetLink = `https://mattra-online-shop.vercel.app/reset-password/${token}`;
     await sendMail(
       user.email,
       "Password Reset Request",

@@ -10,6 +10,7 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
   },
+  isFeatured: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model("Product", productSchema);
