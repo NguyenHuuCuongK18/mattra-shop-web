@@ -14,6 +14,26 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { geminiAIApi, promptCategoryAPI } from "../../utils/api";
 import { toast } from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+// Inline CSS for Markdown styling
+const markdownStyles = `
+  .markdown-body ul {
+    list-style-type: disc;
+    margin-left: 20px;
+    margin-bottom: 10px;
+  }
+  .markdown-body li {
+    margin-bottom: 5px;
+  }
+  .markdown-body strong {
+    font-weight: bold;
+  }
+  .markdown-body p {
+    margin: 0 0 10px;
+  }
+`;
 
 const ChatPage = () => {
   const { user, isSubscriber } = useAuth();
@@ -151,36 +171,9 @@ const ChatPage = () => {
     );
   }
 
-  // if (!isSubscriber()) {
-  //   return (
-  //     <Container className="py-5">
-  //       <Card className="border-0 shadow-sm rounded-4">
-  //         <Card.Body className="text-center p-5">
-  //           <i
-  //             className="bi bi-star-fill text-warning mb-3"
-  //             style={{ fontSize: "3rem" }}
-  //           ></i>
-  //           <Card.Title className="mb-3 fs-2">Subscription Required</Card.Title>
-  //           <Card.Text className="text-muted mb-4">
-  //             You need to be a subscriber to access the chat feature.
-  //           </Card.Text>
-  //           <Button
-  //             variant="success"
-  //             href="/subscriptions"
-  //             size="lg"
-  //             className="px-4"
-  //           >
-  //             <i className="bi bi-gem me-2"></i>
-  //             View Subscription Plans
-  //           </Button>
-  //         </Card.Body>
-  //       </Card>
-  //     </Container>
-  //   );
-  // }
-
   return (
     <Container className="py-4">
+      <style>{markdownStyles}</style>
       <Row className="justify-content-center">
         <Col lg={10} xl={8}>
           <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
@@ -198,7 +191,7 @@ const ChatPage = () => {
 
             {/* Chat Messages Area */}
             <div
-              className="chat-messages p-3"
+              className="chat-messages p-3 markdown-body"
               style={{
                 height: "400px",
                 overflowY: "auto",
@@ -247,10 +240,15 @@ const ChatPage = () => {
                       style={{
                         maxWidth: "75%",
                         boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                        whiteSpace: "pre-wrap",
                       }}
                     >
-                      {message.content}
+                      {message.sender === "ai" ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                      ) : (
+                        message.content
+                      )}
                     </div>
 
                     {message.sender === "user" && (
