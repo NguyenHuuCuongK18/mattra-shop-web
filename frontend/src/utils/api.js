@@ -39,11 +39,7 @@ export const authAPI = {
 
   // Reset password
   resetPassword: (token, newPassword) =>
-    api.post(
-      "/api/user/reset-password",
-      { newPassword },
-      { params: { token } }
-    ),
+    api.post("/api/user/reset-password", { token, newPassword }),
 
   // Update user info
   updateProfile: (userData) => api.put("/api/user/update", userData),
@@ -90,10 +86,10 @@ export const categoryAPI = {
 
   // Update category (admin only)
   updateCategory: (id, categoryData) =>
-    api.put(`/api/category/${id}`, categoryData),
+    api.put(`/api/category/update/${id}`, categoryData),
 
   // Delete category (admin only)
-  deleteCategory: (id) => api.delete(`/api/category/${id}`),
+  deleteCategory: (id) => api.delete(`/api/category/delete/${id}`),
 };
 
 export const cartAPI = {
@@ -144,10 +140,10 @@ export const subscriptionAPI = {
 
   // Update subscription (admin only)
   updateSubscription: (id, subscriptionData) =>
-    api.put(`/api/subscription/${id}`, subscriptionData),
+    api.put(`/api/subscription/update/${id}`, subscriptionData),
 
   // Delete subscription (admin only)
-  deleteSubscription: (id) => api.delete(`/api/subscription/${id}`),
+  deleteSubscription: (id) => api.delete(`/api/subscription/delete/${id}`),
 };
 
 export const voucherAPI = {
@@ -165,7 +161,7 @@ export const voucherAPI = {
     api.put(`/api/voucher/${id}`, voucherData),
 
   // Delete voucher (admin only)
-  deleteVoucher: (id) => api.delete(`/api/voucher/${id}`),
+  deleteVoucher: (id) => api.delete(`/api/voucher/delete/${id}`),
 
   // Apply voucher to cart
   // applyVoucher: (voucherCode) =>
