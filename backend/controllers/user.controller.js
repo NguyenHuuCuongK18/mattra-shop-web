@@ -156,7 +156,9 @@ exports.requestPasswordReset = async (req, res) => {
     user.resetPasswordToken = token;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
-    const resetLink = `https://mattra-online-shop.vercel.app/reset-password/${token}`;
+    const frontendUrl =
+      process.env.FRONTEND_URL || "https://mattra-online-shop.vercel.app";
+    const resetLink = `${frontendUrl}/reset-password/?token=${token}`;
     await sendMail(
       user.email,
       "Password Reset Request",
@@ -170,12 +172,12 @@ exports.requestPasswordReset = async (req, res) => {
 
 exports.resetPassword = async (req, res) => {
   try {
-    const { token } = req.query;
+    const { token } = req.body;
     const { newPassword } = req.body;
     if (!token) {
       return res
         .status(400)
-        .json({ message: "Token is required in query parameter" });
+        .json({ message: "Token is required in request body" });
     }
     if (!newPassword) {
       return res
