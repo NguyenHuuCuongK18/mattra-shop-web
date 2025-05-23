@@ -8,8 +8,9 @@ import {
   Col,
   Card as BootstrapCard,
   Carousel,
+  Badge,
 } from "react-bootstrap";
-import api from "../utils/api";
+import { productAPI } from "../utils/api";
 import Button from "../components/ui/Button";
 
 function HomePage() {
@@ -19,8 +20,13 @@ function HomePage() {
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
       try {
-        const response = await api.get("/api/product");
-        setFeaturedProducts(response.data.products.slice(0, 4));
+        const response = await productAPI.getAllProducts();
+        // Filter only featured products and normalize IDs
+        const featured = response.data.products
+          .filter((product) => product.isFeatured)
+          .map((product) => ({ ...product, id: product._id }))
+          .slice(0, 8); // Show up to 8 featured products
+        setFeaturedProducts(featured);
       } catch (error) {
         console.error("Error fetching featured products:", error);
       } finally {
@@ -52,9 +58,16 @@ function HomePage() {
                 world. From traditional blends to unique flavors, we have
                 something for every tea enthusiast.
               </p>
-              <Link to="/products">
-                <Button size="lg">Shop Now</Button>
-              </Link>
+              <div className="d-flex gap-3">
+                <Link to="/products">
+                  <Button size="lg">Shop Now</Button>
+                </Link>
+                <Link to="/subscriptions">
+                  <Button variant="outline" size="lg" className="bg-white">
+                    Learn More
+                  </Button>
+                </Link>
+              </div>
             </Col>
           </Row>
         </Container>
@@ -65,7 +78,7 @@ function HomePage() {
         <div className="text-center mb-5">
           <h2 className="fs-1 fw-bold">Featured Products</h2>
           <p className="lead text-secondary">
-            Check out our most popular tea selections
+            Check out our handpicked premium tea selections
           </p>
         </div>
 
@@ -75,8 +88,8 @@ function HomePage() {
               <Col key={index} sm={6} lg={3} className="mb-4">
                 <div className="placeholder-glow">
                   <div
-                    className="placeholder w-100"
-                    style={{ height: "200px" }}
+                    className="placeholder w-100 rounded"
+                    style={{ height: "250px" }}
                   ></div>
                   <div className="placeholder w-75 mt-3"></div>
                   <div className="placeholder w-50 mt-2"></div>
@@ -85,51 +98,108 @@ function HomePage() {
               </Col>
             ))}
           </Row>
-        ) : (
-          <Row>
-            {featuredProducts.length > 0 ? (
-              featuredProducts.map((product) => (
-                <Col key={product.id} sm={6} lg={3} className="mb-4">
-                  <BootstrapCard className="h-100 shadow-sm">
-                    <BootstrapCard.Img
-                      variant="top"
-                      src={
-                        product.imageUrl ||
-                        "https://images.unsplash.com/photo-1523920290228-4f321a939b4c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60"
-                      }
-                      alt={product.name}
-                      style={{ height: "200px", objectFit: "cover" }}
-                    />
+        ) : featuredProducts.length > 0 ? (
+          <>
+            <Row xs={1} sm={2} lg={3} xl={4} className="g-4">
+              {featuredProducts.map((product) => (
+                <Col key={product.id}>
+                  <BootstrapCard className="h-100 shadow-sm border-0 product-card">
+                    <div
+                      className="position-relative overflow-hidden"
+                      style={{ height: "250px" }}
+                    >
+                      <BootstrapCard.Img
+                        variant="top"
+                        src={
+                          product.image ||
+                          "/placeholder.svg?height=250&width=300"
+                        }
+                        alt={product.name}
+                        className="w-100 h-100 object-fit-cover"
+                        style={{ transition: "transform 0.3s ease" }}
+                      />
+                      <Badge
+                        bg="warning"
+                        className="position-absolute top-0 start-0 m-2"
+                      >
+                        <i className="bi bi-star-fill me-1"></i>
+                        Featured
+                      </Badge>
+                      {product.stock <= 0 && (
+                        <div className="position-absolute top-0 end-0 bg-danger text-white px-2 py-1 m-2 rounded">
+                          Out of Stock
+                        </div>
+                      )}
+                    </div>
                     <BootstrapCard.Body className="d-flex flex-column">
-                      <BootstrapCard.Title>{product.name}</BootstrapCard.Title>
-                      <BootstrapCard.Text className="text-secondary small flex-grow-1">
-                        {product.description.substring(0, 80)}...
-                      </BootstrapCard.Text>
-                      <div className="d-flex justify-content-between align-items-center mt-3">
-                        <span className="fs-5 fw-bold text-success">
+                      <BootstrapCard.Title className="h5 mb-2">
+                        {product.name}
+                      </BootstrapCard.Title>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="h5 text-success fw-bold mb-0">
                           ${product.price.toFixed(2)}
                         </span>
-                        <Link to={`/products/${product.id}`}>
-                          <Button variant="outline">View Details</Button>
+                        {product.categories?.name && (
+                          <Badge bg="light" text="dark" className="px-2 py-1">
+                            {product.categories.name}
+                          </Badge>
+                        )}
+                      </div>
+                      <BootstrapCard.Text className="text-secondary small flex-grow-1 mb-3">
+                        {product.description
+                          ? product.description.length > 80
+                            ? `${product.description.substring(0, 80)}...`
+                            : product.description
+                          : "Premium quality tea"}
+                      </BootstrapCard.Text>
+                      <div className="mt-auto">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <small className="text-muted">
+                            {product.stock > 0 ? (
+                              <span className="text-success">
+                                <i className="bi bi-check-circle me-1"></i>
+                                In Stock
+                              </span>
+                            ) : (
+                              <span className="text-danger">
+                                <i className="bi bi-x-circle me-1"></i>
+                                Out of Stock
+                              </span>
+                            )}
+                          </small>
+                        </div>
+                        <Link to={`/products/${product.id}`} className="w-100">
+                          <Button variant="outline" className="w-100">
+                            View Details
+                          </Button>
                         </Link>
                       </div>
                     </BootstrapCard.Body>
                   </BootstrapCard>
                 </Col>
-              ))
-            ) : (
-              <Col className="text-center py-5">
-                <p className="text-secondary">No products found</p>
-              </Col>
-            )}
-          </Row>
+              ))}
+            </Row>
+            <div className="text-center mt-5">
+              <Link to="/products">
+                <Button variant="outline" size="lg">
+                  View All Products
+                </Button>
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-5 bg-light rounded">
+            <i className="bi bi-star display-1 text-muted"></i>
+            <h3 className="mt-3">No Featured Products</h3>
+            <p className="text-muted mb-4">
+              Featured products will appear here once they are added by
+              administrators
+            </p>
+            <Link to="/products">
+              <Button variant="outline">Browse All Products</Button>
+            </Link>
+          </div>
         )}
-
-        <div className="text-center mt-4">
-          <Link to="/products">
-            <Button variant="outline">View All Products</Button>
-          </Link>
-        </div>
       </Container>
 
       {/* Features Section */}

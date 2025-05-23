@@ -5,6 +5,9 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sendMail } = require("./mail.controller");
+const multer = require("multer");
+const path = require("path");
+const { put } = require("@vercel/blob");
 
 exports.register = async (req, res) => {
   try {
@@ -82,6 +85,7 @@ exports.login = async (req, res) => {
         id: user._id,
         username: user.username,
         name: user.name,
+        avatar: user.avatar,
         email: user.email,
         address: user.address,
         role: user.role,
@@ -108,6 +112,7 @@ exports.getProfile = async (req, res) => {
       id: user._id,
       username: user.username,
       name: user.name,
+      avatar: user.avatar,
       email: user.email,
       address: user.address,
       role: user.role,
@@ -353,4 +358,47 @@ exports.updateSubscriptionStatus = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+// Multer setup for avatar upload
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(new Error("Only JPEG and PNG files are allowed"), false);
+    }
+    cb(null, true);
+  },
+}).single("avatar");
+
+exports.updateAvatar = (req, res) => {
+  upload(req, res, async (err) => {
+    if (err) return res.status(400).json({ message: err.message });
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+    try {
+      const user = await User.findById(req.user.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const filename = `avatars/${user._id}_${Date.now()}${path.extname(
+        req.file.originalname
+      )}`;
+      const blob = await put(filename, req.file.buffer, {
+        access: "public",
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      });
+
+      user.avatar = blob.url;
+      await user.save();
+
+      res
+        .status(200)
+        .json({ message: "Profile picture updated", avatarUrl: blob.url });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
 };

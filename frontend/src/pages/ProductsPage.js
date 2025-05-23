@@ -10,6 +10,7 @@ import {
   Form,
   InputGroup,
   Spinner,
+  Badge,
 } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import { productAPI, categoryAPI } from "../utils/api";
@@ -23,6 +24,7 @@ const ProductsPage = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
   const { addToCart } = useCart();
 
   useEffect(() => {
@@ -77,16 +79,20 @@ const ProductsPage = () => {
       (product.description &&
         product.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory =
-      !selectedCategory || product.category === selectedCategory;
+      !selectedCategory ||
+      product.categories?.name === selectedCategory ||
+      product.categories?._id === selectedCategory ||
+      product.categories === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   if (loading) {
     return (
-      <Container className="py-5 text-center">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </Spinner>
+      <Container className="py-5">
+        <div className="text-center">
+          <Spinner animation="border" variant="success" />
+          <p className="mt-2 text-muted">Loading products...</p>
+        </div>
       </Container>
     );
   }
@@ -103,22 +109,45 @@ const ProductsPage = () => {
 
   return (
     <Container className="py-5">
-      <h1 className="mb-4">Our Products</h1>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h1 className="h2 fw-bold">Our Products</h1>
+        <div className="d-flex gap-2">
+          <Button
+            variant={viewMode === "grid" ? "success" : "outline-success"}
+            size="sm"
+            onClick={() => setViewMode("grid")}
+          >
+            <i className="bi bi-grid-3x3-gap"></i>
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "success" : "outline-success"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
+            <i className="bi bi-list"></i>
+          </Button>
+        </div>
+      </div>
 
       <Row className="mb-4">
         <Col md={6}>
           <InputGroup>
+            <InputGroup.Text className="bg-light border-end-0">
+              <i className="bi bi-search text-muted"></i>
+            </InputGroup.Text>
             <Form.Control
+              type="text"
               placeholder="Search products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className="border-start-0 bg-light"
             />
             {searchTerm && (
               <Button
                 variant="outline-secondary"
                 onClick={() => setSearchTerm("")}
               >
-                Clear
+                <i className="bi bi-x"></i>
               </Button>
             )}
           </InputGroup>
@@ -127,10 +156,14 @@ const ProductsPage = () => {
           <Form.Select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
+            className="bg-light"
           >
             <option value="">All Categories</option>
             {categories.map((category) => (
-              <option key={category._id} value={category.name}>
+              <option
+                key={category._id || category.id}
+                value={category._id || category.id}
+              >
                 {category.name}
               </option>
             ))}
@@ -138,64 +171,239 @@ const ProductsPage = () => {
         </Col>
       </Row>
 
-      {filteredProducts.length === 0 ? (
-        <div className="text-center py-5">
-          <h3>No products found</h3>
-          <p>Try adjusting your search or filter criteria</p>
+      {searchTerm || selectedCategory ? (
+        <div className="mb-3">
+          <small className="text-muted">
+            Showing {filteredProducts.length} products
+            {selectedCategory &&
+              ` in ${
+                categories.find((c) => (c._id || c.id) === selectedCategory)
+                  ?.name
+              }`}
+            {searchTerm && ` matching "${searchTerm}"`}
+          </small>
+          {(searchTerm || selectedCategory) && (
+            <Button
+              variant="link"
+              size="sm"
+              className="ms-2 p-0"
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedCategory("");
+              }}
+            >
+              Clear filters
+            </Button>
+          )}
         </div>
-      ) : (
-        <Row xs={1} md={2} lg={3} className="g-4">
+      ) : null}
+
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-5 bg-light rounded">
+          <i className="bi bi-search display-1 text-muted"></i>
+          <h3 className="mt-3">No products found</h3>
+          <p className="text-muted">
+            {searchTerm || selectedCategory
+              ? "Try adjusting your search or filter criteria"
+              : "No products available at the moment"}
+          </p>
+          {(searchTerm || selectedCategory) && (
+            <Button
+              variant="outline-success"
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedCategory("");
+              }}
+            >
+              Clear filters
+            </Button>
+          )}
+        </div>
+      ) : viewMode === "grid" ? (
+        <Row xs={1} md={2} lg={3} xl={4} className="g-4">
           {filteredProducts.map((product) => (
             <Col key={product.id}>
-              <Card className="h-100">
-                {product.imageUrl && (
+              <Card className="h-100 shadow-sm border-0 product-card">
+                <div
+                  className="position-relative overflow-hidden"
+                  style={{ height: "250px" }}
+                >
                   <Card.Img
                     variant="top"
-                    src={product.imageUrl}
+                    src={
+                      product.image || "/placeholder.svg?height=250&width=300"
+                    }
                     alt={product.name}
-                    style={{ height: "200px", objectFit: "cover" }}
+                    className="w-100 h-100 object-fit-cover"
+                    style={{ transition: "transform 0.3s ease" }}
                   />
-                )}
+                  {product.isFeatured && (
+                    <Badge
+                      bg="warning"
+                      className="position-absolute top-0 start-0 m-2"
+                    >
+                      <i className="bi bi-star-fill me-1"></i>
+                      Featured
+                    </Badge>
+                  )}
+                  {product.stock <= 0 && (
+                    <div className="position-absolute top-0 end-0 bg-danger text-white px-2 py-1 m-2 rounded">
+                      Out of Stock
+                    </div>
+                  )}
+                </div>
                 <Card.Body className="d-flex flex-column">
-                  <Card.Title>{product.name}</Card.Title>
-                  <Card.Text className="text-muted mb-2">
-                    ${product.price.toFixed(2)}
-                  </Card.Text>
-                  <Card.Text className="mb-4">
+                  <Card.Title className="h5 mb-2">{product.name}</Card.Title>
+                  <div className="d-flex justify-content-between align-items-center mb-2">
+                    <span className="h5 text-success fw-bold mb-0">
+                      ${product.price.toFixed(2)}
+                    </span>
+                    {product.categories?.name && (
+                      <Badge bg="light" text="dark" className="px-2 py-1">
+                        {product.categories.name}
+                      </Badge>
+                    )}
+                  </div>
+                  <Card.Text className="text-muted small mb-3 flex-grow-1">
                     {product.description
                       ? product.description.length > 100
                         ? `${product.description.substring(0, 100)}...`
                         : product.description
                       : "No description available"}
                   </Card.Text>
-                  <div className="mt-auto d-flex justify-content-between">
-                    <Button
-                      as={Link}
-                      to={`/product/${product.id}`}
-                      variant="outline-primary"
-                    >
-                      View Details
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={() => handleAddToCart(product.id)}
-                      disabled={product.stock <= 0}
-                    >
-                      {product.stock > 0 ? "Add to Cart" : "Out of Stock"}
-                    </Button>
+                  <div className="mt-auto">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <small className="text-muted">
+                        {product.stock > 0 ? (
+                          <span className="text-success">
+                            <i className="bi bi-check-circle me-1"></i>
+                            {product.stock} in stock
+                          </span>
+                        ) : (
+                          <span className="text-danger">
+                            <i className="bi bi-x-circle me-1"></i>
+                            Out of stock
+                          </span>
+                        )}
+                      </small>
+                    </div>
+                    <div className="d-grid gap-2">
+                      <Button
+                        as={Link}
+                        to={`/products/${product.id}`}
+                        variant="outline-success"
+                        size="sm"
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={() => handleAddToCart(product.id)}
+                        disabled={product.stock <= 0}
+                      >
+                        {product.stock > 0 ? (
+                          <>
+                            <i className="bi bi-cart-plus me-1"></i>
+                            Add to Cart
+                          </>
+                        ) : (
+                          "Out of Stock"
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </Card.Body>
-                <Card.Footer className="text-muted">
-                  {product.stock > 0 ? (
-                    <small>{product.stock} in stock</small>
-                  ) : (
-                    <small className="text-danger">Out of stock</small>
-                  )}
-                </Card.Footer>
               </Card>
             </Col>
           ))}
         </Row>
+      ) : (
+        <div className="d-flex flex-column gap-3">
+          {filteredProducts.map((product) => (
+            <Card key={product.id} className="shadow-sm border-0">
+              <Row className="g-0">
+                <Col md={3}>
+                  <div style={{ height: "200px" }} className="overflow-hidden">
+                    <Card.Img
+                      src={
+                        product.image || "/placeholder.svg?height=200&width=300"
+                      }
+                      alt={product.name}
+                      className="w-100 h-100 object-fit-cover"
+                    />
+                  </div>
+                </Col>
+                <Col md={9}>
+                  <Card.Body className="d-flex flex-column h-100">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <Card.Title className="h4 mb-0">
+                        {product.name}
+                      </Card.Title>
+                      <div className="d-flex gap-2">
+                        {product.isFeatured && (
+                          <Badge bg="warning">
+                            <i className="bi bi-star-fill me-1"></i>
+                            Featured
+                          </Badge>
+                        )}
+                        {product.categories?.name && (
+                          <Badge bg="light" text="dark">
+                            {product.categories.name}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mb-2">
+                      <span className="h4 text-success fw-bold">
+                        ${product.price.toFixed(2)}
+                      </span>
+                      <small className="text-muted ms-2">
+                        {product.stock > 0 ? (
+                          <span className="text-success">
+                            <i className="bi bi-check-circle me-1"></i>
+                            {product.stock} in stock
+                          </span>
+                        ) : (
+                          <span className="text-danger">
+                            <i className="bi bi-x-circle me-1"></i>
+                            Out of stock
+                          </span>
+                        )}
+                      </small>
+                    </div>
+                    <Card.Text className="text-muted mb-3 flex-grow-1">
+                      {product.description || "No description available"}
+                    </Card.Text>
+                    <div className="d-flex gap-2">
+                      <Button
+                        as={Link}
+                        to={`/products/${product.id}`}
+                        variant="outline-success"
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        variant="success"
+                        onClick={() => handleAddToCart(product.id)}
+                        disabled={product.stock <= 0}
+                      >
+                        {product.stock > 0 ? (
+                          <>
+                            <i className="bi bi-cart-plus me-1"></i>
+                            Add to Cart
+                          </>
+                        ) : (
+                          "Out of Stock"
+                        )}
+                      </Button>
+                    </div>
+                  </Card.Body>
+                </Col>
+              </Row>
+            </Card>
+          ))}
+        </div>
       )}
     </Container>
   );

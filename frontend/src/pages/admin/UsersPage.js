@@ -5,6 +5,7 @@ import { Table, Badge, Form, InputGroup, Alert } from "react-bootstrap";
 import api from "../../utils/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
+import { Row, Col } from "react-bootstrap";
 
 function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -12,6 +13,7 @@ function UsersPage() {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -48,7 +50,6 @@ function UsersPage() {
       ...formData,
       [name]: value,
     });
-    // Clear error when user types
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
@@ -95,6 +96,11 @@ function UsersPage() {
     setIsModalOpen(true);
   };
 
+  const handleViewUser = (user) => {
+    setCurrentUser(user);
+    setIsViewModalOpen(true);
+  };
+
   const handleDeleteUser = (user) => {
     setCurrentUser(user);
     setIsDeleteModalOpen(true);
@@ -110,14 +116,11 @@ function UsersPage() {
       let response;
       const userId = currentUser ? currentUser._id || currentUser.id : null;
       if (currentUser) {
-        // Update existing user
         response = await api.put(`/api/user/admin/update/${userId}`, formData);
       } else {
-        // Create new user
         response = await api.post("/api/user/admin/create", formData);
       }
 
-      // Update users list
       if (currentUser) {
         setUsers(
           users.map((u) =>
@@ -145,7 +148,6 @@ function UsersPage() {
       const userId = currentUser._id || currentUser.id;
       await api.delete(`/api/user/admin/delete/${userId}`);
 
-      // Remove user from list
       setUsers(users.filter((u) => (u._id || u.id) !== userId));
       setIsDeleteModalOpen(false);
     } catch (error) {
@@ -246,6 +248,13 @@ function UsersPage() {
                     <td className="text-end">
                       <Button
                         variant="link"
+                        className="text-primary p-0 me-3"
+                        onClick={() => handleViewUser(user)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="link"
                         className="text-success p-0 me-3"
                         onClick={() => handleEditUser(user)}
                       >
@@ -319,7 +328,7 @@ function UsersPage() {
                       onChange={handleInputChange}
                       isInvalid={!!formErrors.username}
                       required
-                      disabled={currentUser} // Can't change username for existing users
+                      disabled={currentUser}
                     />
                     <Form.Control.Feedback type="invalid">
                       {formErrors.username}
@@ -395,6 +404,143 @@ function UsersPage() {
                   disabled={formSubmitting}
                 >
                   {currentUser ? "Update" : "Create"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View User Modal */}
+      {isViewModalOpen && currentUser && (
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  User Profile: {currentUser.name}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setIsViewModalOpen(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="text-center mb-4">
+                  {currentUser.avatar ? (
+                    <img
+                      src={currentUser.avatar}
+                      alt="Avatar"
+                      className="rounded-circle mb-3"
+                      style={{
+                        width: "120px",
+                        height: "120px",
+                        objectFit: "cover",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center mb-3"
+                      style={{ width: "120px", height: "120px" }}
+                    >
+                      {currentUser.name?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                  )}
+                </div>
+                <Row>
+                  <Col md={6} className="mb-3">
+                    <p className="text-secondary mb-1">Full Name</p>
+                    <p className="fw-semibold mb-0">{currentUser.name}</p>
+                  </Col>
+                  <Col md={6} className="mb-3">
+                    <p className="text-secondary mb-1">Username</p>
+                    <p className="fw-semibold mb-0">{currentUser.username}</p>
+                  </Col>
+                  <Col md={6} className="mb-3">
+                    <p className="text-secondary mb-1">Email</p>
+                    <p className="fw-semibold mb-0">{currentUser.email}</p>
+                  </Col>
+                  <Col md={6} className="mb-3">
+                    <p className="text-secondary mb-1">Role</p>
+                    <Badge
+                      bg={currentUser.role === "admin" ? "danger" : "success"}
+                    >
+                      {currentUser.role}
+                    </Badge>
+                  </Col>
+                  <Col md={12} className="mb-3">
+                    <p className="text-secondary mb-1">Address</p>
+                    <p className="fw-semibold mb-0">
+                      {currentUser.address || "Not provided"}
+                    </p>
+                  </Col>
+                </Row>
+                {currentUser.subscription && (
+                  <>
+                    <hr />
+                    <h5 className="fw-semibold mb-3">Subscription Details</h5>
+                    <Row>
+                      <Col md={6} className="mb-3">
+                        <p className="text-secondary mb-1">Status</p>
+                        <p className="fw-semibold mb-0">
+                          {currentUser.subscription.status === "active"
+                            ? "Active"
+                            : "Inactive"}
+                        </p>
+                      </Col>
+                      <Col md={6} className="mb-3">
+                        <p className="text-secondary mb-1">Subscription ID</p>
+                        <p className="fw-semibold mb-0">
+                          {currentUser.subscription.subscriptionId}
+                        </p>
+                      </Col>
+                      <Col md={6} className="mb-3">
+                        <p className="text-secondary mb-1">Plan</p>
+                        <p className="fw-semibold mb-0">
+                          {currentUser.subscription.plan || "Standard"}
+                        </p>
+                      </Col>
+                      <Col md={6} className="mb-3">
+                        <p className="text-secondary mb-1">Billing Cycle</p>
+                        <p className="fw-semibold mb-0">
+                          {currentUser.subscription.billingCycle || "Monthly"}
+                        </p>
+                      </Col>
+                      {currentUser.subscription.status === "active" && (
+                        <>
+                          <Col md={6} className="mb-3">
+                            <p className="text-secondary mb-1">Start Date</p>
+                            <p className="fw-semibold mb-0">
+                              {new Date(
+                                currentUser.subscription.startDate
+                              ).toLocaleDateString()}
+                            </p>
+                          </Col>
+                          <Col md={6} className="mb-3">
+                            <p className="text-secondary mb-1">End Date</p>
+                            <p className="fw-semibold mb-0">
+                              {new Date(
+                                currentUser.subscription.endDate
+                              ).toLocaleDateString()}
+                            </p>
+                          </Col>
+                        </>
+                      )}
+                    </Row>
+                  </>
+                )}
+              </div>
+              <div className="modal-footer">
+                <Button
+                  variant="secondary"
+                  onClick={() => setIsViewModalOpen(false)}
+                >
+                  Close
                 </Button>
               </div>
             </div>

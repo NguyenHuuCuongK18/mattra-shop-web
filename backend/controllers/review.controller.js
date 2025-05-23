@@ -73,7 +73,7 @@ exports.getAllReviewsOfProduct = async (req, res) => {
     }
 
     const reviews = await Review.find(query)
-      .populate("userId", "username email")
+      .populate("userId", "username email name avatar")
       .populate("productId", "name")
       .select("-__v")
       .sort({ createdAt: -1 });

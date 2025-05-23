@@ -37,4 +37,7 @@ router.put(
   userController.updateSubscriptionStatus
 );
 
+// Update user avatar
+router.post("/update-avatar", authMiddleware, userController.updateAvatar);
+
 module.exports = router;
