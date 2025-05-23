@@ -80,7 +80,6 @@ export const AuthProvider = ({ children }) => {
       toast.success("Logged out successfully");
     } catch (err) {
       console.error("Logout error:", err);
-      // Still remove token and user on client side even if server logout fails
       localStorage.removeItem("token");
       setUser(null);
     } finally {
@@ -107,12 +106,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const uploadAvatar = async (file) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", file);
+      const response = await authAPI.uploadAvatar(formData);
+      setUser(response.data.user);
+      toast.success("Profile picture updated");
+      return response.data;
+    } catch (err) {
+      const errorMessage =
+        err.response?.data?.message || "Avatar update failed";
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const changePassword = async (passwordData) => {
     setLoading(true);
     setError(null);
     try {
       const response = await authAPI.changePassword(passwordData);
       toast.success("Password changed successfully");
+      await logout(); // Log out after password change
       return response.data;
     } catch (err) {
       const errorMessage =
@@ -179,6 +200,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
+    uploadAvatar,
     changePassword,
     requestPasswordReset,
     resetPassword,

@@ -67,7 +67,7 @@ function Navbar() {
         bg="white"
         expand="lg"
         fixed="top"
-        className={`transition-all duration-300 ${
+        className={`modern-navbar transition-all duration-300 ${
           scrolled ? "shadow-sm py-2" : "py-3"
         }`}
       >
@@ -75,14 +75,14 @@ function Navbar() {
           <BootstrapNavbar.Brand
             as={Link}
             to="/"
-            className="fw-bold text-success"
+            className="fw-bold text-success brand-logo"
           >
             Mạt Trà
           </BootstrapNavbar.Brand>
           <BootstrapNavbar.Toggle
             aria-controls="basic-navbar-nav"
             onClick={() => setShowMobileMenu(true)}
-            className="border-0"
+            className="border-0 navbar-toggler-modern"
           >
             <i className="bi bi-list fs-4"></i>
           </BootstrapNavbar.Toggle>
@@ -94,35 +94,29 @@ function Navbar() {
               <Nav.Link
                 as={Link}
                 to="/"
-                className={`mx-2 ${
-                  isActive("/")
-                    ? "fw-bold text-success border-bottom border-success"
-                    : ""
+                className={`nav-link-modern mx-2 ${
+                  isActive("/") ? "active-link" : ""
                 }`}
               >
-                Home
+                <i className="bi bi-house me-1"></i> Home
               </Nav.Link>
               <Nav.Link
                 as={Link}
                 to="/products"
-                className={`mx-2 ${
-                  isActive("/products")
-                    ? "fw-bold text-success border-bottom border-success"
-                    : ""
+                className={`nav-link-modern mx-2 ${
+                  isActive("/products") ? "active-link" : ""
                 }`}
               >
-                Products
+                <i className="bi bi-box me-1"></i> Products
               </Nav.Link>
               <Nav.Link
                 as={Link}
                 to="/subscriptions"
-                className={`mx-2 ${
-                  isActive("/subscriptions")
-                    ? "fw-bold text-success border-bottom border-success"
-                    : ""
+                className={`nav-link-modern mx-2 ${
+                  isActive("/subscriptions") ? "active-link" : ""
                 }`}
               >
-                Subscriptions
+                <i className="bi bi-star me-1"></i> Subscriptions
               </Nav.Link>
             </Nav>
             <Nav>
@@ -131,8 +125,8 @@ function Navbar() {
                   <Nav.Link
                     as={Link}
                     to="/chat"
-                    className={`mx-2 ${
-                      isActive("/chat") ? "fw-bold text-success" : ""
+                    className={`nav-link-modern mx-2 ${
+                      isActive("/chat") ? "active-link" : ""
                     }`}
                   >
                     <i className="bi bi-chat me-1"></i> Chat
@@ -140,8 +134,8 @@ function Navbar() {
                   <Nav.Link
                     as={Link}
                     to="/cart"
-                    className={`position-relative mx-2 ${
-                      isActive("/cart") ? "fw-bold text-success" : ""
+                    className={`nav-link-modern position-relative mx-2 ${
+                      isActive("/cart") ? "active-link" : ""
                     }`}
                   >
                     <i className="bi bi-cart me-1"></i> Cart
@@ -149,7 +143,7 @@ function Navbar() {
                       <Badge
                         pill
                         bg="success"
-                        className="position-absolute top-0 start-100 translate-middle"
+                        className="position-absolute top-0 start-100 translate-middle badge-modern"
                       >
                         {cart.items.length}
                       </Badge>
@@ -159,46 +153,98 @@ function Navbar() {
                     title={
                       <div className="d-inline-block">
                         <div
-                          className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center"
-                          style={{ width: "32px", height: "32px" }}
+                          className={`rounded-circle d-flex align-items-center justify-content-center avatar-navbar ${
+                            user.avatar
+                              ? "bg-transparent"
+                              : "bg-success text-white"
+                          }`}
                         >
-                          {user.name?.charAt(0).toUpperCase() || "U"}
+                          {user.avatar ? (
+                            <img
+                              src={user.avatar || "/placeholder.svg"}
+                              alt="Profile"
+                              className="rounded-circle"
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            user.name?.charAt(0).toUpperCase() || "U"
+                          )}
                         </div>
                       </div>
                     }
                     id="user-dropdown"
                     align="end"
+                    className="dropdown-modern"
                   >
-                    <NavDropdown.Item disabled>
-                      Logged in as {user.name}
-                    </NavDropdown.Item>
+                    <div className="dropdown-header-modern">
+                      <div className="d-flex align-items-center p-3">
+                        <div
+                          className={`rounded-circle d-flex align-items-center justify-content-center me-3 ${
+                            user.avatar
+                              ? "bg-transparent"
+                              : "bg-success text-white"
+                          }`}
+                          style={{ width: "48px", height: "48px" }}
+                        >
+                          {user.avatar ? (
+                            <img
+                              src={user.avatar || "/placeholder.svg"}
+                              alt="Profile"
+                              className="rounded-circle"
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          ) : (
+                            user.name?.charAt(0).toUpperCase() || "U"
+                          )}
+                        </div>
+                        <div>
+                          <p className="fw-bold mb-0">{user.name}</p>
+                          <p className="text-muted small mb-0">{user.email}</p>
+                        </div>
+                      </div>
+                    </div>
                     <NavDropdown.Divider />
                     {user.role === "admin" && (
                       <NavDropdown.Item
                         as={Link}
                         to="/admin"
                         active={isActive("/admin")}
+                        className="dropdown-item-modern"
                       >
-                        Admin Dashboard
+                        <i className="bi bi-speedometer2 me-2"></i> Admin
+                        Dashboard
                       </NavDropdown.Item>
                     )}
                     <NavDropdown.Item
                       as={Link}
                       to="/profile"
                       active={isActive("/profile")}
+                      className="dropdown-item-modern"
                     >
-                      Your Profile
+                      <i className="bi bi-person me-2"></i> Your Profile
                     </NavDropdown.Item>
                     <NavDropdown.Item
                       as={Link}
                       to="/orders"
                       active={isActive("/orders")}
+                      className="dropdown-item-modern"
                     >
-                      Your Orders
+                      <i className="bi bi-bag me-2"></i> Your Orders
                     </NavDropdown.Item>
                     <NavDropdown.Divider />
-                    <NavDropdown.Item onClick={handleLogout}>
-                      Sign out
+                    <NavDropdown.Item
+                      onClick={handleLogout}
+                      className="dropdown-item-modern text-danger"
+                    >
+                      <i className="bi bi-box-arrow-right me-2"></i> Sign out
                     </NavDropdown.Item>
                   </NavDropdown>
                 </>
@@ -207,18 +253,20 @@ function Navbar() {
                   <Nav.Link
                     as={Link}
                     to="/login"
-                    className={isActive("/login") ? "fw-bold text-success" : ""}
+                    className={`nav-link-modern mx-2 ${
+                      isActive("/login") ? "active-link" : ""
+                    }`}
                   >
-                    Login
+                    <i className="bi bi-box-arrow-in-right me-1"></i> Login
                   </Nav.Link>
                   <Nav.Link
                     as={Link}
                     to="/register"
-                    className={`btn btn-success text-white ms-2 ${
+                    className={`btn btn-success text-white ms-2 btn-modern ${
                       isActive("/register") ? "fw-bold" : ""
                     }`}
                   >
-                    Register
+                    <i className="bi bi-person-plus me-1"></i> Register
                   </Nav.Link>
                 </>
               )}
@@ -232,6 +280,7 @@ function Navbar() {
         show={showMobileMenu}
         onHide={() => setShowMobileMenu(false)}
         placement="end"
+        className="mobile-menu-modern"
       >
         <Offcanvas.Header closeButton>
           <Offcanvas.Title className="fw-bold text-success">
@@ -240,132 +289,165 @@ function Navbar() {
         </Offcanvas.Header>
         <Offcanvas.Body>
           <Nav className="flex-column">
+            {user && (
+              <div className="mobile-user-profile mb-4">
+                <div className="d-flex align-items-center p-3 bg-light rounded-4">
+                  <div
+                    className={`rounded-circle d-flex align-items-center justify-content-center me-3 ${
+                      user.avatar ? "bg-transparent" : "bg-success text-white"
+                    }`}
+                    style={{ width: "60px", height: "60px" }}
+                  >
+                    {user.avatar ? (
+                      <img
+                        src={user.avatar || "/placeholder.svg"}
+                        alt="Profile"
+                        className="rounded-circle"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      <span className="fs-3">
+                        {user.name?.charAt(0).toUpperCase() || "U"}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="mb-0 fw-bold fs-5">{user.name}</p>
+                    <p className="mb-0 text-secondary">{user.email}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <Nav.Link
               as={Link}
               to="/"
-              className={`py-3 ${isActive("/") ? "fw-bold text-success" : ""}`}
+              className={`mobile-nav-link ${
+                isActive("/") ? "active-mobile-link" : ""
+              }`}
               onClick={() => setShowMobileMenu(false)}
             >
-              <i className="bi bi-house me-2"></i> Home
+              <i className="bi bi-house me-3"></i> Home
             </Nav.Link>
             <Nav.Link
               as={Link}
               to="/products"
-              className={`py-3 ${
-                isActive("/products") ? "fw-bold text-success" : ""
+              className={`mobile-nav-link ${
+                isActive("/products") ? "active-mobile-link" : ""
               }`}
               onClick={() => setShowMobileMenu(false)}
             >
-              <i className="bi bi-box me-2"></i> Products
+              <i className="bi bi-box me-3"></i> Products
             </Nav.Link>
             <Nav.Link
               as={Link}
               to="/subscriptions"
-              className={`py-3 ${
-                isActive("/subscriptions") ? "fw-bold text-success" : ""
+              className={`mobile-nav-link ${
+                isActive("/subscriptions") ? "active-mobile-link" : ""
               }`}
               onClick={() => setShowMobileMenu(false)}
             >
-              <i className="bi bi-calendar-check me-2"></i> Subscriptions
+              <i className="bi bi-calendar-check me-3"></i> Subscriptions
             </Nav.Link>
 
             {user ? (
               <>
-                <hr />
+                <hr className="my-3" />
+
                 <Nav.Link
                   as={Link}
                   to="/chat"
-                  className={`py-3 ${
-                    isActive("/chat") ? "fw-bold text-success" : ""
+                  className={`mobile-nav-link ${
+                    isActive("/chat") ? "active-mobile-link" : ""
                   }`}
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  <i className="bi bi-chat me-2"></i> Chat
+                  <i className="bi bi-chat me-3"></i> Chat
                 </Nav.Link>
                 <Nav.Link
                   as={Link}
                   to="/cart"
-                  className={`py-3 position-relative ${
-                    isActive("/cart") ? "fw-bold text-success" : ""
+                  className={`mobile-nav-link position-relative ${
+                    isActive("/cart") ? "active-mobile-link" : ""
                   }`}
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  <i className="bi bi-cart me-2"></i> Cart
+                  <i className="bi bi-cart me-3"></i> Cart
                   {cart.items && cart.items.length > 0 && (
-                    <Badge pill bg="success" className="ms-2">
+                    <Badge pill bg="success" className="ms-2 badge-modern">
                       {cart.items.length}
                     </Badge>
                   )}
                 </Nav.Link>
 
-                <hr />
+                <hr className="my-3" />
 
                 {user.role === "admin" && (
                   <Nav.Link
                     as={Link}
                     to="/admin"
-                    className={`py-3 ${
-                      isActive("/admin") ? "fw-bold text-success" : ""
+                    className={`mobile-nav-link ${
+                      isActive("/admin") ? "active-mobile-link" : ""
                     }`}
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    <i className="bi bi-speedometer2 me-2"></i> Admin Dashboard
+                    <i className="bi bi-speedometer2 me-3"></i> Admin Dashboard
                   </Nav.Link>
                 )}
                 <Nav.Link
                   as={Link}
                   to="/profile"
-                  className={`py-3 ${
-                    isActive("/profile") ? "fw-bold text-success" : ""
+                  className={`mobile-nav-link ${
+                    isActive("/profile") ? "active-mobile-link" : ""
                   }`}
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  <i className="bi bi-person me-2"></i> Your Profile
+                  <i className="bi bi-person me-3"></i> Your Profile
                 </Nav.Link>
                 <Nav.Link
                   as={Link}
                   to="/orders"
-                  className={`py-3 ${
-                    isActive("/orders") ? "fw-bold text-success" : ""
+                  className={`mobile-nav-link ${
+                    isActive("/orders") ? "active-mobile-link" : ""
                   }`}
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  <i className="bi bi-bag me-2"></i> Your Orders
+                  <i className="bi bi-bag me-3"></i> Your Orders
                 </Nav.Link>
 
-                <hr />
+                <hr className="my-3" />
 
                 <Nav.Link
-                  className="py-3 text-danger"
+                  className="mobile-nav-link text-danger"
                   onClick={() => {
                     handleLogout();
                     setShowMobileMenu(false);
                   }}
                 >
-                  <i className="bi bi-box-arrow-right me-2"></i> Sign out
+                  <i className="bi bi-box-arrow-right me-3"></i> Sign out
                 </Nav.Link>
               </>
             ) : (
               <>
-                <hr />
-                <div className="d-grid gap-2 mt-3">
+                <hr className="my-3" />
+                <div className="d-grid gap-3 mt-3">
                   <Link
                     to="/login"
-                    className={`btn btn-outline-success ${
-                      isActive("/login") ? "fw-bold" : ""
-                    }`}
+                    className="btn btn-outline-success btn-lg btn-modern-outline"
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    Login
+                    <i className="bi bi-box-arrow-in-right me-2"></i> Login
                   </Link>
                   <Link
                     to="/register"
-                    className={`btn btn-success text-white ${
-                      isActive("/register") ? "fw-bold" : ""
-                    }`}
+                    className="btn btn-success btn-lg text-white btn-modern"
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    Register
+                    <i className="bi bi-person-plus me-2"></i> Register
                   </Link>
                 </div>
               </>

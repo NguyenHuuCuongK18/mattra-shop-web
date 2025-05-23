@@ -37,18 +37,49 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "username": { "type": "string" },
+          "username": { "type": "string", "unique": true },
           "name": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
+          "email": { "type": "string", "format": "email", "unique": true },
+          "avatar": { "type": "string" },
+          "phone": { "type": "string" },
           "address": { "type": "string" },
-          "role": { "type": "string", "enum": ["user", "subscriber", "admin"] },
+          "role": { 
+            "type": "string", 
+            "enum": ["user", "subscriber", "admin"],
+            "default": "user"
+          },
           "subscription": {
             "type": "object",
             "properties": {
-              "status": { "type": "string", "enum": ["active", "inactive"] },
-              "subscriptionId": { "type": "string" },
+              "subscriptionId": { 
+                "type": "string",
+                "description": "Reference to Subscription model"
+              },
+              "status": { 
+                "type": "string", 
+                "enum": ["active", "inactive"],
+                "default": "inactive"
+              },
               "startDate": { "type": "string", "format": "date-time" },
               "endDate": { "type": "string", "format": "date-time" }
+            }
+          },
+          "vouchers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "voucherId": { 
+                  "type": "string",
+                  "description": "Reference to Voucher model"
+                },
+                "status": { 
+                  "type": "string", 
+                  "enum": ["available", "used", "expired"],
+                  "default": "available"
+                }
+              },
+              "required": ["voucherId", "status"]
             }
           }
         },
@@ -60,12 +91,14 @@
           "id": { "type": "string" },
           "name": { "type": "string" },
           "description": { "type": "string" },
-          "price": { "type": "number" },
-          "stock": { "type": "integer" },
-          "category": { "type": "string" },
-          "imageUrl": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "price": { "type": "number", "minimum": 0 },
+          "image": { "type": "string" },
+          "stock": { "type": "integer", "minimum": 0 },
+          "categories": { 
+            "type": "string",
+            "description": "Reference to Category model"
+          },
+          "isFeatured": { "type": "boolean", "default": false }
         },
         "required": ["id", "name", "price", "stock"]
       },
@@ -73,7 +106,7 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "name": { "type": "string" },
+          "name": { "type": "string", "unique": true },
           "description": { "type": "string" }
         },
         "required": ["id", "name"]
@@ -595,6 +628,71 @@
         }
       }
     },
+    "/api/user/update-avatar": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Update user avatar",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "avatar": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG or PNG image file (max 5MB)"
+                  }
+                },
+                "required": ["avatar"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Avatar updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "avatarUrl": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file or no file uploaded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/user/logout": {
       "post": {
         "tags": ["User"],
@@ -762,7 +860,7 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
@@ -771,7 +869,12 @@
                   "price": { "type": "number", "minimum": 0 },
                   "stock": { "type": "integer", "minimum": 0 },
                   "category": { "type": "string" },
-                  "imageUrl": { "type": "string" }
+                  "isFeatured": { "type": "boolean" },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG or PNG image file (max 5MB)"
+                  }
                 },
                 "required": ["name", "price", "stock"]
               }
@@ -787,14 +890,28 @@
                   "type": "object",
                   "properties": {
                     "message": { "type": "string" },
-                    "product": { "$ref": "#/components/schemas/Product" }
+                    "product": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "description": { "type": "string" },
+                        "price": { "type": "number" },
+                        "stock": { "type": "integer" },
+                        "category": { "type": "string" },
+                        "imageUrl": { "type": "string" },
+                        "isFeatured": { "type": "boolean" },
+                        "createdAt": { "type": "string", "format": "date-time" },
+                        "updatedAt": { "type": "string", "format": "date-time" }
+                      }
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid input",
+            "description": "Invalid input or missing required fields",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }
@@ -835,7 +952,24 @@
                     "message": { "type": "string" },
                     "products": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/Product" }
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "name": { "type": "string" },
+                          "description": { "type": "string" },
+                          "price": { "type": "number" },
+                          "stock": { "type": "integer" },
+                          "categories": { 
+                            "type": "object",
+                            "properties": {
+                              "name": { "type": "string" }
+                            }
+                          },
+                          "image": { "type": "string" },
+                          "isFeatured": { "type": "boolean" }
+                        }
+                      }
                     }
                   }
                 }
@@ -874,7 +1008,24 @@
                   "type": "object",
                   "properties": {
                     "message": { "type": "string" },
-                    "product": { "$ref": "#/components/schemas/Product" }
+                    "product": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "description": { "type": "string" },
+                        "price": { "type": "number" },
+                        "stock": { "type": "integer" },
+                        "categories": { 
+                          "type": "object",
+                          "properties": {
+                            "name": { "type": "string" }
+                          }
+                        },
+                        "image": { "type": "string" },
+                        "isFeatured": { "type": "boolean" }
+                      }
+                    }
                   }
                 }
               }
@@ -915,7 +1066,7 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
@@ -924,7 +1075,12 @@
                   "price": { "type": "number", "minimum": 0 },
                   "stock": { "type": "integer", "minimum": 0 },
                   "category": { "type": "string" },
-                  "imageUrl": { "type": "string" }
+                  "isFeatured": { "type": "boolean" },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG or PNG image file (max 5MB)"
+                  }
                 }
               }
             }
@@ -939,7 +1095,21 @@
                   "type": "object",
                   "properties": {
                     "message": { "type": "string" },
-                    "product": { "$ref": "#/components/schemas/Product" }
+                    "product": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "description": { "type": "string" },
+                        "price": { "type": "number" },
+                        "stock": { "type": "integer" },
+                        "category": { "type": "string" },
+                        "imageUrl": { "type": "string" },
+                        "isFeatured": { "type": "boolean" },
+                        "createdAt": { "type": "string", "format": "date-time" },
+                        "updatedAt": { "type": "string", "format": "date-time" }
+                      }
+                    }
                   }
                 }
               }
@@ -990,7 +1160,7 @@
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "task": "string" }
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
@@ -3523,4 +3693,6 @@
     }
   }
 }
+            
+            
             

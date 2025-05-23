@@ -44,6 +44,12 @@ export const authAPI = {
   // Update user info
   updateProfile: (userData) => api.put("/api/user/update", userData),
 
+  // Upload avatar
+  uploadAvatar: (formData) =>
+    api.post("/api/user/update-avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
   // Logout user
   logout: () => api.post("/api/user/logout"),
 
@@ -54,7 +60,6 @@ export const authAPI = {
   updateSubscriptionStatus: (userId, subscriptionData) =>
     api.put(`/api/user/${userId}/subscription`, subscriptionData),
 };
-
 export const productAPI = {
   // Get all products
   getAllProducts: () => api.get("/api/product"),
@@ -63,14 +68,17 @@ export const productAPI = {
   getProductById: (id) => api.get(`/api/product/${id}`),
 
   // Create product (admin only)
-  createProduct: (productData) => api.post("/api/product/create", productData),
-
+  createProduct: (formData) =>
+    api.post("/api/product/create", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
   // Update product (admin only)
-  updateProduct: (id, productData) =>
-    api.put(`/api/product/${id}`, productData),
-
+  updateProduct: (id, formData) =>
+    api.put(`/api/product/update/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
   // Delete product (admin only)
-  deleteProduct: (id) => api.delete(`/api/product/${id}`),
+  deleteProduct: (id) => api.delete(`/api/product/delete/${id}`),
 };
 
 export const categoryAPI = {
@@ -195,6 +203,21 @@ export const promptCategoryAPI = {
 
   // Delete prompt category (admin only)
   deletePromptCategory: (id) => api.delete(`/api/promptCategory/${id}`),
+};
+
+export const reviewAPI = {
+  // Create a new review (require token)
+  createReview: (reviewData) => api.post("/api/review/create", reviewData),
+
+  // Get all reviews of a product
+  getReviewsByProduct: (productId) => api.get(`/api/review/${productId}`),
+
+  // Update a review (require token)
+  updateReview: (reviewId, reviewData) =>
+    api.put(`/api/review/update/${reviewId}`, reviewData),
+
+  // Delete a review (require token)
+  deleteReview: (reviewId) => api.delete(`/api/review/delete/${reviewId}`),
 };
 
 export default api;
