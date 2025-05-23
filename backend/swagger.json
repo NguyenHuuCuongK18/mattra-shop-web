@@ -37,18 +37,49 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "username": { "type": "string" },
+          "username": { "type": "string", "unique": true },
           "name": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
+          "email": { "type": "string", "format": "email", "unique": true },
+          "avatar": { "type": "string" },
+          "phone": { "type": "string" },
           "address": { "type": "string" },
-          "role": { "type": "string", "enum": ["user", "subscriber", "admin"] },
+          "role": { 
+            "type": "string", 
+            "enum": ["user", "subscriber", "admin"],
+            "default": "user"
+          },
           "subscription": {
             "type": "object",
             "properties": {
-              "status": { "type": "string", "enum": ["active", "inactive"] },
-              "subscriptionId": { "type": "string" },
+              "subscriptionId": { 
+                "type": "string",
+                "description": "Reference to Subscription model"
+              },
+              "status": { 
+                "type": "string", 
+                "enum": ["active", "inactive"],
+                "default": "inactive"
+              },
               "startDate": { "type": "string", "format": "date-time" },
               "endDate": { "type": "string", "format": "date-time" }
+            }
+          },
+          "vouchers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "voucherId": { 
+                  "type": "string",
+                  "description": "Reference to Voucher model"
+                },
+                "status": { 
+                  "type": "string", 
+                  "enum": ["available", "used", "expired"],
+                  "default": "available"
+                }
+              },
+              "required": ["voucherId", "status"]
             }
           }
         },
@@ -60,13 +91,14 @@
           "id": { "type": "string" },
           "name": { "type": "string" },
           "description": { "type": "string" },
-          "price": { "type": "number" },
-          "stock": { "type": "integer" },
-          "category": { "type": "string" },
-          "imageUrl": { "type": "string" },
-          "isFeatured": { "type": "boolean" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "price": { "type": "number", "minimum": 0 },
+          "image": { "type": "string" },
+          "stock": { "type": "integer", "minimum": 0 },
+          "categories": { 
+            "type": "string",
+            "description": "Reference to Category model"
+          },
+          "isFeatured": { "type": "boolean", "default": false }
         },
         "required": ["id", "name", "price", "stock"]
       },
@@ -74,7 +106,7 @@
         "type": "object",
         "properties": {
           "id": { "type": "string" },
-          "name": { "type": "string" },
+          "name": { "type": "string", "unique": true },
           "description": { "type": "string" }
         },
         "required": ["id", "name"]
@@ -837,6 +869,7 @@
                   "price": { "type": "number", "minimum": 0 },
                   "stock": { "type": "integer", "minimum": 0 },
                   "category": { "type": "string" },
+                  "isFeatured": { "type": "boolean" },
                   "image": {
                     "type": "string",
                     "format": "binary",
@@ -927,16 +960,14 @@
                           "description": { "type": "string" },
                           "price": { "type": "number" },
                           "stock": { "type": "integer" },
-                          "category": { 
+                          "categories": { 
                             "type": "object",
                             "properties": {
                               "name": { "type": "string" }
                             }
                           },
-                          "imageUrl": { "type": "string" },
-                          "isFeatured": { "type": "boolean" },
-                          "createdAt": { "type": "string", "format": "date-time" },
-                          "updatedAt": { "type": "string", "format": "date-time" }
+                          "image": { "type": "string" },
+                          "isFeatured": { "type": "boolean" }
                         }
                       }
                     }
@@ -985,16 +1016,14 @@
                         "description": { "type": "string" },
                         "price": { "type": "number" },
                         "stock": { "type": "integer" },
-                        "category": { 
+                        "categories": { 
                           "type": "object",
                           "properties": {
                             "name": { "type": "string" }
                           }
                         },
-                        "imageUrl": { "type": "string" },
-                        "isFeatured": { "type": "boolean" },
-                        "createdAt": { "type": "string", "format": "date-time" },
-                        "updatedAt": { "type": "string", "format": "date-time" }
+                        "image": { "type": "string" },
+                        "isFeatured": { "type": "boolean" }
                       }
                     }
                   }
@@ -1046,6 +1075,7 @@
                   "price": { "type": "number", "minimum": 0 },
                   "stock": { "type": "integer", "minimum": 0 },
                   "category": { "type": "string" },
+                  "isFeatured": { "type": "boolean" },
                   "image": {
                     "type": "string",
                     "format": "binary",
