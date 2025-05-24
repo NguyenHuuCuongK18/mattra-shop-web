@@ -78,7 +78,7 @@ app.use("/api/voucher", voucherRoute);
 app.use("/api/geminiAI", geminiAIRoute);
 app.use("/api/promptCategory", promptCategoryRoute);
 app.use("/api/review", reviewRoute);
-app.use("/api/vnpay", paymentRoute);
+app.use("/api/vietqr", paymentRoute);
 
 // Root endpoint
 app.get("/", (req, res) => {

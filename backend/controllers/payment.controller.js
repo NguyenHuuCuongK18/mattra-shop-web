@@ -1,116 +1,164 @@
-// controllers/payment.controller.js
-
-const crypto = require("crypto");
+const { VietQR } = require("vietqr");
+const { put } = require("@vercel/blob");
 const Payment = require("../models/payment.model");
 const Order = require("../models/order.model");
 
-// VNPay sandbox endpoint (override via VNPAY_URL env var if desired)
-const VNPAY_URL =
-  process.env.VNPAY_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
-
-/**
- * Format a Date into YYYYMMDDHHmmss (GMT+7) for VNPay
- */
-function formatDate(date) {
-  const YYYY = date.getFullYear();
-  const MM = String(date.getMonth() + 1).padStart(2, "0");
-  const DD = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${YYYY}${MM}${DD}${hh}${mm}${ss}`;
-}
-
-/**
- * POST /api/payments/create
- * Body: { orderId: ObjectId }
- *
- * - Fetches order.totalAmount
- * - Generates VNPay-QR URL
- * - Logs a Payment record (status “pending”) with paymentUrl & expiry
- */
-exports.createPayment = async (req, res) => {
+exports.generateVietQR = async (req, res) => {
   try {
     const { orderId } = req.body;
-    const tmnCode = process.env.VNPAY_TMN_CODE;
-    const hashSecret = process.env.VNPAY_HASH_SECRET;
-    const frontendUrl = process.env.FRONTEND_URL;
-
-    if (!tmnCode || !hashSecret || !frontendUrl) {
-      return res
-        .status(500)
-        .json({
-          message: "Missing VNPAY_TMN_CODE, VNPAY_HASH_SECRET, or FRONTEND_URL",
-        });
-    }
-
-    // 1) Lookup order and verify ownership
     const order = await Order.findById(orderId);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-    if (order.userId.toString() !== req.user.id) {
-      return res.status(403).json({ message: "You do not own this order" });
-    }
+    if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // 2) Use order.totalAmount (in VND) for the payment
-    const amount = order.totalAmount; // :contentReference[oaicite:0]{index=0}
-
-    // 3) Create a pending Payment record
-    const payment = await Payment.create({
-      userId: req.user.id,
-      orderId,
-      amount, // you may store in cents per your schema comment :contentReference[oaicite:1]{index=1}
-      status: "pending",
-      // ensure your schema also has: paymentUrl: String, expiresAt: Date
+    const vietqr = new VietQR({
+      clientID: process.env.VIETQR_CLIENT_ID,
+      apiKey: process.env.VIETQR_API_KEY,
     });
 
-    // 4) Build VNPay parameters
-    const now = new Date();
-    const vnp_CreateDate = formatDate(now);
-    const expireDate = new Date(now.getTime() + 15 * 60 * 1000); // +15 minutes
-    const vnp_ExpireDate = formatDate(expireDate);
-    const returnUrl = `${frontendUrl}/payment/result`;
+    // Generate base64 QR
+    const apiRes = await vietqr.genQRCodeBase64({
+      bank: process.env.VIETQR_ACQ_ID,
+      accountName: process.env.VIETQR_ACCOUNT_NAME,
+      accountNumber: process.env.VIETQR_ACCOUNT_NUMBER,
+      amount: order.totalAmount.toString(),
+      memo: `Order #${order._id}`,
+      template: "compact",
+    });
 
-    const vnpParams = {
-      vnp_Version: "2.1.0",
-      vnp_Command: "pay",
-      vnp_TmnCode: tmnCode,
-      vnp_Amount: amount * 100, // VNPay expects amount in “cents”
-      vnp_CurrCode: "VND",
-      vnp_TxnRef: payment._id.toString(),
-      vnp_OrderInfo: `Payment for order ${orderId}`,
-      vnp_OrderType: "other",
-      vnp_Locale: "vn",
-      vnp_ReturnUrl: returnUrl,
-      vnp_IpAddr: req.ip,
-      vnp_CreateDate,
-      vnp_ExpireDate,
-      vnp_BankCode: "VNPAYQR",
-    };
+    const { code, desc, data: qrData } = apiRes.data;
+    if (code !== "00") {
+      return res.status(502).json({ error: "VietQR failed", code, desc });
+    }
 
-    // 5) Sign and build the full URL
-    const sortedKeys = Object.keys(vnpParams).sort();
-    const signData = sortedKeys.map((k) => `${k}=${vnpParams[k]}`).join("&");
-    const secureHash = crypto
-      .createHmac("sha512", hashSecret)
-      .update(signData)
-      .digest("hex");
+    // Persist payment record (without image URL for now)
+    let payment = await Payment.create({
+      userId: req.user.id,
+      orderId: order._id,
+      amount: order.totalAmount,
+      status: "pending",
+      acqId: qrData.acqId,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      history: [
+        {
+          status: "generated",
+          data: qrData,
+        },
+      ],
+    });
 
-    const query = sortedKeys
-      .map((k) => `${k}=${encodeURIComponent(vnpParams[k])}`)
-      .join("&");
-    const paymentUrl = `${VNPAY_URL}?${query}&vnp_SecureHash=${secureHash}`;
+    // Decode the base64 payload into a Buffer
+    const prefix = "data:image/png;base64,";
+    const b64 = qrData.qrDataURL.startsWith(prefix)
+      ? qrData.qrDataURL.slice(prefix.length)
+      : qrData.qrDataURL;
+    const imageBuffer = Buffer.from(b64, "base64");
 
-    // 6) Save retry link + expiry on Payment
-    payment.paymentUrl = paymentUrl;
-    payment.expiresAt = expireDate;
+    // Upload to Vercel Blob
+    const filename = `qr_${payment._id}.png`;
+    const blob = await put(filename, imageBuffer, {
+      access: "public",
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
+
+    // Save the public blob URL as `paymentImgUrl`
+    payment.paymentImgUrl = blob.url;
     await payment.save();
 
-    // 7) Return URL to client
-    return res.json({ paymentUrl });
+    // Return only the new image URL and expiry
+    return res.json({
+      paymentId: payment._id,
+      paymentImgUrl: payment.paymentImgUrl,
+      expiresAt: payment.expiresAt,
+    });
   } catch (err) {
-    console.error("createPayment error:", err);
+    console.error(err);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+exports.logPaymentStatus = async (req, res) => {
+  try {
+    const { paymentId, status, payload } = req.body;
+    const payment = await Payment.findById(paymentId);
+    if (!payment) return res.status(404).json({ message: "Payment not found" });
+
+    payment.history.push({
+      status,
+      data: payload,
+      timestamp: new Date(),
+    });
+    if (status === "completed") payment.status = "completed";
+    if (status === "failed") payment.status = "failed";
+
+    await payment.save();
+    return res.json({ message: "Payment history logged." });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * On-demand polling endpoint: call VietQR's Check Transaction API
+ * and update our record if the user has paid.
+ */
+exports.verifyPayment = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const payment = await Payment.findById(paymentId);
+    if (!payment) return res.status(404).json({ message: "Payment not found" });
+
+    // Optionally check expiration
+    if (payment.expiresAt < new Date()) {
+      return res.status(410).json({ message: "QR code has expired." });
+    }
+
+    const vietqr = new VietQR({
+      clientID: process.env.VIETQR_CLIENT_ID,
+      apiKey: process.env.VIETQR_API_KEY,
+    });
+
+    // Obtain a fresh token
+    const token = await vietqr.getToken();
+
+    // Call the Check Transaction endpoint
+    const resp = await fetch(
+      "https://api.vietqr.vn/bank/api/check-transaction",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-client-id": vietqr.clientID,
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          transactionid: payment.acqId,
+        }),
+      }
+    );
+    const json = await resp.json();
+
+    // Log the polling result
+    payment.history.push({
+      status: "polled",
+      data: json,
+      timestamp: new Date(),
+    });
+
+    // If VietQR says it's completed, update our status
+    if (json.code === "00" && json.data && json.data.status === "COMPLETED") {
+      payment.status = "completed";
+    }
+
+    await payment.save();
+
+    // Return the raw VietQR response plus our current payment status
+    return res.json({
+      ourStatus: payment.status,
+      vietqr: json,
+      history: payment.history,
+    });
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({ message: err.message });
   }
 };

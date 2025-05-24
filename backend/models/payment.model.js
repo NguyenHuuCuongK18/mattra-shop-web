@@ -13,13 +13,23 @@ const paymentSchema = new mongoose.Schema(
       enum: ["pending", "completed", "failed"],
       default: "pending",
     },
-    paymentUrl: { type: String },
+    // Renamed from `paymentUrl` → `paymentImgUrl`
+    paymentImgUrl: { type: String },
     expiresAt: { type: Date },
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
       required: true,
     },
+    // Optionally, if you track QR details/history in the model:
+    acqId: { type: String },
+    history: [
+      {
+        status: { type: String },
+        data: { type: mongoose.Schema.Types.Mixed },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

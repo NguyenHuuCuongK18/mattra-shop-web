@@ -1,9 +1,15 @@
+// routes/payment.routes.js
 const express = require("express");
-const router = express.Router();
-const paymentController = require("../controllers/payment.controller");
+const {
+  generateVietQR,
+  logPaymentStatus,
+  verifyPayment,
+} = require("../controllers/payment.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
+const router = express.Router();
 
-// Create payment
-router.post("/create", authMiddleware, paymentController.createPayment);
+router.post("/create", authMiddleware, generateVietQR);
+router.post("/status/log", authMiddleware, logPaymentStatus);
+router.get("/:paymentId/verify", authMiddleware, verifyPayment);
 
 module.exports = router;
