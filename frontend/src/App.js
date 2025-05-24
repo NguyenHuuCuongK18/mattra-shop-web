@@ -27,6 +27,7 @@ import CheckoutPage from "./pages/user/CheckoutPage";
 import OrdersPage from "./pages/user/OrdersPage";
 import OrderDetailPage from "./pages/user/OrderDetailPage";
 import ChatPage from "./pages/user/ChatPage";
+import PaymentResultPage from "./pages/user/PaymentResultPage"; // ← Added import
 
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/DashboardPage";
@@ -54,8 +55,9 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+        {/* Public & Protected User Routes under MainLayout */}
         <Route path="/" element={<MainLayout />}>
+          {/* Public */}
           <Route index element={<HomePage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route
@@ -75,7 +77,7 @@ function App() {
           <Route path="reset-password" element={<ResetPasswordPage />} />
           <Route path="subscriptions" element={<SubscriptionsPage />} />
 
-          {/* Protected User Routes */}
+          {/* Protected User */}
           <Route
             path="profile"
             element={user ? <ProfilePage /> : <Navigate to="/login" />}
@@ -100,6 +102,9 @@ function App() {
             path="chat"
             element={user ? <ChatPage /> : <Navigate to="/login" />}
           />
+
+          {/* VNPay return/receipt page */}
+          <Route path="payment/result" element={<PaymentResultPage />} />
         </Route>
 
         {/* Admin Routes */}
@@ -126,7 +131,7 @@ function App() {
           />
         </Route>
 
-        {/* Catch-all route for debugging */}
+        {/* Catch-all */}
         <Route
           path="*"
           element={

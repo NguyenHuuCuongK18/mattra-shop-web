@@ -13,6 +13,8 @@ const paymentSchema = new mongoose.Schema(
       enum: ["pending", "completed", "failed"],
       default: "pending",
     },
+    paymentUrl: { type: String },
+    expiresAt: { type: Date },
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",

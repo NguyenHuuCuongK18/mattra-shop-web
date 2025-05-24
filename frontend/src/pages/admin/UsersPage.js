@@ -245,7 +245,7 @@ function UsersPage() {
                         {user.role}
                       </Badge>
                     </td>
-                    <td className="text-end">
+                    {/* <td className="text-end">
                       <Button
                         variant="link"
                         className="text-primary p-0 me-3"
@@ -267,7 +267,7 @@ function UsersPage() {
                       >
                         Delete
                       </Button>
-                    </td>
+                    </td> */}
                   </tr>
                 ))
               ) : (
