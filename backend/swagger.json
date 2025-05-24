@@ -15,990 +15,3831 @@
       "description": "Local server"
     }
   ],
-  "components": {
-    "securitySchemes": {
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
-    },
-    "schemas": {
-      "Error": {
-        "type": "object",
-        "properties": {
-          "message": { "type": "string" }
+"components": {
+  "schemas": {
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "avatar": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["user", "subscriber", "admin"]
         },
-        "required": ["message"]
-      },
-      "User": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "username": { "type": "string" },
-          "name": { "type": "string" },
-          "email": { "type": "string", "format": "email" },
-          "avatar": { "type": "string" },
-          "phone": { "type": "string" },
-          "address": { "type": "string" },
-          "role": { "type": "string", "enum": ["user","subscriber","admin"] },
-          "subscription": {
-            "type": "object",
-            "properties": {
-              "subscriptionId": { "type": "string" },
-              "status": { "type": "string", "enum": ["active","inactive"] },
-              "startDate": { "type": "string","format":"date-time" },
-              "endDate": { "type": "string","format":"date-time" }
-            }
-          },
-          "vouchers": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "voucherId": { "type": "string" },
-                "status": { "type": "string", "enum": ["available","used","expired"] }
-              },
-              "required": ["voucherId","status"]
-            }
+        "subscription": {
+          "type": "object",
+          "properties": {
+            "subscriptionId": { "type": "string" },
+            "status": {
+              "type": "string",
+              "enum": ["active", "inactive"]
+            },
+            "startDate": { "type": "string", "format": "date-time" },
+            "endDate": { "type": "string", "format": "date-time" }
           }
         },
-        "required": ["id","username","name","email","role"]
+        "vouchers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "voucherId": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["available", "used", "expired"]
+              }
+            },
+            "required": ["voucherId","status"]
+          }
+        }
       },
-      "Category": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "description": { "type": "string" }
-        },
-        "required": ["id","name"]
+      "required": ["id","username","name","email","role"]
+    },
+
+    "Cart": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "quantity": { "type": "integer", "minimum": 1 }
+            },
+            "required": ["productId","quantity"]
+          }
+        }
       },
-      "Product": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "description": { "type": "string" },
-          "price": { "type": "number","minimum":0 },
-          "stock": { "type": "integer","minimum":0 },
-          "image": { "type": "string" },
-          "category": { "type":"string" },
-          "isFeatured": { "type":"boolean" }
-        },
-        "required": ["id","name","price","stock"]
+      "required": ["id","items"]
+    },
+
+    "Category": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
       },
-      "Review": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "productId": { "type": "string" },
-          "userId": { "type": "string" },
-          "rating": { "type": "integer","minimum":1,"maximum":5 },
-          "comment": { "type": "string" },
-          "createdAt": { "type":"string","format":"date-time" }
+      "required": ["id","name"]
+    },
+
+    "Product": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number", "minimum": 0 },
+        "image": { "type": "string" },
+        "stock": { "type": "integer", "minimum": 0 },
+        "category": {
+          "type": "string",
+          "description": "Reference to Category model"
         },
-        "required": ["id","productId","userId","rating","comment"]
+        "isFeatured": { "type": "boolean" }
       },
-      "PromptCategory": {
-        "type": "object",
-        "properties": {
-          "id": { "type":"string" },
-          "name": { "type":"string" },
-          "description": { "type":"string" },
-          "type": { "type":"string","enum":["diet","info","other","recipe"] },
-          "promptText": { "type":"string" },
-          "isActive": { "type":"boolean" },
-          "createdAt": { "type":"string","format":"date-time" },
-          "updatedAt": { "type":"string","format":"date-time" }
+      "required": ["id","name","price","stock"]
+    },
+
+    "Payment": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "orderId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": {
+          "type": "string",
+          "enum": ["pending","completed","failed"]
         },
-        "required": ["id","name","promptText"]
-      }
+        "paymentImgUrl": { "type": "string" },
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "acqId": { "type": "string" },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "data": { "type": "object" },
+              "timestamp": { "type": "string", "format": "date-time" }
+            },
+            "required": ["status","timestamp"]
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId","orderId","amount"]
+    },
+
+    "Voucher": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "discount_percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+        "max_discount": { "type": "number", "minimum": 0 },
+        "is_used": { "type": "boolean" },
+        "subscriberOnly": { "type": "boolean" },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id","discount_percentage","max_discount","expires_at"]
+    },
+
+    "Subscription": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number", "minimum": 0 },
+        "duration": { "type": "integer", "minimum": 1 },
+        "description": { "type": "string" },
+        "perks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id","name","price","duration"]
+    },
+
+    "PromptCategory": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["diet","info","other","recipe"]
+        },
+        "promptText": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id","name","promptText"]
+    },
+
+    "Review": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "userId": { "type": "string" },
+        "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id","productId","userId","rating","comment"]
+    },
+
+    "BlacklistedToken": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "token": { "type": "string" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["token","expiresAt"]
     }
-  },
+  }
+}
+,
   "security": [
-    { "BearerAuth": [] }
+    {
+      "BearerAuth": []
+    }
   ],
   "paths": {
-    "/api/users/register": {
+    "/api/user/register": {
       "post": {
         "tags": ["User"],
-        "summary": "Register new user",
+        "summary": "Register a new user",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type":"object",
+                "type": "object",
                 "properties": {
-                  "username":{"type":"string"},
-                  "name":{"type":"string"},
-                  "email":{"type":"string","format":"email"},
-                  "password":{"type":"string"},
-                  "address":{"type":"string"}
+                  "username": { "type": "string" },
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 6 },
+                  "address": { "type": "string" }
                 },
-                "required":["username","name","email","password"]
+                "required": ["username", "name", "email", "password"]
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description":"User registered",
-            "content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}}
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "token": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
           },
-          "400":{"description":"Bad Request","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},
-          "500":{"description":"Server Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
-    "/api/users/login": {
+    "/api/user/login": {
       "post": {
         "tags": ["User"],
-        "summary": "Login user",
+        "summary": "Login a user",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type":"object",
+                "type": "object",
                 "properties": {
-                  "identification":{"type":"string"},
-                  "password":{"type":"string"}
+                  "identification": { "type": "string" },
+                  "password": { "type": "string" }
                 },
-                "required":["identification","password"]
+                "required": ["identification", "password"]
               }
             }
           }
         },
         "responses": {
-          "200":{"description":"Logged in","content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}}},
-          "400":{"description":"Invalid credentials","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},
-          "500":{"description":"Server Error","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/users/profile": {
-      "get": {
-        "tags":["User"],
-        "summary":"Get own profile",
-        "security":[{"BearerAuth":[]}],
-        "responses":{
-          "200":{"description":"User profile","content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}}},
-          "401":{"description":"Unauthorized","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/users/change-password": {
-      "put": {
-        "tags":["User"],
-        "summary":"Change password",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{
-          "required":true,
-          "content":{"application/json":{"schema":{
-            "type":"object",
-            "properties":{
-              "oldPassword":{"type":"string"},
-              "newPassword":{"type":"string"}
-            },
-            "required":["oldPassword","newPassword"]
-          }}}
-        },
-        "responses":{
-          "200":{"description":"Password changed"},
-          "400":{"description":"Bad Request","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}},
-          "401":{"description":"Unauthorized"}
-        }
-      }
-    },
-    "/api/users/request-password-reset": {
-      "post": {
-        "tags":["User"],
-        "summary":"Request password reset",
-        "requestBody":{
-          "required":true,
-          "content":{"application/json":{"schema":{
-            "type":"object","properties":{"email":{"type":"string","format":"email"}},"required":["email"]
-          }}}
-        },
-        "responses":{
-          "200":{"description":"Email sent"},
-          "400":{"description":"Bad Request","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/users/reset-password": {
-      "post": {
-        "tags":["User"],
-        "summary":"Reset password",
-        "requestBody":{
-          "required":true,
-          "content":{"application/json":{"schema":{
-            "type":"object",
-            "properties":{
-              "token":{"type":"string"},
-              "newPassword":{"type":"string"}
-            },
-            "required":["token","newPassword"]
-          }}}
-        },
-        "responses":{
-          "200":{"description":"Password reset"},
-          "400":{"description":"Bad Request","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/users/update": {
-      "put": {
-        "tags":["User"],
-        "summary":"Update user info",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{
-          "required":true,
-          "content":{"application/json":{"schema":{
-            "type":"object",
-            "properties":{
-              "name":{"type":"string"},
-              "avatar":{"type":"string"},
-              "phone":{"type":"string"},
-              "address":{"type":"string"}
+          "200": {
+            "description": "User logged in successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "token": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
             }
-          }}}
-        },
-        "responses":{
-          "200":{"description":"User updated","content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}}},
-          "401":{"description":"Unauthorized","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/users/logout": {
-      "post": {
-        "tags":["User"],
-        "summary":"Logout user",
-        "security":[{"BearerAuth":[]}],
-        "responses":{
-          "200":{"description":"Logged out"},
-          "401":{"description":"Unauthorized"}
-        }
-      }
-    }
-  },
-  
-  "paths": {
-    "/api/users": {
-      "get": {
-        "tags":["User"],
-        "summary":"Get all users (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "responses":{
-          "200":{"description":"List of users","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/User"}}}}},
-          "403":{"description":"Forbidden","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/users/{id}/subscription": {
-      "put": {
-        "tags":["User"],
-        "summary":"Update user's subscription status (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object","properties":{"status":{"type":"string","enum":["active","inactive"]}},"required":["status"]
-        }}}},
-        "responses":{
-          "200":{"description":"Subscription status updated"},
-          "403":{"description":"Forbidden"},
-          "404":{"description":"User not found","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/users/update-avatar": {
-      "post": {
-        "tags":["User"],
-        "summary":"Update user avatar",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{
-          "required":true,
-          "content":{"multipart/form-data":{"schema":{
-            "type":"object","properties":{"avatar":{"type":"string","format":"binary"}}, "required":["avatar"]
-          }}}
-        },
-        "responses":{
-          "200":{"description":"Avatar updated","content":{"application/json":{"schema":{"$ref":"#/components/schemas/User"}}}},
-          "401":{"description":"Unauthorized"}
-        }
-      }
-    },
-    "/api/categories/create": {
-      "post": {
-        "tags":["Category"],
-        "summary":"Create category (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object","properties":{"name":{"type":"string"},"description":{"type":"string"}},"required":["name"]
-        }}}},
-        "responses":{
-          "201":{"description":"Category created","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Category"}}}},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    },
-    "/api/categories": {
-      "get": {
-        "tags":["Category"],
-        "summary":"Get all categories",
-        "responses":{
-          "200":{"description":"List of categories","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/Category"}}}}}
-        }
-      }
-    },
-    "/api/categories/{id}": {
-      "get": {
-        "tags":["Category"],
-        "summary":"Get category by ID",
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Category detail","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Category"}}}},
-          "404":{"description":"Not found","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/categories/update/{id}": {
-      "put": {
-        "tags":["Category"],
-        "summary":"Update category (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object","properties":{"name":{"type":"string"},"description":{"type":"string"}}}}}},
-        "responses":{
-          "200":{"description":"Category updated","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Category"}}}},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    },
-    "/api/categories/delete/{id}": {
-      "delete": {
-        "tags":["Category"],
-        "summary":"Delete category (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Category deleted"},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    },
-    "/api/products/create": {
-      "post": {
-        "tags":["Product"],
-        "summary":"Create product (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{
-          "required":true,
-          "content":{"multipart/form-data":{"schema":{
-            "type":"object",
-            "properties":{
-              "name":{"type":"string"},
-              "description":{"type":"string"},
-              "price":{"type":"number"},
-              "stock":{"type":"integer"},
-              "category":{"type":"string"},
-              "isFeatured":{"type":"boolean"},
-              "image":{"type":"string","format":"binary"}
-            },
-            "required":["name","price","stock","category"]
-          }}}
-        },
-        "responses":{
-          "201":{"description":"Product created","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Product"}}}},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    },
-    "/api/products": {
-      "get": {
-        "tags":["Product"],
-        "summary":"Get all products",
-        "responses":{
-          "200":{"description":"List of products","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/Product"}}}}}
-        }
-      }
-    },
-    "/api/products/{id}": {
-      "get": {
-        "tags":["Product"],
-        "summary":"Get product by ID",
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Product detail","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Product"}}}},
-          "404":{"description":"Not found","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/products/update/{id}": {
-      "put": {
-        "tags":["Product"],
-        "summary":"Update product (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"multipart/form-data":{"schema":{
-          "type":"object",
-          "properties":{
-            "name":{"type":"string"},
-            "description":{"type":"string"},
-            "price":{"type":"number"},
-            "stock":{"type":"integer"},
-            "category":{"type":"string"},
-            "isFeatured":{"type":"boolean"},
-            "image":{"type":"string","format":"binary"}
-          }
-        }}}},
-        "responses":{
-          "200":{"description":"Product updated"},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    },
-    "/api/products/delete/{id}": {
-      "delete": {
-        "tags":["Product"],
-        "summary":"Delete product (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Product deleted"},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    }
-  },
-  "paths": {
-    "/api/review/create": {
-      "post": {
-        "tags":["Review"],
-        "summary":"Create a new review",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "productId":{"type":"string"},
-            "rating":{"type":"integer","minimum":1,"maximum":5},
-            "comment":{"type":"string"}
           },
-          "required":["productId","rating","comment"]
-        }}}},
-        "responses":{
-          "201":{"description":"Review created","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Review"}}}},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    },
-    "/api/review/{productId}": {
-      "get": {
-        "tags":["Review"],
-        "summary":"Get all reviews for a product",
-        "parameters":[{"name":"productId","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"List of reviews","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/Review"}}}}}
-        }
-      }
-    },
-    "/api/review/update/{reviewId}": {
-      "put": {
-        "tags":["Review"],
-        "summary":"Update a review",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"reviewId","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "rating":{"type":"integer","minimum":1,"maximum":5},
-            "comment":{"type":"string"}
+          "400": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
           }
-        }}}},
-        "responses":{
-          "200":{"description":"Review updated"},
-          "403":{"description":"Forbidden"}
         }
       }
     },
-    "/api/review/delete/{reviewId}": {
+    "/api/user/profile": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get user profile",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User profile retrieved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/change-password": {
+      "put": {
+        "tags": ["User"],
+        "summary": "Change user password",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": { "type": "string" },
+                  "newPassword": { "type": "string", "minLength": 6 }
+                },
+                "required": ["currentPassword", "newPassword"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid current password",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/request-password-reset": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Request password reset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" }
+                },
+                "required": ["email"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset email sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/reset-password": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Reset password",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "newPassword": { "type": "string", "minLength": 6 }
+                },
+                "required": ["newPassword"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or expired token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/update": {
+      "put": {
+        "tags": ["User"],
+        "summary": "Update user information",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "address": { "type": "string" }
+                },
+                "minProperties": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User information updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "At least one field required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/update-avatar": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Update user avatar",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "avatar": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG or PNG image file (max 5MB)"
+                  }
+                },
+                "required": ["avatar"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Avatar updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "avatarUrl": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file or no file uploaded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/logout": {
+      "post": {
+        "tags": ["User"],
+        "summary": "Logout user",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Get all users (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "users": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/User" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/{id}/subscription": {
+      "put": {
+        "tags": ["User"],
+        "summary": "Update user subscription status (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subscriptionId": { "type": "string" },
+                  "status": { "type": "string", "enum": ["active", "inactive"] },
+                  "startDate": { "type": "string", "format": "date-time" }
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subscription updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "user": { "$ref": "#/components/schemas/User" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status or subscriptionId",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "User or subscription not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/product/create": {
+      "post": {
+        "tags": ["Product"],
+        "summary": "Create a product (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "price": { "type": "number", "minimum": 0 },
+                  "stock": { "type": "integer", "minimum": 0 },
+                  "category": { "type": "string" },
+                  "isFeatured": { "type": "boolean" },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG or PNG image file (max 5MB)"
+                  }
+                },
+                "required": ["name", "price", "stock"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Product created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "product": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "description": { "type": "string" },
+                        "price": { "type": "number" },
+                        "stock": { "type": "integer" },
+                        "category": { "type": "string" },
+                        "imageUrl": { "type": "string" },
+                        "isFeatured": { "type": "boolean" },
+                        "createdAt": { "type": "string", "format": "date-time" },
+                        "updatedAt": { "type": "string", "format": "date-time" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or missing required fields",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/product": {
+      "get": {
+        "tags": ["Product"],
+        "summary": "Get all products",
+        "responses": {
+          "200": {
+            "description": "Products retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "products": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "name": { "type": "string" },
+                          "description": { "type": "string" },
+                          "price": { "type": "number" },
+                          "stock": { "type": "integer" },
+                          "categories": { 
+                            "type": "object",
+                            "properties": {
+                              "name": { "type": "string" }
+                            }
+                          },
+                          "image": { "type": "string" },
+                          "isFeatured": { "type": "boolean" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/product/{id}": {
+      "get": {
+        "tags": ["Product"],
+        "summary": "Get product by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "product": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "description": { "type": "string" },
+                        "price": { "type": "number" },
+                        "stock": { "type": "integer" },
+                        "categories": { 
+                          "type": "object",
+                          "properties": {
+                            "name": { "type": "string" }
+                          }
+                        },
+                        "image": { "type": "string" },
+                        "isFeatured": { "type": "boolean" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/product/update/{id}": {
+      "put": {
+        "tags": ["Product"],
+        "summary": "Update product (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "price": { "type": "number", "minimum": 0 },
+                  "stock": { "type": "integer", "minimum": 0 },
+                  "category": { "type": "string" },
+                  "isFeatured": { "type": "boolean" },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "JPEG or PNG image file (max 5MB)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "product": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" },
+                        "description": { "type": "string" },
+                        "price": { "type": "number" },
+                        "stock": { "type": "integer" },
+                        "category": { "type": "string" },
+                        "imageUrl": { "type": "string" },
+                        "isFeatured": { "type": "boolean" },
+                        "createdAt": { "type": "string", "format": "date-time" },
+                        "updatedAt": { "type": "string", "format": "date-time" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/product/delete/{id}": {
       "delete": {
-        "tags":["Review"],
-        "summary":"Delete a review",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"reviewId","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Review deleted"},
-          "403":{"description":"Forbidden"}
+        "tags": ["Product"],
+        "summary": "Delete product (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Product deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/category/create": {
+      "post": {
+        "tags": ["Category"],
+        "summary": "Create a category (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "category": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/category": {
+      "get": {
+        "tags": ["Category"],
+        "summary": "Get all categories",
+        "responses": {
+          "200": {
+            "description": "Categories retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "categories": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Category" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/category/{id}": {
+      "get": {
+        "tags": ["Category"],
+        "summary": "Get category by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "category": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/category/update/{id}": {
+      "put": {
+        "tags": ["Category"],
+        "summary": "Update category (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "category": { "$ref": "#/components/schemas/Category" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/category/delete/{id}": {
+      "delete": {
+        "tags": ["Category"],
+        "summary": "Delete category (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/cart/add": {
       "post": {
-        "tags":["Cart"],
-        "summary":"Add item to cart",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "productId":{"type":"string"},
-            "quantity":{"type":"integer","minimum":1}
+        "tags": ["Cart"],
+        "summary": "Add item to cart",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": { "type": "string" },
+                  "quantity": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["productId", "quantity"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Item added to cart",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "cart": { "$ref": "#/components/schemas/Cart" }
+                  }
+                }
+              }
+            }
           },
-          "required":["productId","quantity"]
-        }}}},
-        "responses":{
-          "200":{"description":"Item added"},
-          "400":{"description":"Bad Request"}
+          "400": {
+            "description": "Invalid input or insufficient stock",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/cart": {
       "get": {
-        "tags":["Cart"],
-        "summary":"Get cart",
-        "security":[{"BearerAuth":[]}],
-        "responses":{
-          "200":{"description":"Cart content"},
-          "401":{"description":"Unauthorized"}
+        "tags": ["Cart"],
+        "summary": "Get user cart",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Cart retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "cart": { "$ref": "#/components/schemas/Cart" }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/cart/update": {
       "put": {
-        "tags":["Cart"],
-        "summary":"Update cart item quantity",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "productId":{"type":"string"},
-            "quantity":{"type":"integer","minimum":1}
+        "tags": ["Cart"],
+        "summary": "Update cart item quantity",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": { "type": "string" },
+                  "quantity": { "type": "integer", "minimum": 1 }
+                },
+                "required": ["productId", "quantity"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cart item updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "cart": { "$ref": "#/components/schemas/Cart" }
+                  }
+                }
+              }
+            }
           },
-          "required":["productId","quantity"]
-        }}}},
-        "responses":{
-          "200":{"description":"Cart updated"},
-          "400":{"description":"Bad Request"}
+          "400": {
+            "description": "Invalid input or insufficient stock",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product or item not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/cart/remove/{productId}": {
       "delete": {
-        "tags":["Cart"],
-        "summary":"Remove item from cart",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"productId","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Item removed"}
+        "tags": ["Cart"],
+        "summary": "Remove item from cart",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item removed from cart",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "cart": { "$ref": "#/components/schemas/Cart" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cart or item not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/cart/clear": {
       "delete": {
-        "tags":["Cart"],
-        "summary":"Clear cart",
-        "security":[{"BearerAuth":[]}],
-        "responses":{
-          "200":{"description":"Cart cleared"}
+        "tags": ["Cart"],
+        "summary": "Clear cart",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Cart cleared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "cart": { "$ref": "#/components/schemas/Cart" }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/order/create": {
       "post": {
-        "tags":["Order"],
-        "summary":"Create order",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "items":{"type":"array","items":{
-              "type":"object",
-              "properties":{
-                "productId":{"type":"string"},
-                "quantity":{"type":"integer"},
-                "price":{"type":"number"}
-              },
-              "required":["productId","quantity","price"]
-            }},
-            "shippingAddress":{"type":"string"},
-            "voucherId":{"type":"string"},
-            "paymentMethod":{"type":"string","enum":["Online Banking","Cash on Delivery"]}
+        "tags": ["Order"],
+        "summary": "Create an order",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paymentMethod": { "type": "string", "enum": ["Online Banking", "Cash on Delivery"] },
+                  "shippingAddress": { "type": "string" },
+                  "voucherId": { "type": "string" },
+                  "selectedItems": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": { "type": "string" },
+                        "quantity": { "type": "integer", "minimum": 1 }
+                      },
+                      "required": ["productId", "quantity"]
+                    },
+                    "minItems": 1
+                  }
+                },
+                "required": ["paymentMethod", "shippingAddress", "selectedItems"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/Order" }
+                  }
+                }
+              }
+            }
           },
-          "required":["items","shippingAddress"]
-        }}}},
-        "responses":{
-          "201":{"description":"Order created"}
+          "400": {
+            "description": "Invalid input or insufficient stock",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Product or user not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/order/my-orders": {
       "get": {
-        "tags":["Order"],
-        "summary":"Get user's own orders",
-        "security":[{"BearerAuth":[]}],
-        "responses":{
-          "200":{"description":"List of orders"}
+        "tags": ["Order"],
+        "summary": "Get user's orders",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Orders retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "orders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Order" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/order": {
       "get": {
-        "tags":["Order"],
-        "summary":"Get all orders (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "responses":{
-          "200":{"description":"All orders"}
+        "tags": ["Order"],
+        "summary": "Get all orders (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Orders retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "orders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Order" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/order/update/{id}": {
       "put": {
-        "tags":["Order"],
-        "summary":"Update order status (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object","properties":{"status":{"type":"string"}},"required":["status"]
-        }}}},
-        "responses":{
-          "200":{"description":"Order status updated"}
+        "tags": ["Order"],
+        "summary": "Update order status (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["unverified", "pending", "shipping", "delivered", "cancelled"]
+                  }
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/Order" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status or transition",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/order/cancel/{id}": {
       "delete": {
-        "tags":["Order"],
-        "summary":"Cancel own order (if unverified)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Order canceled"}
+        "tags": ["Order"],
+        "summary": "Cancel order (user, unverified only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/Order" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Order not in unverified status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to cancel",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/order/confirm-delivery/{id}": {
       "post": {
-        "tags":["Order"],
-        "summary":"Confirm delivery of order",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Delivery confirmed"}
-        }
-      }
-    },
-    "/api/payment/create-vietqr": {
-      "post": {
-        "tags":["Payment"],
-        "summary":"Generate VietQR code",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object","properties":{"orderId":{"type":"string"}},"required":["orderId"]
-        }}}},
-        "responses":{
-          "200":{"description":"QR code info"}
-        }
-      }
-    },
-    "/api/payment/log": {
-      "post": {
-        "tags":["Payment"],
-        "summary":"Log payment status (IPN)",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "paymentId":{"type":"string"},
-            "status":{"type":"string"},
-            "payload":{"type":"object"}
-          },
-          "required":["paymentId","status"]
-        }}}},
-        "responses":{
-          "200":{"description":"Logged"}
-        }
-      }
-    },
-    "/api/payment/verify/{paymentId}": {
-      "get": {
-        "tags":["Payment"],
-        "summary":"Verify payment via polling",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"paymentId","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Verification result"}
-        }
-      }
-    },
-    "/api/voucher/create": {
-      "post": {
-        "tags":["Voucher"],
-        "summary":"Create voucher (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "code":{"type":"string"},
-            "discount_percentage":{"type":"number"},
-            "max_discount":{"type":"number"},
-            "subscriberOnly":{"type":"boolean"},
-            "expires_at":{"type":"string","format":"date-time"}
-          },
-          "required":["code","discount_percentage","max_discount","expires_at"]
-        }}}},
-        "responses":{
-          "201":{"description":"Voucher created","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Voucher"}}}},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    },
-    "/api/voucher": {
-      "get": {
-        "tags":["Voucher"],
-        "summary":"Get all vouchers",
-        "responses":{
-          "200":{"description":"List of vouchers","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/Voucher"}}}}}
-        }
-      }
-    },
-    "/api/voucher/{id}": {
-      "get": {
-        "tags":["Voucher"],
-        "summary":"Get voucher by ID",
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Voucher detail","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Voucher"}}}},
-          "404":{"description":"Not found","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
-        }
-      }
-    },
-    "/api/voucher/update/{id}": {
-      "put": {
-        "tags":["Voucher"],
-        "summary":"Update voucher (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "discount_percentage":{"type":"number"},
-            "max_discount":{"type":"number"},
-            "subscriberOnly":{"type":"boolean"},
-            "expires_at":{"type":"string","format":"date-time"}
+        "tags": ["Order"],
+        "summary": "Confirm delivery (user)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
           }
-        }}}},
-        "responses":{
-          "200":{"description":"Voucher updated"},
-          "403":{"description":"Forbidden"}
-        }
-      }
-    },
-    "/api/voucher/delete/{id}": {
-      "delete": {
-        "tags":["Voucher"],
-        "summary":"Delete voucher (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Voucher deleted"},
-          "403":{"description":"Forbidden"}
+        ],
+        "responses": {
+          "200": {
+            "description": "Delivery confirmed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/Order" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Order not in shipping status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to confirm",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/subscription/create": {
       "post": {
-        "tags":["Subscription"],
-        "summary":"Create subscription (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "name":{"type":"string"},
-            "price":{"type":"number"},
-            "duration":{"type":"integer"},
-            "description":{"type":"string"},
-            "perks":{"type":"array","items":{"type":"string"}}
+        "tags": ["Subscription"],
+        "summary": "Create a subscription (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "price": { "type": "number", "minimum": 0 },
+                  "duration": { "type": "integer", "minimum": 1 },
+                  "description": { "type": "string" }
+                },
+                "required": ["name", "price", "duration"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "subscription": { "$ref": "#/components/schemas/Subscription" }
+                  }
+                }
+              }
+            }
           },
-          "required":["name","price","duration"]
-        }}}},
-        "responses":{
-          "201":{"description":"Subscription created","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Subscription"}}}},
-          "403":{"description":"Forbidden"}
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/subscription": {
       "get": {
-        "tags":["Subscription"],
-        "summary":"Get all subscriptions",
-        "responses":{
-          "200":{"description":"List of subscriptions","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/Subscription"}}}}}
+        "tags": ["Subscription"],
+        "summary": "Get all subscriptions",
+        "responses": {
+          "200": {
+            "description": "Subscriptions retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "subscriptions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Subscription" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/subscription/{id}": {
       "get": {
-        "tags":["Subscription"],
-        "summary":"Get subscription by ID",
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Subscription detail","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Subscription"}}}},
-          "404":{"description":"Not found","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
+        "tags": ["Subscription"],
+        "summary": "Get subscription by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "subscription": { "$ref": "#/components/schemas/Subscription" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/subscription/update/{id}": {
       "put": {
-        "tags":["Subscription"],
-        "summary":"Update subscription (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object","properties":{
-            "name":{"type":"string"},
-            "price":{"type":"number"},
-            "duration":{"type":"integer"},
-            "description":{"type":"string"},
-            "perks":{"type":"array","items":{"type":"string"}}
+        "tags": ["Subscription"],
+        "summary": "Update subscription (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
           }
-        }}}},
-        "responses":{
-          "200":{"description":"Subscription updated"},
-          "403":{"description":"Forbidden"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "price": { "type": "number", "minimum": 0 },
+                  "duration": { "type": "integer", "minimum": 1 },
+                  "description": { "type": "string" }
+                },
+                "required": ["name", "price", "duration"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subscription updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "subscription": { "$ref": "#/components/schemas/Subscription" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/subscription/delete/{id}": {
       "delete": {
-        "tags":["Subscription"],
-        "summary":"Delete subscription (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Subscription deleted"},
-          "403":{"description":"Forbidden"}
+        "tags": ["Subscription"],
+        "summary": "Delete subscription (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/subscription/subscribed-users": {
       "get": {
-        "tags":["Subscription"],
-        "summary":"Get all subscribed users (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "responses":{
-          "200":{"description":"List of users"}
+        "tags": ["Subscription"],
+        "summary": "Get all subscribed users (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Subscribed users retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "users": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "username": { "type": "string" },
+                          "email": { "type": "string", "format": "email" },
+                          "name": { "type": "string" },
+                          "subscription": {
+                            "type": "object",
+                            "properties": {
+                              "status": { "type": "string", "enum": ["active", "inactive"] },
+                              "subscriptionId": {
+                                "type": "object",
+                                "properties": {
+                                  "name": { "type": "string" },
+                                  "price": { "type": "number" },
+                                  "duration": { "type": "integer" }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/create": {
+      "post": {
+        "tags": ["Voucher"],
+        "summary": "Create a voucher (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "discount_percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "max_discount": { "type": "number", "minimum": 0 },
+                  "subscriberOnly": { "type": "boolean" },
+                  "expires_at": { "type": "string", "format": "date-time" }
+                },
+                "required": ["discount_percentage", "max_discount", "expires_at"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Voucher created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "voucher": { "$ref": "#/components/schemas/Voucher" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/assign": {
+      "post": {
+        "tags": ["Voucher"],
+        "summary": "Assign voucher to user (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": { "type": "string" },
+                  "voucherId": { "type": "string" }
+                },
+                "required": ["userId", "voucherId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Voucher assigned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "vouchers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "voucherId": { "$ref": "#/components/schemas/Voucher" },
+                          "status": { "type": "string", "enum": ["available", "used", "expired"] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or voucher already assigned",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "User or voucher not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/assign-everyone": {
+      "post": {
+        "tags": ["Voucher"],
+        "summary": "Assign voucher to all users (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "voucherId": { "type": "string" }
+                },
+                "required": ["voucherId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Voucher assigned to users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "assignedCount": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Voucher not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/assign-subscribers": {
+      "post": {
+        "tags": ["Voucher"],
+        "summary": "Assign voucher to subscribers (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "voucherId": { "type": "string" }
+                },
+                "required": ["voucherId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Voucher assigned to subscribers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "assignedCount": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or not subscriber-only",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Voucher not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/claim": {
+      "post": {
+        "tags": ["Voucher"],
+        "summary": "Claim a voucher",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "voucherId": { "type": "string" }
+                },
+                "required": ["voucherId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Voucher claimed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "vouchers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "voucherId": { "$ref": "#/components/schemas/Voucher" },
+                          "status": { "type": "string", "enum": ["available", "used", "expired"] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or voucher already claimed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized (e.g., subscriber-only)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Voucher or user not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher": {
+      "get": {
+        "tags": ["Voucher"],
+        "summary": "Get all available vouchers",
+        "responses": {
+          "200": {
+            "description": "Vouchers retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "vouchers": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Voucher" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/{id}": {
+      "get": {
+        "tags": ["Voucher"],
+        "summary": "Get voucher by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Voucher retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "voucher": { "$ref": "#/components/schemas/Voucher" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Voucher used or expired",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Voucher not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/user": {
+      "get": {
+        "tags": ["Voucher"],
+        "summary": "Get user-specific vouchers",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User vouchers retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "vouchers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "voucherId": { "$ref": "#/components/schemas/Voucher" },
+                          "status": { "type": "string", "enum": ["available", "used", "expired"] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/update/{id}": {
+      "put": {
+        "tags": ["Voucher"],
+        "summary": "Update voucher (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "discount_percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "max_discount": { "type": "number", "minimum": 0 },
+                  "subscriberOnly": { "type": "boolean" },
+                  "expires_at": { "type": "string", "format": "date-time" }
+                },
+                "required": ["discount_percentage", "max_discount", "expires_at"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Voucher updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "voucher": { "$ref": "#/components/schemas/Voucher" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or voucher used",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Voucher not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/delete/{id}": {
+      "delete": {
+        "tags": ["Voucher"],
+        "summary": "Delete voucher (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Voucher deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Voucher not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/promptCategory/create": {
       "post": {
-        "tags":["PromptCategory"],
-        "summary":"Create prompt category (admin only)",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object",
-          "properties":{
-            "name":{"type":"string"},
-            "description":{"type":"string"},
-            "type":{"type":"string"},
-            "promptText":{"type":"string"},
-            "isActive":{"type":"boolean"}
+        "tags": ["PromptCategory"],
+        "summary": "Create a prompt category (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "maxLength": 50 },
+                  "description": { "type": "string", "maxLength": 1000 },
+                  "type": { 
+                    "type": "string", 
+                    "enum": ["diet", "info", "other", "recipe"]
+                  },
+                  "promptText": { "type": "string", "maxLength": 200 }
+                },
+                "required": ["name", "promptText"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Prompt category created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "promptCategory": { "$ref": "#/components/schemas/PromptCategory" }
+                  }
+                }
+              }
+            }
           },
-          "required":["name","promptText"]
-        }}}},
-        "responses":{
-          "201":{"description":"Created","content":{"application/json":{"schema":{"$ref":"#/components/schemas/PromptCategory"}}}},
-          "403":{"description":"Forbidden"}
+          "400": {
+            "description": "Invalid input or name already exists",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/promptCategory": {
       "get": {
-        "tags":["PromptCategory"],  
-        "security":[{"BearerAuth":[]}],
-        "summary":"Get all prompt categories",
-        "responses":{
-          "200":{"description":"List","content":{"application/json":{"schema":{"type":"array","items":{"$ref":"#/components/schemas/PromptCategory"}}}}}
+        "tags": ["PromptCategory"],
+        "summary": "Get all prompt categories (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Prompt categories retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "promptCategories": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/PromptCategory" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/promptCategory/{id}": {
       "get": {
-        "tags":["PromptCategory"],
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Detail","content":{"application/json":{"schema":{"$ref":"#/components/schemas/PromptCategory"}}}},
-          "404":{"description":"Not found","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}
+        "tags": ["PromptCategory"],
+        "summary": "Get prompt category by ID (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prompt category retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "promptCategory": { "$ref": "#/components/schemas/PromptCategory" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Prompt category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/promptCategory/update/{id}": {
       "put": {
-        "tags":["PromptCategory"],
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object"
-        }}}},
-        "responses":{
-          "200":{"description":"Updated"},
-          "403":{"description":"Forbidden"}
+        "tags": ["PromptCategory"],
+        "summary": "Update prompt category (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "maxLength": 50 },
+                  "description": { "type": "string", "maxLength": 1000 },
+                  "type": { 
+                    "type": "string", 
+                    "enum": ["diet", "info", "other", "recipe"]
+                  },
+                  "promptText": { "type": "string", "maxLength": 200 }
+                },
+                "required": ["name", "promptText"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Prompt category updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "promptCategory": { "$ref": "#/components/schemas/PromptCategory" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or name already exists",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Prompt category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/promptCategory/delete/{id}": {
       "delete": {
-        "tags":["PromptCategory"],
-        "security":[{"BearerAuth":[]}],
-        "parameters":[{"name":"id","in":"path","required":true,"schema":{"type":"string"}}],
-        "responses":{
-          "200":{"description":"Deleted"},
-          "403":{"description":"Forbidden"}
+        "tags": ["PromptCategory"],
+        "summary": "Delete prompt category (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prompt category deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Prompt category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/geminiAI/generate/default": {
       "post": {
-        "tags":["GeminiAI"],
-        "summary":"Generate default AI response (user prompt only)",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object","properties":{"prompt":{"type":"string"}},"required":["prompt"]
-        }}}},
-        "responses":{
-          "200":{"description":"OK","content":{"application/json":{"schema":{
-            "type":"object","properties":{
-              "message":{"type":"string"},
-              "response":{"type":"string"}
+        "tags": ["GeminiAI"],
+        "summary": "Generate default AI response (user prompt only)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "prompt": { "type": "string" }
+                },
+                "required": ["prompt"]
+              }
             }
-          }}}},
-          "400":{"description":"Bad Request"},
-          "500":{"description":"Server Error"}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "response": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Prompt is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     },
     "/api/geminiAI/generate/combined": {
       "post": {
-        "tags":["GeminiAI"],
-        "summary":"Generate combined AI response",
-        "security":[{"BearerAuth":[]}],
-        "requestBody":{"required":true,"content":{"application/json":{"schema":{
-          "type":"object","properties":{
-            "prompt":{"type":"string"},
-            "promptCategoryId":{"type":"string"}
-          },"required":["prompt"]
-        }}}},
-        "responses":{
-          "200":{"description":"OK"},
-          "400":{"description":"Bad Request"},
-          "404":{"description":"Not Found"},
-          "500":{"description":"Server Error"}
+        "tags": ["GeminiAI"],
+        "summary": "Generate combined AI response (prompt category + user prompt)",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "prompt": { "type": "string" },
+                  "promptCategoryId": { "type": "string" }
+                },
+                "required": ["prompt"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "response": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Prompt is required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Prompt category not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/create": {
+      "post": {
+        "tags": ["Review"],
+        "summary": "Create a new review",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "productId": { "type": "string" },
+                  "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+                  "comment": { "type": "string" }
+                },
+                "required": ["productId", "rating", "comment"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "review": { "$ref": "#/components/schemas/Review" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/{productId}": {
+      "get": {
+        "tags": ["Review"],
+        "summary": "Get all reviews for a product",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reviews retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "reviews": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Review" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/update/{reviewId}": {
+      "put": {
+        "tags": ["Review"],
+        "summary": "Update a review",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+                  "comment": { "type": "string" }
+                },
+                "required": ["rating", "comment"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Review updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "review": { "$ref": "#/components/schemas/Review" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to update this review",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Review not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/review/delete/{reviewId}": {
+      "delete": {
+        "tags": ["Review"],
+        "summary": "Delete a review",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "reviewId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to delete this review",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Review not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vietqr/create": {
+      "post": {
+        "tags": ["Payment"],
+        "summary": "Generate VietQR code for payment",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "orderId": { "type": "string" },
+                  "amount": { "type": "number", "minimum": 0 }
+                },
+                "required": ["orderId", "amount"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "VietQR code generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "qrCode": { "type": "string" },
+                    "paymentId": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vietqr/status/log": {
+      "post": {
+        "tags": ["Payment"],
+        "summary": "Log payment status update",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paymentId": { "type": "string" },
+                  "status": { 
+                    "type": "string",
+                    "enum": ["pending", "completed", "failed"]
+                  }
+                },
+                "required": ["paymentId", "status"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment status logged successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "payment": { "$ref": "#/components/schemas/Payment" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Payment not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vietqr/{paymentId}/verify": {
+      "get": {
+        "tags": ["Payment"],
+        "summary": "Verify payment status",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "payment": { "$ref": "#/components/schemas/Payment" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Payment not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
         }
       }
     }
   }
 }
+            
+            
+            
