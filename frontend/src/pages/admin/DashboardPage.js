@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import api from "../../utils/api";
+import {
+  authAPI,
+  productAPI,
+  orderAPI,
+  subscriptionAPI,
+} from "../../utils/api";
 import Card from "../../components/ui/Card";
 import {
   Chart as ChartJS,
@@ -37,8 +42,12 @@ function DashboardPage() {
     totalProducts: 0,
     totalOrders: 0,
     totalRevenue: 0,
+    totalSubscribers: 0,
     recentOrders: [],
     topProducts: [],
+    monthlyRevenue: [],
+    ordersByStatus: {},
+    productsByCategory: {},
   });
   const [loading, setLoading] = useState(true);
 
@@ -46,44 +55,83 @@ function DashboardPage() {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // In a real app, you would have an endpoint for dashboard stats
-        // For now, we'll fetch data from multiple endpoints and combine them
-        const [usersResponse, productsResponse, ordersResponse] =
-          await Promise.all([
-            api.get("/api/user"),
-            api.get("/api/product"),
-            api.get("/api/order"),
-          ]);
+        // Fetch all required data
+        const [
+          usersResponse,
+          productsResponse,
+          ordersResponse,
+          subscriptionsResponse,
+        ] = await Promise.all([
+          authAPI.getAllUsers(),
+          productAPI.getAllProducts(),
+          orderAPI.getAllOrders(),
+          subscriptionAPI.getSubscribedUsers(),
+        ]);
 
         const users = usersResponse.data.users || [];
         const products = productsResponse.data.products || [];
         const orders = ordersResponse.data.orders || [];
+        const subscribers = subscriptionsResponse.data.users || [];
 
         // Calculate total revenue
-        const totalRevenue = orders.reduce(
-          (sum, order) => sum + order.totalAmount,
-          0
-        );
+        const totalRevenue = orders.reduce((sum, order) => {
+          return sum + (order.totalAmount || 0);
+        }, 0);
 
-        // Get recent orders (last 5)
-        const recentOrders = orders.slice(0, 5);
+        // Get recent orders (last 10)
+        const recentOrders = orders
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 10);
 
-        // Mock top products (in a real app, this would be calculated from order data)
+        // Calculate orders by status
+        const ordersByStatus = orders.reduce((acc, order) => {
+          const status = order.status || "unknown";
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
+
+        // Calculate products by category
+        const productsByCategory = products.reduce((acc, product) => {
+          const categoryName = product.categories?.name || "Uncategorized";
+          acc[categoryName] = (acc[categoryName] || 0) + 1;
+          return acc;
+        }, {});
+
+        // Calculate monthly revenue (last 6 months)
+        const monthlyRevenue = calculateMonthlyRevenue(orders);
+
+        // Get top products (by order frequency - simplified calculation)
+        const productOrderCount = orders.reduce((acc, order) => {
+          if (order.items) {
+            order.items.forEach((item) => {
+              const productId = item.productId?._id || item.productId;
+              if (productId) {
+                acc[productId] = (acc[productId] || 0) + item.quantity;
+              }
+            });
+          }
+          return acc;
+        }, {});
+
         const topProducts = products
-          .slice(0, 5)
           .map((product) => ({
             ...product,
-            salesCount: Math.floor(Math.random() * 100), // Random sales count for demo
+            salesCount: productOrderCount[product._id] || 0,
           }))
-          .sort((a, b) => b.salesCount - a.salesCount);
+          .sort((a, b) => b.salesCount - a.salesCount)
+          .slice(0, 5);
 
         setStats({
           totalUsers: users.length,
           totalProducts: products.length,
           totalOrders: orders.length,
           totalRevenue,
+          totalSubscribers: subscribers.length,
           recentOrders,
           topProducts,
+          monthlyRevenue,
+          ordersByStatus,
+          productsByCategory,
         });
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -95,36 +143,93 @@ function DashboardPage() {
     fetchDashboardData();
   }, []);
 
+  const calculateMonthlyRevenue = (orders) => {
+    const months = [];
+    const revenue = [];
+    const now = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = date.toLocaleDateString("en-US", { month: "short" });
+      months.push(monthName);
+
+      const monthRevenue = orders
+        .filter((order) => {
+          const orderDate = new Date(order.createdAt);
+          return (
+            orderDate.getMonth() === date.getMonth() &&
+            orderDate.getFullYear() === date.getFullYear()
+          );
+        })
+        .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
+      revenue.push(monthRevenue);
+    }
+
+    return { months, revenue };
+  };
+
   // Prepare chart data
   const salesData = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+    labels: stats.monthlyRevenue.months || [],
     datasets: [
       {
-        label: "Sales",
-        data: [12, 19, 3, 5, 2, 3],
+        label: "Revenue ($)",
+        data: stats.monthlyRevenue.revenue || [],
         borderColor: "rgb(34, 197, 94)",
         backgroundColor: "rgba(34, 197, 94, 0.5)",
+        tension: 0.1,
       },
     ],
   };
 
   const ordersData = {
-    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+    labels: stats.monthlyRevenue.months || [],
     datasets: [
       {
         label: "Orders",
-        data: [5, 10, 15, 8, 12, 9],
+        data:
+          stats.monthlyRevenue.months?.map((month) => {
+            const now = new Date();
+            const monthIndex = [
+              "Jan",
+              "Feb",
+              "Mar",
+              "Apr",
+              "May",
+              "Jun",
+              "Jul",
+              "Aug",
+              "Sep",
+              "Oct",
+              "Nov",
+              "Dec",
+            ].indexOf(month);
+            const targetDate = new Date(
+              now.getFullYear(),
+              now.getMonth() - (5 - stats.monthlyRevenue.months.indexOf(month)),
+              1
+            );
+
+            return stats.recentOrders.filter((order) => {
+              const orderDate = new Date(order.createdAt);
+              return (
+                orderDate.getMonth() === targetDate.getMonth() &&
+                orderDate.getFullYear() === targetDate.getFullYear()
+              );
+            }).length;
+          }) || [],
         backgroundColor: "rgba(249, 115, 22, 0.5)",
       },
     ],
   };
 
   const categoryData = {
-    labels: ["Green Tea", "Black Tea", "Herbal Tea", "White Tea", "Oolong Tea"],
+    labels: Object.keys(stats.productsByCategory),
     datasets: [
       {
         label: "Products by Category",
-        data: [12, 19, 3, 5, 2],
+        data: Object.values(stats.productsByCategory),
         backgroundColor: [
           "rgba(34, 197, 94, 0.5)",
           "rgba(249, 115, 22, 0.5)",
@@ -163,7 +268,7 @@ function DashboardPage() {
         <div className="col-md-6 col-lg-3">
           <Card className="h-100">
             <Card.Body className="d-flex align-items-center">
-              <div className="bg-primary-100 rounded-circle p-3 me-3">
+              <div className="bg-primary bg-opacity-10 rounded-circle p-3 me-3">
                 <i className="bi bi-people fs-4 text-primary"></i>
               </div>
               <div>
@@ -185,7 +290,7 @@ function DashboardPage() {
         <div className="col-md-6 col-lg-3">
           <Card className="h-100">
             <Card.Body className="d-flex align-items-center">
-              <div className="bg-success-100 rounded-circle p-3 me-3">
+              <div className="bg-success bg-opacity-10 rounded-circle p-3 me-3">
                 <i className="bi bi-box-seam fs-4 text-success"></i>
               </div>
               <div>
@@ -207,7 +312,7 @@ function DashboardPage() {
         <div className="col-md-6 col-lg-3">
           <Card className="h-100">
             <Card.Body className="d-flex align-items-center">
-              <div className="bg-info-100 rounded-circle p-3 me-3">
+              <div className="bg-info bg-opacity-10 rounded-circle p-3 me-3">
                 <i className="bi bi-cart-check fs-4 text-info"></i>
               </div>
               <div>
@@ -229,7 +334,7 @@ function DashboardPage() {
         <div className="col-md-6 col-lg-3">
           <Card className="h-100">
             <Card.Body className="d-flex align-items-center">
-              <div className="bg-success-100 rounded-circle p-3 me-3">
+              <div className="bg-success bg-opacity-10 rounded-circle p-3 me-3">
                 <i className="bi bi-currency-dollar fs-4 text-success"></i>
               </div>
               <div>
@@ -249,12 +354,94 @@ function DashboardPage() {
         </div>
       </div>
 
+      {/* Additional Stats Row */}
+      <div className="row g-4 mt-2">
+        <div className="col-md-6 col-lg-3">
+          <Card className="h-100">
+            <Card.Body className="d-flex align-items-center">
+              <div className="bg-warning bg-opacity-10 rounded-circle p-3 me-3">
+                <i className="bi bi-star fs-4 text-warning"></i>
+              </div>
+              <div>
+                <h6 className="text-muted mb-1 small">Subscribers</h6>
+                <h3 className="mb-0 fs-4">{stats.totalSubscribers}</h3>
+              </div>
+            </Card.Body>
+            <Card.Footer className="bg-light border-0">
+              <Link
+                to="/admin/subscriptions"
+                className="text-decoration-none text-primary small"
+              >
+                View all
+              </Link>
+            </Card.Footer>
+          </Card>
+        </div>
+
+        <div className="col-md-6 col-lg-3">
+          <Card className="h-100">
+            <Card.Body className="d-flex align-items-center">
+              <div className="bg-danger bg-opacity-10 rounded-circle p-3 me-3">
+                <i className="bi bi-exclamation-triangle fs-4 text-danger"></i>
+              </div>
+              <div>
+                <h6 className="text-muted mb-1 small">Pending Orders</h6>
+                <h3 className="mb-0 fs-4">
+                  {stats.ordersByStatus.pending || 0}
+                </h3>
+              </div>
+            </Card.Body>
+            <Card.Footer className="bg-light border-0">
+              <span className="text-muted small">Requires attention</span>
+            </Card.Footer>
+          </Card>
+        </div>
+
+        <div className="col-md-6 col-lg-3">
+          <Card className="h-100">
+            <Card.Body className="d-flex align-items-center">
+              <div className="bg-info bg-opacity-10 rounded-circle p-3 me-3">
+                <i className="bi bi-truck fs-4 text-info"></i>
+              </div>
+              <div>
+                <h6 className="text-muted mb-1 small">Shipping Orders</h6>
+                <h3 className="mb-0 fs-4">
+                  {stats.ordersByStatus.shipping || 0}
+                </h3>
+              </div>
+            </Card.Body>
+            <Card.Footer className="bg-light border-0">
+              <span className="text-muted small">In transit</span>
+            </Card.Footer>
+          </Card>
+        </div>
+
+        <div className="col-md-6 col-lg-3">
+          <Card className="h-100">
+            <Card.Body className="d-flex align-items-center">
+              <div className="bg-success bg-opacity-10 rounded-circle p-3 me-3">
+                <i className="bi bi-check-circle fs-4 text-success"></i>
+              </div>
+              <div>
+                <h6 className="text-muted mb-1 small">Delivered Orders</h6>
+                <h3 className="mb-0 fs-4">
+                  {stats.ordersByStatus.delivered || 0}
+                </h3>
+              </div>
+            </Card.Body>
+            <Card.Footer className="bg-light border-0">
+              <span className="text-muted small">Completed</span>
+            </Card.Footer>
+          </Card>
+        </div>
+      </div>
+
       {/* Charts */}
       <div className="row g-4 mt-2">
         <div className="col-lg-6">
           <Card>
             <Card.Header className="bg-white">
-              <h5 className="mb-0 fs-5">Sales Overview</h5>
+              <h5 className="mb-0 fs-5">Revenue Overview (Last 6 Months)</h5>
             </Card.Header>
             <Card.Body>
               <div style={{ height: "300px" }}>
@@ -266,6 +453,9 @@ function DashboardPage() {
                     scales: {
                       y: {
                         beginAtZero: true,
+                        ticks: {
+                          callback: (value) => "$" + value,
+                        },
                       },
                     },
                   }}
@@ -278,7 +468,7 @@ function DashboardPage() {
         <div className="col-lg-6">
           <Card>
             <Card.Header className="bg-white">
-              <h5 className="mb-0 fs-5">Orders Overview</h5>
+              <h5 className="mb-0 fs-5">Orders Overview (Last 6 Months)</h5>
             </Card.Header>
             <Card.Body>
               <div style={{ height: "300px" }}>
@@ -308,13 +498,19 @@ function DashboardPage() {
             </Card.Header>
             <Card.Body>
               <div style={{ height: "250px" }}>
-                <Doughnut
-                  data={categoryData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                  }}
-                />
+                {Object.keys(stats.productsByCategory).length > 0 ? (
+                  <Doughnut
+                    data={categoryData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                    }}
+                  />
+                ) : (
+                  <div className="d-flex align-items-center justify-content-center h-100">
+                    <span className="text-muted">No data available</span>
+                  </div>
+                )}
               </div>
             </Card.Body>
           </Card>
@@ -333,22 +529,27 @@ function DashboardPage() {
                     <th>Customer</th>
                     <th>Amount</th>
                     <th>Status</th>
+                    <th>Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.recentOrders && stats.recentOrders.length > 0 ? (
                     stats.recentOrders.map((order) => (
-                      <tr key={order.id}>
+                      <tr key={order._id || order.id}>
                         <td>
                           <Link
-                            to={`/admin/orders/${order.id}`}
+                            to={`/admin/orders/${order._id || order.id}`}
                             className="text-decoration-none"
                           >
-                            #{order.id ? order.id.substring(0, 8) : "N/A"}
+                            #{(order._id || order.id).substring(0, 8)}
                           </Link>
                         </td>
-                        <td>{order.userId?.username || "N/A"}</td>
-                        <td>${order.totalAmount?.toFixed(2) || "0.00"}</td>
+                        <td>
+                          {order.userId?.name ||
+                            order.userId?.username ||
+                            "N/A"}
+                        </td>
+                        <td>${(order.totalAmount || 0).toFixed(2)}</td>
                         <td>
                           <span
                             className={`badge ${
@@ -369,11 +570,16 @@ function DashboardPage() {
                               : "Unknown"}
                           </span>
                         </td>
+                        <td>
+                          {order.createdAt
+                            ? new Date(order.createdAt).toLocaleDateString()
+                            : "N/A"}
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="4" className="text-center py-3">
+                      <td colSpan="5" className="text-center py-3">
                         No recent orders
                       </td>
                     </tr>

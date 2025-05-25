@@ -1,3 +1,4 @@
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -27,7 +28,8 @@ import CheckoutPage from "./pages/user/CheckoutPage";
 import OrdersPage from "./pages/user/OrdersPage";
 import OrderDetailPage from "./pages/user/OrderDetailPage";
 import ChatPage from "./pages/user/ChatPage";
-import PaymentResultPage from "./pages/user/PaymentResultPage"; // ← Added import
+import PaymentPage from "./pages/user/PaymentPage"; // ← Added import
+import PaymentResultPage from "./pages/user/PaymentResultPage";
 
 // Admin Pages
 import AdminDashboardPage from "./pages/admin/DashboardPage";
@@ -60,11 +62,7 @@ function App() {
           {/* Public */}
           <Route index element={<HomePage />} />
           <Route path="products" element={<ProductsPage />} />
-          <Route
-            path="products/:id"
-            element={<ProductDetailPage />}
-            onEnter={() => console.log("Matched product/:id route")}
-          />
+          <Route path="products/:id" element={<ProductDetailPage />} />
           <Route
             path="login"
             element={!user ? <LoginPage /> : <Navigate to="/" />}
@@ -90,6 +88,13 @@ function App() {
             path="checkout"
             element={user ? <CheckoutPage /> : <Navigate to="/login" />}
           />
+          {/* Payment initiation page */}
+          <Route
+            path="payment"
+            element={user ? <PaymentPage /> : <Navigate to="/login" />}
+          />
+          {/* VietQR return/receipt page */}
+          <Route path="payment/result" element={<PaymentResultPage />} />
           <Route
             path="orders"
             element={user ? <OrdersPage /> : <Navigate to="/login" />}
@@ -102,9 +107,6 @@ function App() {
             path="chat"
             element={user ? <ChatPage /> : <Navigate to="/login" />}
           />
-
-          {/* VNPay return/receipt page */}
-          <Route path="payment/result" element={<PaymentResultPage />} />
         </Route>
 
         {/* Admin Routes */}

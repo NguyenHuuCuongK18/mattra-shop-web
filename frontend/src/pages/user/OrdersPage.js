@@ -20,7 +20,7 @@ const OrdersPage = () => {
 
       setLoading(true);
       try {
-        const response = await orderAPI.getUserOrders();
+        const response = await orderAPI.getMyOrders();
         setOrders(response.data.orders || []);
       } catch (err) {
         console.error("Error fetching orders:", err);
@@ -45,7 +45,7 @@ const OrdersPage = () => {
       // Update the order status in the UI
       setOrders(
         orders.map((order) =>
-          order.id === orderId ? { ...order, status: "cancelled" } : order
+          order._id === orderId ? { ...order, status: "cancelled" } : order
         )
       );
 
@@ -69,7 +69,7 @@ const OrdersPage = () => {
       // Update the order status in the UI
       setOrders(
         orders.map((order) =>
-          order.id === orderId ? { ...order, status: "delivered" } : order
+          order._id === orderId ? { ...order, status: "delivered" } : order
         )
       );
 
@@ -171,13 +171,13 @@ const OrdersPage = () => {
         </thead>
         <tbody>
           {orders.map((order) => (
-            <tr key={order.id}>
+            <tr key={order._id}>
               <td>
                 <Link
-                  to={`/orders/${order.id}`}
+                  to={`/orders/${order._id}`}
                   className="text-decoration-none"
                 >
-                  {order.id.substring(0, 8)}...
+                  {order._id.substring(0, 8)}...
                 </Link>
               </td>
               <td>{new Date(order.createdAt).toLocaleDateString()}</td>
@@ -189,7 +189,7 @@ const OrdersPage = () => {
                     variant="outline-primary"
                     size="sm"
                     as={Link}
-                    to={`/orders/${order.id}`}
+                    to={`/orders/${order._id}`}
                   >
                     View
                   </Button>
@@ -198,7 +198,7 @@ const OrdersPage = () => {
                     <Button
                       variant="outline-danger"
                       size="sm"
-                      onClick={() => handleCancelOrder(order.id)}
+                      onClick={() => handleCancelOrder(order._id)}
                     >
                       Cancel
                     </Button>
@@ -208,7 +208,7 @@ const OrdersPage = () => {
                     <Button
                       variant="outline-success"
                       size="sm"
-                      onClick={() => handleConfirmDelivery(order.id)}
+                      onClick={() => handleConfirmDelivery(order._id)}
                     >
                       Confirm Delivery
                     </Button>

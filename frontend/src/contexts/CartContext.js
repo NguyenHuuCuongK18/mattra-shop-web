@@ -138,6 +138,16 @@ export function CartProvider({ children }) {
     }
   };
 
+  // Calculate total cart value
+  const getCartTotal = () => {
+    if (!cart?.items?.length) return 0;
+    return cart.items.reduce(
+      (total, item) =>
+        total + (item.productId?.price || 0) * (item.quantity || 0),
+      0
+    );
+  };
+
   const value = {
     cart,
     loading,
@@ -146,6 +156,7 @@ export function CartProvider({ children }) {
     updateCartItem,
     removeFromCart,
     clearCart,
+    getCartTotal,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

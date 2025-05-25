@@ -14,12 +14,12 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
 import { useAuth } from "../../contexts/AuthContext";
-import { orderAPI, voucherAPI } from "../../utils/api";
+import { orderAPI, voucherAPI, paymentAPI } from "../../utils/api";
 import { toast } from "react-hot-toast";
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
-  const { cart, getCartTotal, clearCart } = useCart();
+  const { cart, clearCart } = useCart();
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
@@ -27,18 +27,28 @@ const CheckoutPage = () => {
   const [loadingVouchers, setLoadingVouchers] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
-
   const [shippingAddress, setShippingAddress] = useState(user?.address || "");
   const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState("");
 
-  // Calculate totals
-  const subtotal = getCartTotal();
+  // Calculate subtotal
+  const calculateSubtotal = () => {
+    if (!cart?.items?.length) return 0;
+    return cart.items.reduce(
+      (total, item) =>
+        total + (item.productId?.price || 0) * (item.quantity || 0),
+      0
+    );
+  };
+
+  const subtotal = calculateSubtotal();
   const shippingFee = subtotal > 50 ? 0 : 5; // Free shipping over $50
   const total = subtotal + shippingFee - discountAmount;
 
   useEffect(() => {
     // Redirect if cart is empty
-    if (!cart.items || cart.items.length === 0) {
+    if (!cart?.items?.length) {
       toast.error("Your cart is empty");
       navigate("/cart");
       return;
@@ -46,18 +56,19 @@ const CheckoutPage = () => {
 
     // Fetch user vouchers
     const fetchVouchers = async () => {
-      if (!user) return;
-
+      if (!user?.id) return; // Ensure user.id is valid
       setLoadingVouchers(true);
       try {
         const response = await voucherAPI.getUserVouchers();
-        // Filter only available vouchers
         const availableVouchers = response.data.vouchers.filter(
-          (v) => v.status === "available"
+          (v) =>
+            v.status === "available" &&
+            new Date(v.voucherId.expires_at) > new Date()
         );
         setVouchers(availableVouchers);
       } catch (error) {
         console.error("Error fetching vouchers:", error);
+        toast.error(error.response?.data?.message || "Failed to load vouchers");
       } finally {
         setLoadingVouchers(false);
       }
@@ -73,28 +84,60 @@ const CheckoutPage = () => {
     }
   }, [user]);
 
-  // Calculate discount when voucher is selected
-  useEffect(() => {
-    if (!selectedVoucher) {
+  // Validate and apply coupon code
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      setSelectedVoucher("");
       setDiscountAmount(0);
       return;
     }
-
-    const voucher = vouchers.find((v) => v.voucherId.id === selectedVoucher);
-    if (voucher) {
-      const voucherDetails = voucher.voucherId;
-      const discountPercentage = voucherDetails.discount_percentage / 100;
-      const calculatedDiscount = subtotal * discountPercentage;
-
-      // Apply max discount cap if specified
-      const finalDiscount =
-        voucherDetails.max_discount > 0
-          ? Math.min(calculatedDiscount, voucherDetails.max_discount)
-          : calculatedDiscount;
-
-      setDiscountAmount(finalDiscount);
+    setCouponError("");
+    try {
+      const response = await voucherAPI.getVoucherById(couponCode); // Assuming code is the ID
+      const voucher = response.data.voucher;
+      if (
+        voucher &&
+        new Date(voucher.expires_at) > new Date() &&
+        !voucher.is_used
+      ) {
+        setSelectedVoucher(voucher.id);
+        const discountPercentage = voucher.discount_percentage / 100;
+        const calculatedDiscount = subtotal * discountPercentage;
+        const finalDiscount =
+          voucher.max_discount > 0
+            ? Math.min(calculatedDiscount, voucher.max_discount)
+            : calculatedDiscount;
+        setDiscountAmount(finalDiscount);
+        setCouponError("");
+      } else {
+        setCouponError("Invalid or expired coupon code");
+        setSelectedVoucher("");
+        setDiscountAmount(0);
+      }
+    } catch (error) {
+      setCouponError("Invalid coupon code");
+      setSelectedVoucher("");
+      setDiscountAmount(0);
     }
-  }, [selectedVoucher, vouchers, subtotal]);
+  };
+
+  // Calculate discount when voucher is selected or coupon validated
+  useEffect(() => {
+    if (selectedVoucher && !couponCode) {
+      const voucher = vouchers.find((v) => v.voucherId.id === selectedVoucher);
+      if (voucher) {
+        const { discount_percentage, max_discount } = voucher.voucherId;
+        const discountPercentage = discount_percentage / 100;
+        const calculatedDiscount = subtotal * discountPercentage;
+        const finalDiscount =
+          max_discount > 0
+            ? Math.min(calculatedDiscount, max_discount)
+            : calculatedDiscount;
+        setDiscountAmount(finalDiscount);
+      }
+    }
+  }, [selectedVoucher, vouchers, subtotal, couponCode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -106,36 +149,62 @@ const CheckoutPage = () => {
 
     setLoading(true);
     try {
-      // Prepare order data
+      // Prepare order data as per /api/order/create schema
       const orderData = {
         paymentMethod,
         shippingAddress,
         selectedItems: cart.items.map((item) => ({
-          productId: item.productId._id,
+          productId: item.productId._id || item.productId.id,
           quantity: item.quantity,
         })),
+        ...(selectedVoucher && { voucherId: selectedVoucher }),
       };
 
-      // Add voucher if selected
-      if (selectedVoucher) {
-        orderData.voucherId = selectedVoucher;
-      }
-
       // Create order
-      const response = await orderAPI.createOrder(orderData);
+      const orderResponse = await orderAPI.createOrder(orderData);
+      const order = orderResponse.data.order;
 
-      // Clear cart after successful order
+      // Clear cart
       await clearCart();
 
-      toast.success("Order placed successfully!");
+      if (paymentMethod === "Cash on Delivery") {
+        toast.success("Order placed successfully!");
+        navigate(`/orders/${order._id || order.id}`);
+      } else if (paymentMethod === "Online Banking") {
+        try {
+          const paymentResponse = await paymentAPI.generateVietQR({
+            orderId: order._id || order.id,
+          });
+          const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
 
-      // Navigate to order confirmation page
-      navigate(`/orders/${response.data.order.id}`);
+          // Store payment info
+          localStorage.setItem(
+            "currentPayment",
+            JSON.stringify({
+              paymentId,
+              paymentImgUrl,
+              expiresAt,
+              orderId: order._id || order.id,
+              amount: total,
+            })
+          );
+
+          toast.success("Order created! Redirecting to payment...");
+          navigate(
+            `/payment?paymentId=${paymentId}&orderId=${order._id || order.id}`
+          );
+        } catch (paymentError) {
+          console.error("Error generating payment QR:", paymentError);
+          toast.error(
+            paymentError.response?.data?.message ||
+              "Payment QR generation failed. Please contact support."
+          );
+          navigate(`/orders/${order._id || order.id}`);
+        }
+      }
     } catch (error) {
       console.error("Error creating order:", error);
-      const errorMessage =
-        error.response?.data?.message || "Failed to place order";
-      toast.error(errorMessage);
+      toast.error(error.response?.data?.message || "Failed to place order");
     } finally {
       setLoading(false);
     }
@@ -160,7 +229,6 @@ const CheckoutPage = () => {
   return (
     <Container className="py-5">
       <h1 className="mb-4">Checkout</h1>
-
       <Row>
         <Col md={8}>
           <Card className="mb-4">
@@ -180,7 +248,6 @@ const CheckoutPage = () => {
                     required
                   />
                 </Form.Group>
-
                 <Form.Group className="mb-4">
                   <Form.Label>Payment Method</Form.Label>
                   <div>
@@ -205,31 +272,62 @@ const CheckoutPage = () => {
                     />
                   </div>
                 </Form.Group>
-
-                {vouchers.length > 0 && (
+                {(vouchers.length > 0 || couponCode) && (
                   <Form.Group className="mb-4">
-                    <Form.Label>Apply Voucher</Form.Label>
-                    <Form.Select
-                      value={selectedVoucher}
-                      onChange={(e) => setSelectedVoucher(e.target.value)}
-                      disabled={loadingVouchers}
-                    >
-                      <option value="">No voucher</option>
-                      {vouchers.map((voucher) => (
-                        <option
-                          key={voucher.voucherId.id}
-                          value={voucher.voucherId.id}
+                    <Form.Label>Apply Voucher or Coupon</Form.Label>
+                    <Row>
+                      <Col md={8}>
+                        <Form.Select
+                          value={selectedVoucher}
+                          onChange={(e) => {
+                            setSelectedVoucher(e.target.value);
+                            setCouponCode("");
+                            setCouponError("");
+                          }}
+                          disabled={loadingVouchers || couponCode}
                         >
-                          {voucher.voucherId.discount_percentage}% off
-                          {voucher.voucherId.max_discount > 0
-                            ? ` (max $${voucher.voucherId.max_discount})`
-                            : ""}
-                        </option>
-                      ))}
-                    </Form.Select>
+                          <option value="">Select a voucher</option>
+                          {vouchers.map((voucher) => (
+                            <option
+                              key={voucher.voucherId.id}
+                              value={voucher.voucherId.id}
+                            >
+                              {voucher.voucherId.discount_percentage}% off
+                              {voucher.voucherId.max_discount > 0
+                                ? ` (max $${voucher.voucherId.max_discount})`
+                                : ""}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Col>
+                      <Col md={4}>
+                        <Button
+                          variant="outline-secondary"
+                          onClick={validateCoupon}
+                          disabled={!couponCode || loadingVouchers}
+                        >
+                          Apply
+                        </Button>
+                      </Col>
+                    </Row>
+                    <Form.Control
+                      type="text"
+                      className="mt-2"
+                      placeholder="Enter coupon code"
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value);
+                        setSelectedVoucher("");
+                        setDiscountAmount(0);
+                        setCouponError("");
+                      }}
+                      isInvalid={!!couponError}
+                    />
+                    <Form.Control.Feedback type="invalid">
+                      {couponError}
+                    </Form.Control.Feedback>
                   </Form.Group>
                 )}
-
                 <Button
                   variant="primary"
                   type="submit"
@@ -255,7 +353,6 @@ const CheckoutPage = () => {
             </Card.Body>
           </Card>
         </Col>
-
         <Col md={4}>
           <Card>
             <Card.Header>
@@ -263,7 +360,7 @@ const CheckoutPage = () => {
             </Card.Header>
             <ListGroup variant="flush">
               {cart.items.map((item) => (
-                <ListGroup.Item key={item.productId._id}>
+                <ListGroup.Item key={item.productId._id || item.productId.id}>
                   <div className="d-flex justify-content-between align-items-center">
                     <div>
                       <p className="mb-0 fw-bold">{item.productId.name}</p>
@@ -277,14 +374,12 @@ const CheckoutPage = () => {
                   </div>
                 </ListGroup.Item>
               ))}
-
               <ListGroup.Item>
                 <div className="d-flex justify-content-between">
                   <span>Subtotal</span>
                   <span>${subtotal.toFixed(2)}</span>
                 </div>
               </ListGroup.Item>
-
               <ListGroup.Item>
                 <div className="d-flex justify-content-between">
                   <span>Shipping</span>
@@ -293,7 +388,6 @@ const CheckoutPage = () => {
                   </span>
                 </div>
               </ListGroup.Item>
-
               {discountAmount > 0 && (
                 <ListGroup.Item>
                   <div className="d-flex justify-content-between text-success">
@@ -302,7 +396,6 @@ const CheckoutPage = () => {
                   </div>
                 </ListGroup.Item>
               )}
-
               <ListGroup.Item>
                 <div className="d-flex justify-content-between fw-bold">
                   <span>Total</span>
