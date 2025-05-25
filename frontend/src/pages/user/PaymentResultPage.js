@@ -1,90 +1,104 @@
-// src/pages/user/PaymentResultPage.js
+"use client";
 
-import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import MainLayout from "../../layouts/MainLayout";
-import Card from "../../components/ui/Card";
+import { useSearchParams, Link } from "react-router-dom";
+import { Container, Card, Alert } from "react-bootstrap";
 import Button from "../../components/ui/Button";
 
-/**
- * Parses the URL query string and returns an object of VNPay response params.
- */
-function useQueryParams() {
-  const { search } = useLocation();
-  const [params, setParams] = useState({});
-  useEffect(() => {
-    const qp = new URLSearchParams(search);
-    const entries = {};
-    for (const [key, value] of qp.entries()) {
-      entries[key] = value;
-    }
-    setParams(entries);
-  }, [search]);
-  return params;
-}
-
 const PaymentResultPage = () => {
-  const query = useQueryParams();
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const paymentId = searchParams.get("paymentId");
+  const orderId = searchParams.get("orderId");
+  const paymentStatus = "pending";
 
-  // VNPay sends vnp_ResponseCode==='00' for success
-  const isSuccess = query.vnp_ResponseCode === "00";
+  const getStatusColor = () => "warning";
+
+  const getStatusIcon = () => "bi-clock-fill";
+
+  const getStatusMessage = () => (
+    <>
+      Payment pending verification.
+      <br />
+      Our team will verify your payment and send a confirmation email soon.
+    </>
+  );
 
   return (
-    <MainLayout>
-      <div className="max-w-lg mx-auto my-8">
-        <h1 className="text-3xl font-semibold mb-6 text-center">
-          {isSuccess ? "🎉 Payment Successful" : "❌ Payment Failed"}
-        </h1>
+    <Container className="py-5">
+      <div className="row justify-content-center">
+        <div className="col-md-8 col-lg-6">
+          <Card className="shadow-sm">
+            <Card.Body className="text-center p-5">
+              <div className="mb-4">
+                <i
+                  className={`${getStatusIcon()} display-1 text-${getStatusColor()}`}
+                ></i>
+              </div>
 
-        <Card className="space-y-4">
-          <div>
-            <span className="font-medium">Order Ref:</span>{" "}
-            {query.vnp_TxnRef || "N/A"}
-          </div>
-          <div>
-            <span className="font-medium">Amount:</span>{" "}
-            {query.vnp_Amount
-              ? `${(Number(query.vnp_Amount) / 100).toLocaleString()} VND`
-              : "N/A"}
-          </div>
-          <div>
-            <span className="font-medium">Bank Code:</span>{" "}
-            {query.vnp_BankCode || "N/A"}
-          </div>
-          <div>
-            <span className="font-medium">Payment Date:</span>{" "}
-            {query.vnp_PayDate || "N/A"}
-          </div>
-          <div>
-            <span className="font-medium">Response Code:</span>{" "}
-            {query.vnp_ResponseCode || "N/A"}
-          </div>
-          {query.vnp_ResponseMessage && (
-            <div>
-              <span className="font-medium">Message:</span>{" "}
-              {query.vnp_ResponseMessage}
-            </div>
-          )}
-        </Card>
+              <h2 className="mb-3">{getStatusMessage()}</h2>
 
-        <div className="flex justify-center mt-6 space-x-4">
-          <Button onClick={() => navigate("/orders")}>My Orders</Button>
-          {!isSuccess && query.vnp_TxnRef && (
-            <Button
-              variant="outline"
-              onClick={() =>
-                navigate("/checkout", {
-                  state: { retryTxnRef: query.vnp_TxnRef },
-                })
-              }
-            >
-              Retry Payment
-            </Button>
-          )}
+              <div className="mb-4">
+                <div className="bg-light p-3 rounded mb-3">
+                  <div className="row text-start">
+                    <div className="col-6">
+                      <strong>Payment ID:</strong>
+                    </div>
+                    <div className="col-6">
+                      <code>{paymentId}</code>
+                    </div>
+                  </div>
+                  <div className="row text-start">
+                    <div className="col-6">
+                      <strong>Order ID:</strong>
+                    </div>
+                    <div className="col-6">
+                      <code>{orderId}</code>
+                    </div>
+                  </div>
+                  <div className="row text-start">
+                    <div className="col-6">
+                      <strong>Status:</strong>
+                    </div>
+                    <div className="col-6">
+                      <span className={`badge bg-${getStatusColor()}`}>
+                        Pending
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Alert variant="info" className="mb-4">
+                <Alert.Heading className="h6">
+                  <i className="bi bi-info-circle me-2"></i>
+                  Payment Processing
+                </Alert.Heading>
+                <p className="mb-0">
+                  Your payment has been submitted and is awaiting verification
+                  by our team. You will receive an email confirmation once the
+                  payment is verified.
+                </p>
+              </Alert>
+
+              <div className="d-grid gap-2">
+                <Button
+                  as={Link}
+                  to={`/orders/${orderId}`}
+                  variant="outline-secondary"
+                >
+                  View Order Details
+                </Button>
+                <Button as={Link} to="/orders" variant="outline-success">
+                  View All Orders
+                </Button>
+                <Button as={Link} to="/" variant="primary">
+                  Back to Home
+                </Button>
+              </div>
+            </Card.Body>
+          </Card>
         </div>
       </div>
-    </MainLayout>
+    </Container>
   );
 };
 

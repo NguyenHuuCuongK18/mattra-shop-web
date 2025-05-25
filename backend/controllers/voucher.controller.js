@@ -310,6 +310,57 @@ exports.claimVoucher = async (req, res) => {
   }
 };
 
+exports.validateCoupon = async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ message: "Coupon code is required" });
+    }
+
+    const voucher = await Voucher.findOne({ code }).select("-__v");
+    if (!voucher) {
+      return res.status(404).json({ message: "Voucher not found" });
+    }
+    if (voucher.is_used || voucher.expires_at <= new Date()) {
+      return res.status(400).json({ message: "Voucher is used or expired" });
+    }
+    if (voucher.subscriberOnly && req.user.role !== "subscriber") {
+      return res
+        .status(403)
+        .json({ message: "This voucher is exclusive to subscribers" });
+    }
+
+    // Check if the user has this voucher assigned
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const hasVoucher = user.vouchers.some(
+      (v) =>
+        v.voucherId.toString() === voucher._id.toString() &&
+        v.status === "available"
+    );
+    if (!hasVoucher) {
+      return res
+        .status(403)
+        .json({ message: "Voucher not assigned to this user" });
+    }
+
+    res.status(200).json({
+      message: "Voucher is valid",
+      voucher: {
+        id: voucher._id,
+        code: voucher.code,
+        discount_percentage: voucher.discount_percentage,
+        max_discount: voucher.max_discount,
+        expires_at: voucher.expires_at,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.updateVoucher = async (req, res) => {
   try {
     if (req.user.role !== "admin") {

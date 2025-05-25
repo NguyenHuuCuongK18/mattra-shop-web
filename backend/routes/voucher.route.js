@@ -35,6 +35,9 @@ router.get("/:id", voucherController.getVoucherById);
 // Get user-specific vouchers
 router.get("/user", authMiddleware, voucherController.getUserVouchers);
 
+// Validate coupon code
+router.post("/validate", authMiddleware, voucherController.validateCoupon);
+
 // Update voucher (admin only)
 router.put("/update/:id", authMiddleware, voucherController.updateVoucher);
 
