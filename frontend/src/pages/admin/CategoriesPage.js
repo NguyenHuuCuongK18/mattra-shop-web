@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Table, Form, Alert } from "react-bootstrap";
-import api from "../../utils/api";
+import { categoryAPI } from "../../utils/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 
@@ -24,7 +24,7 @@ function CategoriesPage() {
     const fetchCategories = async () => {
       setLoading(true);
       try {
-        const response = await api.get("/api/category");
+        const response = await categoryAPI.getAllCategories();
         setCategories(response.data.categories || []);
       } catch (error) {
         console.error("Error fetching categories:", error);
@@ -95,13 +95,13 @@ function CategoriesPage() {
       let response;
       if (currentCategory) {
         // Update existing category
-        response = await api.put(
-          `/api/category/update/${currentCategory.id}`,
+        response = await categoryAPI.updateCategory(
+          currentCategory.id,
           formData
         );
       } else {
         // Create new category
-        response = await api.post("/api/category/create", formData);
+        response = await categoryAPI.createCategory(formData);
       }
 
       // Update categories list
@@ -129,7 +129,7 @@ function CategoriesPage() {
 
     setFormSubmitting(true);
     try {
-      await api.delete(`/api/category/delete/${currentCategory.id}`);
+      await categoryAPI.deleteCategory(currentCategory.id);
 
       // Remove category from list
       setCategories(categories.filter((c) => c.id !== currentCategory.id));

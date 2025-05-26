@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Container, Row, Col, InputGroup, Form } from "react-bootstrap";
 import { useCart } from "../../contexts/CartContext";
 import Button from "../../components/ui/Button";
+import { voucherAPI } from "../../utils/api";
 
 function CartPage() {
   const { cart, loading, updateCartItem, removeFromCart, clearCart } =
@@ -13,6 +14,9 @@ function CartPage() {
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [couponSuccess, setCouponSuccess] = useState("");
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+  const [maxDiscount, setMaxDiscount] = useState(0);
+  const [voucherApplied, setVoucherApplied] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,20 +46,28 @@ function CartPage() {
     navigate("/checkout");
   };
 
-  const handleApplyCoupon = (e) => {
+  const handleApplyCoupon = async (e) => {
     e.preventDefault();
+    setCouponError("");
+    setCouponSuccess("");
+    setVoucherApplied(false);
+
     if (!couponCode) {
-      setCouponError("Please enter a coupon code");
+      setCouponError("Please enter a voucher code");
       return;
     }
 
-    // Simulate coupon validation
-    if (couponCode.toUpperCase() === "WELCOME10") {
-      setCouponSuccess("Coupon applied successfully! 10% discount");
-      setCouponError("");
-    } else {
-      setCouponError("Invalid coupon code");
-      setCouponSuccess("");
+    try {
+      const { data } = await voucherAPI.applyVoucher(couponCode);
+      const { discount_percentage, max_discount, code } = data.voucher;
+      setDiscountPercentage(discount_percentage);
+      setMaxDiscount(max_discount);
+      setVoucherApplied(true);
+      setCouponSuccess(
+        `Voucher "${code}" applied: ${discount_percentage}% off (max $${max_discount})`
+      );
+    } catch (err) {
+      setCouponError(err.response?.data?.message || "Failed to apply voucher");
     }
   };
 
@@ -89,6 +101,10 @@ function CartPage() {
       </Container>
     );
   }
+
+  const discountAmount = voucherApplied
+    ? Math.min((total * discountPercentage) / 100, maxDiscount)
+    : 0;
 
   return (
     <Container className="py-5 fade-in">
@@ -215,29 +231,17 @@ function CartPage() {
                 <span className="text-secondary">Shipping</span>
                 <span>{total > 50 ? "Free" : "$5.00"}</span>
               </div>
-              <div className="mb-3 d-flex justify-content-between">
-                <span className="text-secondary">Tax</span>
-                <span>${(total * 0.1).toFixed(2)}</span>
-              </div>
-              {couponSuccess && (
+              {voucherApplied && (
                 <div className="mb-3 d-flex justify-content-between text-success">
-                  <span>Discount (10%)</span>
-                  <span>-${(total * 0.1).toFixed(2)}</span>
+                  <span>Discount ({discountPercentage}%)</span>
+                  <span>-${discountAmount.toFixed(2)}</span>
                 </div>
               )}
               <hr />
               <div className="d-flex justify-content-between fw-bold fs-5 mb-3">
                 <span>Total</span>
                 <span>
-                  $
-                  {couponSuccess
-                    ? (
-                        total +
-                        (total > 50 ? 0 : 5) +
-                        total * 0.1 -
-                        total * 0.1
-                      ).toFixed(2)
-                    : (total + (total > 50 ? 0 : 5) + total * 0.1).toFixed(2)}
+                  ${(total + (total > 50 ? 0 : 5) - discountAmount).toFixed(2)}
                 </span>
               </div>
 

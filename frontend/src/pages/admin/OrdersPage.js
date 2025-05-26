@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Table, Badge, Form, InputGroup, Alert } from "react-bootstrap";
-import api from "../../utils/api";
+import { orderAPI } from "../../utils/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 
@@ -20,7 +20,7 @@ function OrdersPage() {
     const fetchOrders = async () => {
       setLoading(true);
       try {
-        const response = await api.get("/api/order");
+        const response = await orderAPI.getAllOrders();
         setOrders(response.data.orders || []);
       } catch (error) {
         console.error("Error fetching orders:", error);
@@ -41,7 +41,7 @@ function OrdersPage() {
   const handleUpdateStatus = async (orderId, newStatus) => {
     setFormSubmitting(true);
     try {
-      const response = await api.put(`/api/order/update-status/${orderId}`, {
+      const response = await orderAPI.updateOrderStatus(orderId, {
         status: newStatus,
       });
 

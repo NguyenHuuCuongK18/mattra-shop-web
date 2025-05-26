@@ -65,7 +65,15 @@ exports.login = async (req, res) => {
     }
     const user = await User.findOne({
       $or: [{ email: identification }, { username: identification }],
-    });
+    })
+      .populate(
+        "subscription.subscriptionId",
+        "name price duration description"
+      )
+      .populate(
+        "vouchers.voucherId",
+        "code discount_percentage max_discount subscriberOnly expires_at"
+      );
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -90,6 +98,7 @@ exports.login = async (req, res) => {
         address: user.address,
         role: user.role,
         subscription: user.subscription,
+        vouchers: user.vouchers,
       },
     });
   } catch (error) {
@@ -104,6 +113,10 @@ exports.getProfile = async (req, res) => {
       .populate(
         "subscription.subscriptionId",
         "name price duration description"
+      )
+      .populate(
+        "vouchers.voucherId",
+        "code discount_percentage max_discount subscriberOnly expires_at"
       );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -117,6 +130,7 @@ exports.getProfile = async (req, res) => {
       address: user.address,
       role: user.role,
       subscription: user.subscription,
+      vouchers: user.vouchers,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -271,6 +285,10 @@ exports.getAllUsers = async (req, res) => {
       .populate(
         "subscription.subscriptionId",
         "name price duration description"
+      )
+      .populate(
+        "vouchers.voucherId",
+        "code discount_percentage max_discount subscriberOnly expires_at"
       );
     res.status(200).json({
       message: "Users retrieved successfully",
@@ -280,7 +298,6 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 exports.updateSubscriptionStatus = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -401,4 +418,29 @@ exports.updateAvatar = (req, res) => {
       res.status(500).json({ message: error.message });
     }
   });
+};
+
+// Delete a user (admin only, cannot delete another admin)
+exports.deleteUser = async (req, res) => {
+  try {
+    // only admins may delete users
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // prevent deleting other admins
+    if (user.role === "admin") {
+      return res.status(400).json({ message: "Cannot delete admin user" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

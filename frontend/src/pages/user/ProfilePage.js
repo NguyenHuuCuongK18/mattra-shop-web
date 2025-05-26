@@ -3,7 +3,18 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import Button from "../../components/ui/Button";
-import { Container, Row, Col, Alert, Tabs, Tab, Form } from "react-bootstrap";
+import {
+  Container,
+  Row,
+  Col,
+  Alert,
+  Tabs,
+  Tab,
+  Form,
+  ListGroup,
+  Spinner,
+} from "react-bootstrap";
+import { voucherAPI } from "../../utils/api";
 
 function ProfilePage() {
   const { user, updateProfile, changePassword, uploadAvatar } = useAuth();
@@ -33,6 +44,11 @@ function ProfilePage() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
+
+  // Vouchers state
+  const [vouchers, setVouchers] = useState([]);
+  const [voucherLoading, setVoucherLoading] = useState(false);
+  const [voucherError, setVoucherError] = useState("");
 
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
@@ -145,6 +161,24 @@ function ProfilePage() {
   useEffect(() => {
     setAvatarPreview(user?.avatar || "");
   }, [user?.avatar]);
+  // Fetch user vouchers
+  useEffect(() => {
+    const fetchVouchers = async () => {
+      setVoucherLoading(true);
+      setVoucherError("");
+      try {
+        const response = await voucherAPI.getUserVouchers();
+        setVouchers(response.data.vouchers);
+      } catch (err) {
+        setVoucherError(
+          err.response?.data?.message || "Failed to load vouchers"
+        );
+      } finally {
+        setVoucherLoading(false);
+      }
+    };
+    if (user) fetchVouchers();
+  }, [user]);
 
   return (
     <Container className="py-5 fade-in">
@@ -574,6 +608,66 @@ function ProfilePage() {
               </div>
             </Tab>
           )}
+          <Tab
+            eventKey="vouchers"
+            title={
+              <>
+                <i className="bi bi-tag me-2"></i>Vouchers
+              </>
+            }
+          >
+            <div className="p-4">
+              {voucherError && <Alert variant="danger">{voucherError}</Alert>}
+              {voucherLoading ? (
+                <div className="text-center">
+                  <Spinner animation="border" />
+                </div>
+              ) : vouchers.length === 0 ? (
+                <p className="text-center">You have no vouchers.</p>
+              ) : (
+                <ListGroup variant="flush">
+                  {vouchers.map(({ voucherId, status }) => {
+                    const expiryDate = new Date(voucherId.expires_at);
+                    const now = new Date();
+                    let label, badgeVariant;
+                    if (status === "used") {
+                      label = "Used";
+                      badgeVariant = "secondary";
+                    } else if (expiryDate <= now) {
+                      label = "Expired";
+                      badgeVariant = "danger";
+                    } else {
+                      label = "Available";
+                      badgeVariant = "success";
+                    }
+                    return (
+                      <ListGroup.Item
+                        key={voucherId._id}
+                        className="d-flex justify-content-between align-items-center"
+                      >
+                        <div>
+                          <h5 className="mb-1">{voucherId.code}</h5>
+                          <small>
+                            Discount: {voucherId.discount_percentage}% (max{" "}
+                            {voucherId.max_discount})
+                          </small>
+                          <br />
+                          <small>
+                            Expires: {expiryDate.toLocaleDateString()}
+                          </small>
+                        </div>
+                        <span
+                          className={`badge bg-${badgeVariant}-subtle text-${badgeVariant} px-3 py-2 rounded-pill`}
+                        >
+                          {label}
+                        </span>
+                      </ListGroup.Item>
+                    );
+                  })}
+                </ListGroup>
+              )}
+            </div>
+          </Tab>
         </Tabs>
       </div>
 
