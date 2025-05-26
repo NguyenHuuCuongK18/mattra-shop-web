@@ -6,6 +6,9 @@ const authMiddleware = require("../middlewares/auth.middleware");
 // Create order
 router.post("/create", authMiddleware, orderController.createOrder);
 
+// Apply voucher to order
+router.post("/apply-voucher", authMiddleware, orderController.applyVoucher);
+
 // Get user's orders
 router.get("/my-orders", authMiddleware, orderController.getUserOrders);
 

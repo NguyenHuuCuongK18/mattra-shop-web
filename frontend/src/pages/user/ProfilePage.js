@@ -157,48 +157,19 @@ function ProfilePage() {
     }
   };
 
-  // Update avatar preview and profile data when user changes
+  // Update avatar preview when user changes
   useEffect(() => {
     setAvatarPreview(user?.avatar || "");
-    setProfileData({
-      name: user?.name || "",
-      address: user?.address || "",
-    });
-  }, [user]);
-
+  }, [user?.avatar]);
   // Fetch user vouchers
   useEffect(() => {
     const fetchVouchers = async () => {
       setVoucherLoading(true);
       setVoucherError("");
       try {
-        // Log user object for debugging
-        console.log("User object:", user);
-        if (!user?.id) {
-          throw new Error("User ID is missing");
-        }
         const response = await voucherAPI.getUserVouchers();
-        console.log("Voucher response:", response.data);
-        // Ensure vouchers is an array and filter out invalid entries
-        const validVouchers = Array.isArray(response.data.vouchers)
-          ? response.data.vouchers.filter(
-              (v) =>
-                v.voucherId &&
-                v.voucherId._id &&
-                typeof v.voucherId._id === "string" &&
-                v.status &&
-                ["available", "used", "expired"].includes(v.status)
-            )
-          : [];
-        setVouchers(validVouchers);
-        if (validVouchers.length === 0 && response.data.vouchers?.length > 0) {
-          console.warn(
-            "All vouchers filtered out due to invalid data:",
-            response.data.vouchers
-          );
-        }
+        setVouchers(response.data.vouchers);
       } catch (err) {
-        console.error("Voucher fetch error:", err);
         setVoucherError(
           err.response?.data?.message || "Failed to load vouchers"
         );
@@ -652,68 +623,47 @@ function ProfilePage() {
                   <Spinner animation="border" />
                 </div>
               ) : vouchers.length === 0 ? (
-                <p className="text-center">
-                  {voucherError
-                    ? "Unable to load vouchers. Please try again later."
-                    : "You have no valid vouchers."}
-                </p>
+                <p className="text-center">You have no vouchers.</p>
               ) : (
                 <ListGroup variant="flush">
-                  {vouchers
-                    .map(({ voucherId, status }, index) => {
-                      if (
-                        !voucherId ||
-                        !voucherId._id ||
-                        !voucherId.expires_at ||
-                        !voucherId.code
-                      ) {
-                        console.warn(
-                          `Invalid voucher data at index ${index}:`,
-                          {
-                            voucherId,
-                            status,
-                          }
-                        );
-                        return null;
-                      }
-                      const expiryDate = new Date(voucherId.expires_at);
-                      const now = new Date();
-                      let label, badgeVariant;
-                      if (status === "used") {
-                        label = "Used";
-                        badgeVariant = "secondary";
-                      } else if (status === "expired" || expiryDate <= now) {
-                        label = "Expired";
-                        badgeVariant = "danger";
-                      } else {
-                        label = "Available";
-                        badgeVariant = "success";
-                      }
-                      return (
-                        <ListGroup.Item
-                          key={voucherId._id}
-                          className="d-flex justify-content-between align-items-center"
+                  {vouchers.map(({ voucherId, status }) => {
+                    const expiryDate = new Date(voucherId.expires_at);
+                    const now = new Date();
+                    let label, badgeVariant;
+                    if (status === "used") {
+                      label = "Used";
+                      badgeVariant = "secondary";
+                    } else if (expiryDate <= now) {
+                      label = "Expired";
+                      badgeVariant = "danger";
+                    } else {
+                      label = "Available";
+                      badgeVariant = "success";
+                    }
+                    return (
+                      <ListGroup.Item
+                        key={voucherId._id}
+                        className="d-flex justify-content-between align-items-center"
+                      >
+                        <div>
+                          <h5 className="mb-1">{voucherId.code}</h5>
+                          <small>
+                            Discount: {voucherId.discount_percentage}% (max{" "}
+                            {voucherId.max_discount})
+                          </small>
+                          <br />
+                          <small>
+                            Expires: {expiryDate.toLocaleDateString()}
+                          </small>
+                        </div>
+                        <span
+                          className={`badge bg-${badgeVariant}-subtle text-${badgeVariant} px-3 py-2 rounded-pill`}
                         >
-                          <div>
-                            <h5 className="mb-1">{voucherId.code}</h5>
-                            <small>
-                              Discount: {voucherId.discount_percentage}% (max{" "}
-                              {voucherId.max_discount})
-                            </small>
-                            <br />
-                            <small>
-                              Expires: {expiryDate.toLocaleDateString()}
-                            </small>
-                          </div>
-                          <span
-                            className={`badge bg-${badgeVariant}-subtle text-${badgeVariant} px-3 py-2 rounded-pill`}
-                          >
-                            {label}
-                          </span>
-                        </ListGroup.Item>
-                      );
-                    })
-                    .filter(Boolean)}
+                          {label}
+                        </span>
+                      </ListGroup.Item>
+                    );
+                  })}
                 </ListGroup>
               )}
             </div>

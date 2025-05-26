@@ -82,6 +82,8 @@ export const orderAPI = {
   getMyOrders: () => api.get("/api/order/my-orders"),
   getAllOrders: () => api.get("/api/order"),
   createOrder: (orderData) => api.post("/api/order/create", orderData),
+  applyVoucher: (orderId, voucherId) =>
+    api.post("/api/order/apply-voucher", { orderId, voucherId }),
   updateOrderStatus: (id, statusData) =>
     api.put(`/api/order/update/${id}`, statusData),
   cancelOrder: (id) => api.delete(`/api/order/cancel/${id}`),

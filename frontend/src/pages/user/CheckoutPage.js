@@ -6,31 +6,36 @@ import {
   Row,
   Col,
   Form,
-  Button,
+  Button as BootstrapButton,
   Card,
   ListGroup,
   Spinner,
 } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { orderAPI, voucherAPI, paymentAPI } from "../../utils/api";
+import Button from "../../components/ui/Button";
 import { toast } from "react-hot-toast";
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
+  const { state } = useLocation();
   const { cart, clearCart } = useCart();
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
   const [vouchers, setVouchers] = useState([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
-  const [selectedVoucher, setSelectedVoucher] = useState("");
+  const [selectedVoucher, setSelectedVoucher] = useState(
+    state?.voucher || null
+  );
   const [discountAmount, setDiscountAmount] = useState(0);
   const [shippingAddress, setShippingAddress] = useState(user?.address || "");
   const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery");
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
+  const [orderId, setOrderId] = useState(null);
 
   // Calculate subtotal
   const calculateSubtotal = () => {
@@ -43,7 +48,7 @@ const CheckoutPage = () => {
   };
 
   const subtotal = calculateSubtotal();
-  const shippingFee = subtotal > 50 ? 0 : 5; // Free shipping over $50
+  const shippingFee = subtotal > 50 ? 0 : 5;
   const total = subtotal + shippingFee - discountAmount;
 
   useEffect(() => {
@@ -56,7 +61,7 @@ const CheckoutPage = () => {
 
     // Fetch user vouchers
     const fetchVouchers = async () => {
-      if (!user?._id) return; // Ensure user._id is valid
+      if (!user?._id) return;
       setLoadingVouchers(true);
       try {
         const response = await voucherAPI.getUserVouchers();
@@ -84,60 +89,58 @@ const CheckoutPage = () => {
     }
   }, [user]);
 
-  // Validate and apply coupon code
-  const validateCoupon = async () => {
-    if (!couponCode.trim()) {
-      setCouponError("Please enter a coupon code");
-      setSelectedVoucher("");
+  // Calculate discount from passed voucher
+  useEffect(() => {
+    if (selectedVoucher) {
+      const discountPercentage = selectedVoucher.discount_percentage / 100;
+      const calculatedDiscount = subtotal * discountPercentage;
+      const finalDiscount =
+        selectedVoucher.max_discount > 0
+          ? Math.min(calculatedDiscount, selectedVoucher.max_discount)
+          : calculatedDiscount;
+      setDiscountAmount(finalDiscount);
+    } else {
       setDiscountAmount(0);
+    }
+  }, [selectedVoucher, subtotal]);
+
+  const handleApplyCoupon = async (e) => {
+    e.preventDefault();
+    setCouponError("");
+    setSelectedVoucher(null);
+    setDiscountAmount(0);
+
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a voucher code");
       return;
     }
-    setCouponError("");
+
     try {
-      const response = await voucherAPI.getVoucherById(couponCode); // Assuming code is the ID
+      const response = await voucherAPI.validateVoucher(couponCode);
       const voucher = response.data.voucher;
       if (
         voucher &&
         new Date(voucher.expires_at) > new Date() &&
         !voucher.is_used
       ) {
-        setSelectedVoucher(voucher._id);
-        const discountPercentage = voucher.discount_percentage / 100;
-        const calculatedDiscount = subtotal * discountPercentage;
-        const finalDiscount =
-          voucher.max_discount > 0
-            ? Math.min(calculatedDiscount, voucher.max_discount)
-            : calculatedDiscount;
-        setDiscountAmount(finalDiscount);
-        setCouponError("");
+        setSelectedVoucher(voucher);
+        toast.success(`Voucher "${voucher.code}" applied successfully`);
       } else {
-        setCouponError("Invalid or expired coupon code");
-        setSelectedVoucher("");
-        setDiscountAmount(0);
+        setCouponError("Invalid or expired voucher code");
       }
     } catch (error) {
-      setCouponError("Invalid coupon code");
-      setSelectedVoucher("");
-      setDiscountAmount(0);
+      setCouponError(error.response?.data?.message || "Invalid voucher code");
     }
   };
 
-  // Calculate discount when voucher is selected or coupon validated
-  useEffect(() => {
-    if (selectedVoucher && !couponCode) {
-      const voucher = vouchers.find((v) => v.voucherId._id === selectedVoucher);
-      if (voucher) {
-        const { discount_percentage, max_discount } = voucher.voucherId;
-        const discountPercentage = discount_percentage / 100;
-        const calculatedDiscount = subtotal * discountPercentage;
-        const finalDiscount =
-          max_discount > 0
-            ? Math.min(calculatedDiscount, max_discount)
-            : calculatedDiscount;
-        setDiscountAmount(finalDiscount);
-      }
-    }
-  }, [selectedVoucher, vouchers, subtotal, couponCode]);
+  const handleSelectVoucher = (voucherId) => {
+    const voucher = vouchers.find(
+      (v) => v.voucherId._id === voucherId
+    )?.voucherId;
+    setSelectedVoucher(voucher || null);
+    setCouponCode("");
+    setCouponError("");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -149,7 +152,7 @@ const CheckoutPage = () => {
 
     setLoading(true);
     try {
-      // Prepare order data as per /api/order/create schema
+      // Create order without voucher initially
       const orderData = {
         paymentMethod,
         shippingAddress,
@@ -157,23 +160,35 @@ const CheckoutPage = () => {
           productId: item.productId._id || item.productId.id,
           quantity: item.quantity,
         })),
-        ...(selectedVoucher && { voucherId: selectedVoucher }),
       };
 
-      // Create order
       const orderResponse = await orderAPI.createOrder(orderData);
       const order = orderResponse.data.order;
+      setOrderId(order._id);
+
+      // Apply voucher if selected
+      if (selectedVoucher) {
+        try {
+          await orderAPI.applyVoucher(order._id, selectedVoucher._id);
+        } catch (voucherError) {
+          console.error("Error applying voucher:", voucherError);
+          toast.error(
+            voucherError.response?.data?.message || "Failed to apply voucher"
+          );
+          // Proceed to payment even if voucher fails
+        }
+      }
 
       // Clear cart
       await clearCart();
 
       if (paymentMethod === "Cash on Delivery") {
         toast.success("Order placed successfully!");
-        navigate(`/orders/${order._id || order.id}`);
+        navigate(`/orders/${order._id}`);
       } else if (paymentMethod === "Online Banking") {
         try {
           const paymentResponse = await paymentAPI.generateVietQR({
-            orderId: order._id || order.id,
+            orderId: order._id,
           });
           const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
 
@@ -184,22 +199,20 @@ const CheckoutPage = () => {
               paymentId,
               paymentImgUrl,
               expiresAt,
-              orderId: order._id || order.id,
+              orderId: order._id,
               amount: total,
             })
           );
 
           toast.success("Order created! Redirecting to payment...");
-          navigate(
-            `/payment?paymentId=${paymentId}&orderId=${order._id || order.id}`
-          );
+          navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
         } catch (paymentError) {
           console.error("Error generating payment QR:", paymentError);
           toast.error(
             paymentError.response?.data?.message ||
               "Payment QR generation failed. Please contact support."
           );
-          navigate(`/orders/${order._id || order.id}`);
+          navigate(`/orders/${order._id}`);
         }
       }
     } catch (error) {
@@ -217,9 +230,12 @@ const CheckoutPage = () => {
           <Card.Body>
             <Card.Title>Please Login</Card.Title>
             <Card.Text>You need to be logged in to checkout.</Card.Text>
-            <Button variant="primary" onClick={() => navigate("/login")}>
+            <BootstrapButton
+              variant="primary"
+              onClick={() => navigate("/login")}
+            >
               Go to Login
-            </Button>
+            </BootstrapButton>
           </Card.Body>
         </Card>
       </Container>
@@ -274,16 +290,12 @@ const CheckoutPage = () => {
                 </Form.Group>
                 {(vouchers.length > 0 || couponCode) && (
                   <Form.Group className="mb-4">
-                    <Form.Label>Apply Voucher or Coupon</Form.Label>
+                    <Form.Label>Apply Voucher</Form.Label>
                     <Row>
                       <Col md={8}>
                         <Form.Select
-                          value={selectedVoucher}
-                          onChange={(e) => {
-                            setSelectedVoucher(e.target.value);
-                            setCouponCode("");
-                            setCouponError("");
-                          }}
+                          value={selectedVoucher?._id || ""}
+                          onChange={(e) => handleSelectVoucher(e.target.value)}
                           disabled={loadingVouchers || couponCode}
                         >
                           <option value="">Select a voucher</option>
@@ -292,6 +304,7 @@ const CheckoutPage = () => {
                               key={voucher.voucherId._id}
                               value={voucher.voucherId._id}
                             >
+                              {voucher.voucherId.code} -{" "}
                               {voucher.voucherId.discount_percentage}% off
                               {voucher.voucherId.max_discount > 0
                                 ? ` (max $${voucher.voucherId.max_discount})`
@@ -303,21 +316,21 @@ const CheckoutPage = () => {
                       <Col md={4}>
                         <Button
                           variant="outline-secondary"
-                          onClick={validateCoupon}
+                          onClick={handleApplyCoupon}
                           disabled={!couponCode || loadingVouchers}
                         >
-                          Apply
+                          Apply Code
                         </Button>
                       </Col>
                     </Row>
                     <Form.Control
                       type="text"
                       className="mt-2"
-                      placeholder="Enter coupon code"
+                      placeholder="Enter voucher code"
                       value={couponCode}
                       onChange={(e) => {
                         setCouponCode(e.target.value);
-                        setSelectedVoucher("");
+                        setSelectedVoucher(null);
                         setDiscountAmount(0);
                         setCouponError("");
                       }}
@@ -329,7 +342,6 @@ const CheckoutPage = () => {
                   </Form.Group>
                 )}
                 <Button
-                  variant="primary"
                   type="submit"
                   disabled={loading || !shippingAddress.trim()}
                   className="w-100"

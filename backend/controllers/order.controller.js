@@ -3,7 +3,7 @@ const Cart = require("../models/cart.model");
 const Product = require("../models/product.model");
 const Voucher = require("../models/voucher.model");
 const User = require("../models/user.model");
-const { sendMail } = require("./mail.controller"); // add email sender :contentReference[oaicite:0]{index=0}
+const { sendMail } = require("./mail.controller");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -62,8 +62,9 @@ exports.createOrder = async (req, res) => {
       totalAmount += itemPrice;
     }
 
-    // Apply voucher discount
+    // Apply voucher discount if provided
     let discountApplied = 0;
+    let appliedVoucherId = null;
     if (voucherId) {
       const user = await User.findById(req.user.id).populate(
         "vouchers.voucherId"
@@ -87,18 +88,19 @@ exports.createOrder = async (req, res) => {
         await user.save();
         return res.status(400).json({ message: "Voucher is used or expired" });
       }
-      if (voucher.subscriberOnly && req.user.role !== "subscriber") {
+      if (voucher.subscriberOnly && user.role !== "subscriber") {
         return res
           .status(403)
           .json({ message: "This voucher is exclusive to subscribers" });
       }
       discountApplied = Math.min(
         (voucher.discount_percentage / 100) * totalAmount,
-        voucher.maxdiscount
+        voucher.max_discount || Infinity
       );
       totalAmount -= discountApplied;
       voucher.is_used = true;
       userVoucher.status = "used";
+      appliedVoucherId = voucher._id;
       await voucher.save();
       await user.save();
     }
@@ -109,14 +111,25 @@ exports.createOrder = async (req, res) => {
       items: orderItems,
       totalAmount,
       discountApplied,
-      voucherId,
+      voucherId: appliedVoucherId,
       paymentMethod,
       shippingAddress,
       status: "unverified",
     });
     await order.save();
 
-    // Update stock and cart (unchanged) :contentReference[oaicite:2]{index=2}
+    // Update stock
+    for (const item of orderItems) {
+      await Product.findByIdAndUpdate(item.productId, {
+        $inc: { stock: -item.quantity },
+      });
+    }
+
+    // Clear cart items
+    await Cart.findOneAndUpdate(
+      { userId: req.user.id },
+      { $pull: { items: { productId: { $in: productIds } } } }
+    );
 
     // Populate for response and email
     const populatedOrder = await Order.findById(order._id)
@@ -130,12 +143,14 @@ exports.createOrder = async (req, res) => {
         "Your order has been created – Mattra Shop",
         `Hello ${populatedOrder.userId.username},\n\n` +
           `Your order (ID: ${populatedOrder._id}) has been created successfully.\n` +
+          `Total Amount: $${populatedOrder.totalAmount.toFixed(2)}\n` +
+          `Discount Applied: $${populatedOrder.discountApplied.toFixed(2)}\n` +
           `You can view all your orders here:\n` +
           `https://mattra-online-shop.vercel.app/orders\n\n` +
           `Thank you for shopping with us!`
       );
-    } catch (err) {
-      console.error("Error sending order creation email:", err);
+    } catch (error) {
+      console.error("Error sending order creation email:", error);
     }
 
     res.status(201).json({
@@ -143,7 +158,126 @@ exports.createOrder = async (req, res) => {
       order: populatedOrder,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Create order error:", error);
+    res.status(500).json({ message: "Failed to create order" });
+  }
+};
+
+exports.applyVoucher = async (req, res) => {
+  try {
+    const { orderId, voucherId } = req.body;
+    if (!orderId || !voucherId) {
+      return res
+        .status(400)
+        .json({ message: "Order ID and voucher ID are required" });
+    }
+
+    // Find the order
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Verify user ownership
+    if (order.userId.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ message: "You can only apply vouchers to your own orders" });
+    }
+
+    // Check order status
+    if (order.status !== "unverified") {
+      return res
+        .status(400)
+        .json({ message: "Vouchers can only be applied to unverified orders" });
+    }
+
+    // Check if order already has a voucher
+    if (order.voucherId) {
+      return res
+        .status(400)
+        .json({ message: "Order already has a voucher applied" });
+    }
+
+    // Find user and validate voucher
+    const user = await User.findById(req.user.id).populate(
+      "vouchers.voucherId"
+    );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const userVoucher = user.vouchers.find(
+      (v) =>
+        v.voucherId._id.toString() === voucherId && v.status === "available"
+    );
+    if (!userVoucher) {
+      return res
+        .status(400)
+        .json({ message: "Voucher not available for this user" });
+    }
+    const voucher = userVoucher.voucherId;
+
+    // Validate voucher
+    if (voucher.is_used || voucher.expires_at < new Date()) {
+      userVoucher.status = voucher.expires_at < new Date() ? "expired" : "used";
+      await user.save();
+      return res.status(400).json({ message: "Voucher is used or expired" });
+    }
+    if (voucher.subscriberOnly && user.role !== "subscriber") {
+      return res
+        .status(403)
+        .json({ message: "This voucher is exclusive to subscribers" });
+    }
+
+    // Calculate discount
+    let baseTotal = order.totalAmount + order.discountApplied; // Original total before any discount
+    const discountApplied = Math.min(
+      (voucher.discount_percentage / 100) * baseTotal,
+      voucher.max_discount || Infinity
+    );
+    const newTotalAmount = baseTotal - discountApplied;
+
+    // Update order
+    order.totalAmount = newTotalAmount;
+    order.discountApplied = discountApplied;
+    order.voucherId = voucher._id;
+    await order.save();
+
+    // Mark voucher as used
+    voucher.is_used = true;
+    userVoucher.status = "used";
+    await voucher.save();
+    await user.save();
+
+    // Populate for response
+    const populatedOrder = await Order.findById(order._id)
+      .populate("items.productId", "name price image")
+      .populate("userId", "username email");
+
+    // Send voucher applied email
+    try {
+      await sendMail(
+        populatedOrder.userId.email,
+        `Voucher applied to your order – Mattra Shop`,
+        `Hello ${populatedOrder.userId.username},\n\n` +
+          `A voucher (${voucher.code}) has been applied to your order (ID: ${populatedOrder._id}).\n` +
+          `Discount Applied: $${populatedOrder.discountApplied.toFixed(2)}\n` +
+          `New Total Amount: $${populatedOrder.totalAmount.toFixed(2)}\n` +
+          `You can view your order here:\n` +
+          `https://mattra-online-shop.vercel.app/orders\n\n` +
+          `Thank you for shopping with us!`
+      );
+    } catch (error) {
+      console.error("Error sending voucher applied email:", error);
+    }
+
+    res.status(200).json({
+      message: "Voucher applied successfully",
+      order: populatedOrder,
+    });
+  } catch (error) {
+    console.error("Apply voucher error:", error);
+    res.status(500).json({ message: "Failed to apply voucher" });
   }
 };
 
@@ -151,6 +285,7 @@ exports.getUserOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user.id })
       .populate("items.productId", "name price image")
+      .populate("voucherId", "code discount_percentage max_discount")
       .select("-__v");
 
     res.status(200).json({
@@ -171,6 +306,7 @@ exports.getAllOrders = async (req, res) => {
     const orders = await Order.find()
       .populate("userId", "username email")
       .populate("items.productId", "name price image")
+      .populate("voucherId", "code discount_percentage max_discount")
       .select("-__v");
 
     res.status(200).json({
@@ -184,7 +320,7 @@ exports.getAllOrders = async (req, res) => {
 
 exports.cancelUserOrder = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate("voucherId");
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
@@ -202,6 +338,25 @@ exports.cancelUserOrder = async (req, res) => {
     }
 
     order.status = "cancelled";
+    // Revert voucher if applied
+    if (order.voucherId) {
+      const user = await User.findById(req.user.id);
+      const userVoucher = user.vouchers.find(
+        (v) => v.voucherId._id.toString() === order.voucherId._id.toString()
+      );
+      if (userVoucher) {
+        userVoucher.status = "available";
+        order.voucherId.is_used = false;
+        await order.voucherId.save();
+        await user.save();
+      }
+      order.voucherId = null;
+      order.discountApplied = 0;
+      order.totalAmount = order.items.reduce(
+        (sum, item) => sum + item.price * item.quantity,
+        0
+      );
+    }
     await order.save();
 
     // Restore stock
@@ -275,7 +430,8 @@ exports.updateOrderStatus = async (req, res) => {
 
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
-      .populate("userId", "username email");
+      .populate("userId", "username email")
+      .populate("voucherId", "code discount_percentage max_discount");
 
     // Send order status update email
     try {
@@ -288,8 +444,8 @@ exports.updateOrderStatus = async (req, res) => {
           `https://mattra-online-shop.vercel.app/orders\n\n` +
           `Thank you for shopping with us!`
       );
-    } catch (err) {
-      console.error("Error sending order status update email:", err);
+    } catch (error) {
+      console.error("Error sending order status update email:", error);
     }
 
     res.status(200).json({
@@ -325,7 +481,8 @@ exports.confirmDelivery = async (req, res) => {
 
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
-      .populate("userId", "username email");
+      .populate("userId", "username email")
+      .populate("voucherId", "code discount_percentage max_discount");
 
     res.status(200).json({
       message: "Delivery confirmed successfully",
