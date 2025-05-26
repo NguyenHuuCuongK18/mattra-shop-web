@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Table, Badge, Form, InputGroup, Alert } from "react-bootstrap";
-import api from "../../utils/api";
+import { authAPI } from "../../utils/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { Row, Col } from "react-bootstrap";
@@ -31,7 +31,7 @@ function UsersPage() {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const response = await api.get("/api/user");
+        const response = await authAPI.getAllUsers();
         setUsers(response.data.users || []);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -116,9 +116,9 @@ function UsersPage() {
       let response;
       const userId = currentUser ? currentUser._id || currentUser.id : null;
       if (currentUser) {
-        response = await api.put(`/api/user/admin/update/${userId}`, formData);
+        response = await authAPI.updateProfile(formData);
       } else {
-        response = await api.post("/api/user/admin/create", formData);
+        response = await authAPI.register(formData);
       }
 
       if (currentUser) {
@@ -146,7 +146,7 @@ function UsersPage() {
     setFormSubmitting(true);
     try {
       const userId = currentUser._id || currentUser.id;
-      await api.delete(`/api/user/admin/delete/${userId}`);
+      await authAPI.deleteUser(userId);
 
       setUsers(users.filter((u) => (u._id || u.id) !== userId));
       setIsDeleteModalOpen(false);

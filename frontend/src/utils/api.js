@@ -39,6 +39,7 @@ export const authAPI = {
   getAllUsers: () => api.get("/api/user"),
   updateSubscriptionStatus: (userId, subscriptionData) =>
     api.put(`/api/user/${userId}/subscription`, subscriptionData),
+  deleteUser: (userId) => api.delete(`/api/user/delete/${userId}`),
 };
 
 // Product API

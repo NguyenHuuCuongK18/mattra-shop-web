@@ -58,12 +58,11 @@ function SubscriptionsPage() {
 
         // Get subscribed users
         const subscribedUsersResponse =
-          await subscriptionAPI.getAllSubscriptions();
-        const subscribedUsers =
-          subscribedUsersResponse.data.subscriptions || [];
+          await subscriptionAPI.getSubscribedUsers();
+        const subscribedUsers = subscribedUsersResponse.data.users || [];
 
         // Filter users with active subscriptions
-        const usersWithSubscriptions = users.filter(
+        const usersWithSubscriptions = subscribedUsers.filter(
           (user) => user.subscription && user.subscription.status === "active"
         );
 

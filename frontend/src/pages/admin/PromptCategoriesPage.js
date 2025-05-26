@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Table, Form, Alert } from "react-bootstrap";
-import api from "../../utils/api";
+import { promptCategoryAPI } from "../../utils/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 
@@ -24,7 +24,7 @@ function PromptCategoriesPage() {
     const fetchPromptCategories = async () => {
       setLoading(true);
       try {
-        const response = await api.get("/api/promptCategory");
+        const response = await promptCategoryAPI.getAllPromptCategories();
         setPromptCategories(response.data.promptCategories || []);
       } catch (error) {
         console.error("Error fetching prompt categories:", error);
@@ -97,13 +97,13 @@ function PromptCategoriesPage() {
       let response;
       if (currentCategory) {
         // Update existing category
-        response = await api.put(
-          `/api/promptCategory/update/${currentCategory.id}`,
+        response = await promptCategoryAPI.updatePromptCategory(
+          currentCategory.id,
           formData
         );
       } else {
         // Create new category
-        response = await api.post("/api/promptCategory/create", formData);
+        response = await promptCategoryAPI.createPromptCategory(formData);
       }
 
       // Update categories list
@@ -136,7 +136,7 @@ function PromptCategoriesPage() {
 
     setFormSubmitting(true);
     try {
-      await api.delete(`/api/promptCategory/delete/${currentCategory.id}`);
+      await promptCategoryAPI.deletePromptCategory(currentCategory.id);
 
       // Remove category from list
       setPromptCategories(

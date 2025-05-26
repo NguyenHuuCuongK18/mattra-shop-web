@@ -40,4 +40,7 @@ router.put(
 // Update user avatar
 router.post("/update-avatar", authMiddleware, userController.updateAvatar);
 
+// Delete a user (admin only)
+router.delete("/delete/:id", authMiddleware, userController.deleteUser);
+
 module.exports = router;
