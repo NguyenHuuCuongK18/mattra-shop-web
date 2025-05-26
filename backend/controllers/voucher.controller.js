@@ -100,6 +100,12 @@ exports.getVoucherById = async (req, res) => {
 
 exports.getUserVouchers = async (req, res) => {
   try {
+    // Validate user ID
+    if (!mongoose.isValidObjectId(req.user.id)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    // Fetch user with populated vouchers
     const user = await User.findById(req.user.id)
       .populate({
         path: "vouchers.voucherId",
@@ -107,17 +113,25 @@ exports.getUserVouchers = async (req, res) => {
           "code discount_percentage max_discount subscriberOnly created_at expires_at",
       })
       .select("vouchers");
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    // Filter available and unexpired vouchers
     const vouchers = user.vouchers.filter(
-      (v) => v.status === "available" && v.voucherId.expires_at > new Date()
+      (v) =>
+        v.status === "available" &&
+        v.voucherId &&
+        v.voucherId.expires_at > new Date()
     );
+
     res.status(200).json({
       message: "User vouchers retrieved successfully",
       vouchers,
     });
   } catch (error) {
+    console.error("Error in getUserVouchers:", error);
     res.status(500).json({ message: error.message });
   }
 };
