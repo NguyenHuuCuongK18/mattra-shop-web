@@ -79,7 +79,7 @@ exports.createProduct = (req, res) => {
           description: product.description,
           price: product.price,
           stock: product.stock,
-          category: product.categories,
+          categories: product.categories,
           imageUrl: product.image,
           isFeatured: product.isFeatured,
           createdAt: product.createdAt,
