@@ -8,13 +8,74 @@ const { sendMail } = require("./mail.controller");
 const multer = require("multer");
 const path = require("path");
 const { put } = require("@vercel/blob");
+const EmailVerification = require("../models/emailVerification.model");
+
+// ------------------------------------------------------------
+// STEP 1: Send a 6-digit verification code to the user’s email
+exports.requestEmailVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    // Prevent issuing a code for an email already in use
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+
+    // Generate and hash a 6-digit numeric code
+    const plainCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = await bcrypt.hash(plainCode, 10);
+
+    // Expire in 15 minutes
+    const expireAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    // Remove any previous codes for this email
+    await EmailVerification.deleteMany({ email });
+
+    // Store the hashed code
+    await new EmailVerification({ email, code: hashedCode, expireAt }).save();
+
+    // Send it
+    await sendMail(
+      email,
+      "Your Verification Code",
+      `Your 6-digit verification code is: ${plainCode}\nIt will expire in 15 minutes.`
+    );
+
+    res.status(200).json({ message: "Verification code sent to email" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 exports.register = async (req, res) => {
   try {
-    const { username, name, email, password, address } = req.body;
+    const { username, name, email, password, address, verificationCode } =
+      req.body;
     if (!username || !name || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
+    // STEP 2: Verify the emailed code
+    if (!verificationCode) {
+      return res.status(400).json({ message: "Verification code is required" });
+    }
+    const record = await EmailVerification.findOne({ email });
+    if (!record) {
+      return res
+        .status(400)
+        .json({ message: "No verification code found for this email" });
+    }
+    const codeMatches = await bcrypt.compare(verificationCode, record.code);
+    if (!codeMatches) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+    // Consume the used code
+    await EmailVerification.deleteOne({ _id: record._id });
+
+    // Existing register logic
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res
@@ -28,18 +89,10 @@ exports.register = async (req, res) => {
       email,
       password: hashedPassword,
       address,
-      role: "user",
-      subscription: { status: "inactive" },
     });
     await newUser.save();
-    const token = jwt.sign(
-      { id: newUser._id, role: newUser.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
     res.status(201).json({
       message: "User registered successfully",
-      token,
       user: {
         id: newUser._id,
         username: newUser.username,
@@ -54,7 +107,6 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 exports.login = async (req, res) => {
   try {
     const { identification, password } = req.body;

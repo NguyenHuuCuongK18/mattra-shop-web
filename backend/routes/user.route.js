@@ -3,6 +3,12 @@ const router = express.Router();
 const userController = require("../controllers/user.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
 
+// Before registering, user must request (and receive) a code
+router.post(
+  "/request-email-verification",
+  userController.requestEmailVerification
+);
+
 // Register user
 router.post("/register", userController.register);
 

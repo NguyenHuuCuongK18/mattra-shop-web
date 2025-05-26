@@ -1,6 +1,6 @@
 // controllers/product.controller.js
 
-const Product = require("../models/product.model"); // your Product schema (includes isFeatured) :contentReference[oaicite:0]{index=0}
+const Product = require("../models/product.model");
 const { put } = require("@vercel/blob");
 const multer = require("multer");
 const path = require("path");
@@ -29,8 +29,9 @@ exports.createProduct = (req, res) => {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      let { name, description, price, stock, category, isFeatured } = req.body;
-      // checkbox comes in as string
+      // 👇 pull `categories` (not `category`) from the form
+      let { name, description, price, stock, categories, isFeatured } =
+        req.body;
       const featuredFlag = isFeatured === "true" || isFeatured === true;
 
       // Basic validation
@@ -58,13 +59,13 @@ exports.createProduct = (req, res) => {
         imageUrl = blob.url;
       }
 
-      // Persist product (note schema’s field is “categories”)
+      // Persist product (the schema’s field is “categories”)
       const product = new Product({
         name,
         description,
         price,
         stock,
-        categories: category,
+        categories, // 👈 use the value from req.body.categories
         image: imageUrl,
         isFeatured: featuredFlag,
       });
@@ -132,7 +133,9 @@ exports.updateProduct = (req, res) => {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      let { name, description, price, stock, category, isFeatured } = req.body;
+      // 👇 again, pull `categories` instead of `category`
+      let { name, description, price, stock, categories, isFeatured } =
+        req.body;
       const featuredFlag = isFeatured === "true" || isFeatured === true;
 
       // Validate numeric fields if provided
@@ -165,7 +168,7 @@ exports.updateProduct = (req, res) => {
       if (description) product.description = description;
       if (price != null) product.price = price;
       if (stock != null) product.stock = stock;
-      if (category) product.categories = category;
+      if (categories) product.categories = categories; // 👈 set from req.body.categories
       product.isFeatured = featuredFlag;
       product.updatedAt = Date.now();
 
@@ -178,7 +181,7 @@ exports.updateProduct = (req, res) => {
           description: product.description,
           price: product.price,
           stock: product.stock,
-          category: product.categories,
+          categories: product.categories,
           imageUrl: product.image,
           isFeatured: product.isFeatured,
           createdAt: product.createdAt,

@@ -21,6 +21,7 @@ require("./models/promptCategory.model");
 require("./models/payment.model");
 require("./models/subscriptionOrder.model");
 require("./models/subscriptionPayment.model");
+require("./models/emailVerification.model");
 
 // MongoDB Connection
 const connectDB = async () => {
