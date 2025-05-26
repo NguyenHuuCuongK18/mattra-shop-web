@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { authAPI } from "../utils/api"; // ← import the new endpoint
+import { authAPI } from "../utils/api";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Card from "../components/ui/Card";
@@ -12,7 +12,7 @@ function RegisterPage() {
     username: "",
     name: "",
     email: "",
-    verificationCode: "", // ← new
+    verificationCode: "",
     password: "",
     confirmPassword: "",
     address: "",
@@ -31,7 +31,6 @@ function RegisterPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Request email verification code
   const handleRequestCode = async () => {
     if (!formData.email) {
       setCodeError("Please enter your email first");
@@ -53,7 +52,6 @@ function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    // Front-end validations
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -70,7 +68,7 @@ function RegisterPage() {
     setLoading(true);
     try {
       const { confirmPassword, ...userData } = formData;
-      await register(userData); // will POST { …, verificationCode } to /register
+      await register(userData);
       navigate("/");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to register");
@@ -112,7 +110,6 @@ function RegisterPage() {
                 required
               />
 
-              {/* Email + “Request Code” button */}
               <div className="flex items-end space-x-2">
                 <div className="flex-1">
                   <Input
@@ -141,7 +138,6 @@ function RegisterPage() {
                 </p>
               )}
 
-              {/* New Verification Code input */}
               <Input
                 label="Verification Code"
                 name="verificationCode"
