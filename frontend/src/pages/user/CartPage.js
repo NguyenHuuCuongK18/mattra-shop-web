@@ -6,6 +6,7 @@ import { Container, Row, Col, InputGroup, Form } from "react-bootstrap";
 import { useCart } from "../../contexts/CartContext";
 import Button from "../../components/ui/Button";
 import { voucherAPI } from "../../utils/api";
+import { toast } from "react-hot-toast";
 
 function CartPage() {
   const { cart, loading, updateCartItem, removeFromCart, clearCart } =
@@ -17,6 +18,7 @@ function CartPage() {
   const [discountPercentage, setDiscountPercentage] = useState(0);
   const [maxDiscount, setMaxDiscount] = useState(0);
   const [voucherApplied, setVoucherApplied] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,7 +45,11 @@ function CartPage() {
   };
 
   const handleCheckout = () => {
-    navigate("/checkout");
+    if (voucherApplied && selectedVoucher) {
+      navigate("/checkout", { state: { voucher: selectedVoucher } });
+    } else {
+      navigate("/checkout");
+    }
   };
 
   const handleApplyCoupon = async (e) => {
@@ -51,6 +57,7 @@ function CartPage() {
     setCouponError("");
     setCouponSuccess("");
     setVoucherApplied(false);
+    setSelectedVoucher(null);
 
     if (!couponCode) {
       setCouponError("Please enter a voucher code");
@@ -58,16 +65,21 @@ function CartPage() {
     }
 
     try {
-      const { data } = await voucherAPI.applyVoucher(couponCode);
-      const { discount_percentage, max_discount, code } = data.voucher;
+      const { data } = await voucherAPI.validateVoucher(couponCode);
+      const { discount_percentage, max_discount, code, _id } = data.voucher;
       setDiscountPercentage(discount_percentage);
-      setMaxDiscount(max_discount);
+      setMaxDiscount(max_discount || Infinity);
+      setSelectedVoucher({ _id, code, discount_percentage, max_discount });
       setVoucherApplied(true);
       setCouponSuccess(
-        `Voucher "${code}" applied: ${discount_percentage}% off (max $${max_discount})`
+        `Voucher "${code}" applied: ${discount_percentage}% off${
+          max_discount ? ` (max $${max_discount})` : ""
+        }`
       );
     } catch (err) {
-      setCouponError(err.response?.data?.message || "Failed to apply voucher");
+      setCouponError(err.response?.data?.message || "Invalid voucher code");
+      setDiscountPercentage(0);
+      setMaxDiscount(0);
     }
   };
 
@@ -247,14 +259,14 @@ function CartPage() {
 
               <form onSubmit={handleApplyCoupon} className="mb-4">
                 <div className="mb-2">
-                  <label className="form-label small">Coupon Code</label>
+                  <label className="form-label small">Voucher Code</label>
                   <div className="d-flex">
                     <input
                       type="text"
                       className="form-control"
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value)}
-                      placeholder="Enter coupon code"
+                      placeholder="Enter voucher code"
                     />
                     <Button type="submit" className="ms-2">
                       Apply
