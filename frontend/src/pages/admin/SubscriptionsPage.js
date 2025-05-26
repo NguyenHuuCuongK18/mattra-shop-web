@@ -129,7 +129,20 @@ function SubscriptionsPage() {
 
   const handleUpdatePlan = async (e) => {
     e.preventDefault();
-    if (!currentPlan) return;
+    if (!currentPlan) {
+      setError("No subscription plan selected.");
+      toast.error("No subscription plan selected.");
+      setFormSubmitting(false);
+      return;
+    }
+
+    const planId = currentPlan._id || currentPlan.id;
+    if (!planId) {
+      setError("Invalid subscription plan ID.");
+      toast.error("Invalid subscription plan ID.");
+      setFormSubmitting(false);
+      return;
+    }
 
     setFormSubmitting(true);
 
@@ -141,13 +154,13 @@ function SubscriptionsPage() {
       };
 
       const response = await subscriptionAPI.updateSubscription(
-        currentPlan.id,
+        planId,
         payload
       );
 
       setSubscriptionPlans(
         subscriptionPlans.map((plan) =>
-          plan.id === currentPlan.id ? response.data.subscription : plan
+          (plan._id || plan.id) === planId ? response.data.subscription : plan
         )
       );
       setShowPlanModal(false);
@@ -172,7 +185,7 @@ function SubscriptionsPage() {
     try {
       await subscriptionAPI.deleteSubscription(planId);
       setSubscriptionPlans(
-        subscriptionPlans.filter((plan) => plan.id !== planId)
+        subscriptionPlans.filter((plan) => (plan._id || plan.id) !== planId)
       );
       toast.success("Subscription plan deleted successfully");
     } catch (error) {
@@ -189,11 +202,16 @@ function SubscriptionsPage() {
     setFormSubmitting(true);
 
     try {
-      const userId = userSubscriptionFormData.userId;
+      const { userId, subscriptionId, status, startDate } =
+        userSubscriptionFormData;
+      if (!userId || !subscriptionId) {
+        throw new Error("User and subscription plan must be selected.");
+      }
+
       const response = await authAPI.updateSubscriptionStatus(userId, {
-        subscriptionId: userSubscriptionFormData.subscriptionId,
-        status: userSubscriptionFormData.status,
-        startDate: new Date(userSubscriptionFormData.startDate).toISOString(),
+        subscriptionId,
+        status,
+        startDate: new Date(startDate).toISOString(),
       });
 
       const updatedUser = response.data.user;
@@ -230,7 +248,9 @@ function SubscriptionsPage() {
     } catch (error) {
       console.error("Error assigning subscription:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to assign subscription";
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to assign subscription";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -243,11 +263,20 @@ function SubscriptionsPage() {
       const subscriber = subscribers.find(
         (sub) => (sub._id || sub.id) === userId
       );
-      if (!subscriber || !subscriber.subscription) return;
+      if (!subscriber || !subscriber.subscription) {
+        throw new Error("Subscriber or subscription not found.");
+      }
+
+      const subscriptionId =
+        subscriber.subscription.subscriptionId?._id ||
+        subscriber.subscription.subscriptionId;
+      if (!subscriptionId) {
+        throw new Error("Invalid subscription ID.");
+      }
 
       const response = await authAPI.updateSubscriptionStatus(userId, {
-        subscriptionId: subscriber.subscription.subscriptionId,
-        status: status,
+        subscriptionId,
+        status,
       });
 
       setSubscribers(
@@ -266,7 +295,9 @@ function SubscriptionsPage() {
     } catch (error) {
       console.error("Error updating subscription status:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to update subscription status";
+        error.response?.data?.message ||
+        error.message ||
+        "Failed to update subscription status";
       setError(errorMsg);
       toast.error(errorMsg);
     }
@@ -467,7 +498,7 @@ function SubscriptionsPage() {
                         <h3 className="mb-0">
                           ${plan.price.toFixed(2)}
                           <span className="fs-6 text-muted">
-                            /{plan.duration} days
+                            /{plan.duration} month
                           </span>
                         </h3>
                       </div>
@@ -484,7 +515,7 @@ function SubscriptionsPage() {
                       </Button>
                       <Button
                         variant="danger"
-                        onClick={() => handleDeletePlan(plan.id)}
+                        onClick={() => handleDeletePlan(plan._id || plan.id)}
                       >
                         Delete
                       </Button>
@@ -717,7 +748,7 @@ function SubscriptionsPage() {
                               {order.subscriptionId?.name || "Unknown Plan"}
                             </div>
                             <small className="text-muted">
-                              {order.subscriptionId?.duration} days
+                              {order.subscriptionId?.duration} month
                             </small>
                           </div>
                         </td>
@@ -896,32 +927,26 @@ function SubscriptionsPage() {
                 onChange={handlePlanInputChange}
               />
             </Form.Group>
+            <div className="d-grid gap-2">
+              <Button type="submit" disabled={formSubmitting}>
+                {formSubmitting ? (
+                  <>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    Processing...
+                  </>
+                ) : currentPlan ? (
+                  "Update Plan"
+                ) : (
+                  "Create Plan"
+                )}
+              </Button>
+            </div>
           </Form>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowPlanModal(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={currentPlan ? handleUpdatePlan : handleCreatePlan}
-            disabled={formSubmitting}
-          >
-            {formSubmitting ? (
-              <>
-                <span
-                  className="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                Processing...
-              </>
-            ) : currentPlan ? (
-              "Update Plan"
-            ) : (
-              "Create Plan"
-            )}
-          </Button>
-        </Modal.Footer>
       </Modal>
 
       {/* Add/Edit Subscriber Modal */}
@@ -965,7 +990,7 @@ function SubscriptionsPage() {
                 <option value="">Select Plan</option>
                 {subscriptionPlans.map((plan) => (
                   <option key={plan._id || plan.id} value={plan._id || plan.id}>
-                    {plan.name} (${plan.price}/{plan.duration} days)
+                    {plan.name} (${plan.price}/{plan.duration} month)
                   </option>
                 ))}
               </Form.Select>

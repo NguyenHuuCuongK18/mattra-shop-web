@@ -21,39 +21,58 @@ api.interceptors.request.use(
 
 // Authentication & User API
 export const authAPI = {
+  // new: request an email verification code
+  requestEmailVerification: (email) =>
+    api.post("/api/user/request-email-verification", { email }),
+
   register: (userData) => api.post("/api/user/register", userData),
+
   login: (credentials) => api.post("/api/user/login", credentials),
+
   getProfile: () => api.get("/api/user/profile"),
+
   changePassword: (passwordData) =>
     api.put("/api/user/change-password", passwordData),
+
   requestPasswordReset: (email) =>
     api.post("/api/user/request-password-reset", { email }),
+
   resetPassword: (token, newPassword) =>
     api.post("/api/user/reset-password", { token, newPassword }),
+
   updateProfile: (userData) => api.put("/api/user/update", userData),
+
   uploadAvatar: (formData) =>
     api.post("/api/user/update-avatar", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+
   logout: () => api.post("/api/user/logout"),
+
   getAllUsers: () => api.get("/api/user"), // Assuming admin-only endpoint
+
   updateSubscriptionStatus: (userId, subscriptionData) =>
     api.put(`/api/user/${userId}/subscription`, subscriptionData),
+
   deleteUser: (userId) => api.delete(`/api/user/delete/${userId}`), // Assuming admin-only endpoint
 };
 
 // Product API
 export const productAPI = {
   getAllProducts: () => api.get("/api/product"),
+
   getProductById: (id) => api.get(`/api/product/${id}`),
+
   createProduct: (formData) =>
     api.post("/api/product/create", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }), // Added missing create endpoint
+
   updateProduct: (id, formData) =>
     api.put(`/api/product/update/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
+
   deleteProduct: (id) => api.delete(`/api/product/delete/${id}`),
 };
 

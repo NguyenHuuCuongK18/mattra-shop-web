@@ -1,8 +1,8 @@
-"use client";
-
+// src/pages/RegisterPage.js
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { authAPI } from "../api"; // ← import the new endpoint
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Card from "../components/ui/Card";
@@ -12,50 +12,68 @@ function RegisterPage() {
     username: "",
     name: "",
     email: "",
+    verificationCode: "", // ← new
     password: "",
     confirmPassword: "",
     address: "",
   });
   const [loading, setLoading] = useState(false);
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
   const [error, setError] = useState("");
+  const [codeError, setCodeError] = useState("");
 
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Request email verification code
+  const handleRequestCode = async () => {
+    if (!formData.email) {
+      setCodeError("Please enter your email first");
+      return;
+    }
+    try {
+      setCodeLoading(true);
+      setCodeError("");
+      await authAPI.requestEmailVerification(formData.email);
+      setCodeSent(true);
+    } catch (err) {
+      setCodeError(err.response?.data?.message || "Failed to send code");
+    } finally {
+      setCodeLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    // Validate form
+    // Front-end validations
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
-
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    if (!formData.verificationCode) {
+      setError("Verification code is required");
       return;
     }
 
     setLoading(true);
-    setError("");
-
     try {
-      // Remove confirmPassword before sending to API
       const { confirmPassword, ...userData } = formData;
-
-      await register(userData);
+      await register(userData); // will POST { …, verificationCode } to /register
       navigate("/");
-    } catch (error) {
-      console.error("Registration error:", error);
-      setError(error.response?.data?.message || "Failed to register");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to register");
     } finally {
       setLoading(false);
     }
@@ -80,9 +98,7 @@ function RegisterPage() {
             <div className="space-y-4">
               <Input
                 label="Username"
-                id="username"
                 name="username"
-                type="text"
                 value={formData.username}
                 onChange={handleChange}
                 required
@@ -90,27 +106,52 @@ function RegisterPage() {
 
               <Input
                 label="Full Name"
-                id="name"
                 name="name"
-                type="text"
                 value={formData.name}
                 onChange={handleChange}
                 required
               />
 
+              {/* Email + “Request Code” button */}
+              <div className="flex items-end space-x-2">
+                <div className="flex-1">
+                  <Input
+                    label="Email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleRequestCode}
+                  loading={codeLoading}
+                  disabled={codeLoading}
+                  className="h-10 self-end"
+                >
+                  Request Code
+                </Button>
+              </div>
+              {codeError && <p className="text-sm text-red-600">{codeError}</p>}
+              {codeSent && (
+                <p className="text-sm text-green-600">
+                  Code sent! Check your email.
+                </p>
+              )}
+
+              {/* New Verification Code input */}
               <Input
-                label="Email"
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
+                label="Verification Code"
+                name="verificationCode"
+                value={formData.verificationCode}
                 onChange={handleChange}
                 required
               />
 
               <Input
                 label="Password"
-                id="password"
                 name="password"
                 type="password"
                 value={formData.password}
@@ -120,7 +161,6 @@ function RegisterPage() {
 
               <Input
                 label="Confirm Password"
-                id="confirmPassword"
                 name="confirmPassword"
                 type="password"
                 value={formData.confirmPassword}
@@ -130,9 +170,7 @@ function RegisterPage() {
 
               <Input
                 label="Address"
-                id="address"
                 name="address"
-                type="text"
                 value={formData.address}
                 onChange={handleChange}
               />
