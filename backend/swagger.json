@@ -175,45 +175,6 @@
         },
         "required": ["id", "name", "price", "duration"]
       },
-      "PromptCategory": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "description": { "type": "string" },
-          "type": {
-            "type": "string",
-            "enum": ["diet", "info", "other", "recipe"]
-          },
-          "promptText": { "type": "string" },
-          "isActive": { "type": "boolean" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["id", "name", "promptText"]
-      },
-      "Review": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "productId": { "type": "string" },
-          "userId": { "type": "string" },
-          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
-          "comment": { "type": "string" },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["id", "productId", "userId", "rating", "comment"]
-      },
-      "BlacklistedToken": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "string" },
-          "token": { "type": "string" },
-          "expiresAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["token", "expiresAt"]
-      },
       "SubscriptionOrder": {
         "type": "object",
         "properties": {
@@ -264,6 +225,45 @@
           "updatedAt": { "type": "string", "format": "date-time" }
         },
         "required": ["id", "userId", "subscriptionOrderId", "amount"]
+      },
+      "PromptCategory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["diet", "info", "other", "recipe"]
+          },
+          "promptText": { "type": "string" },
+          "isActive": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "promptText"]
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "productId": { "type": "string" },
+          "userId": { "type": "string" },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "comment": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "productId", "userId", "rating", "comment"]
+      },
+      "BlacklistedToken": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "token": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["token", "expiresAt"]
       },
       "Error": {
         "type": "object",
@@ -4247,9 +4247,9 @@
     },
     "/api/subscription-order/create": {
       "post": {
-        "tags": ["SubscriptionOrder"],
+        "tags": ["Subscription Order"],
         "summary": "Create a new subscription order",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -4258,7 +4258,7 @@
                 "type": "object",
                 "properties": {
                   "subscriptionId": { "type": "string" },
-                  "paymentMethod": { 
+                  "paymentMethod": {
                     "type": "string",
                     "enum": ["Online Banking", "Cash on Delivery"]
                   },
@@ -4305,12 +4305,12 @@
     },
     "/api/subscription-order/my-orders": {
       "get": {
-        "tags": ["SubscriptionOrder"],
+        "tags": ["Subscription Order"],
         "summary": "Get user's subscription orders",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
-            "description": "Subscription orders retrieved successfully",
+            "description": "List of subscription orders",
             "content": {
               "application/json": {
                 "schema": {
@@ -4339,9 +4339,9 @@
     },
     "/api/subscription-order/{id}": {
       "get": {
-        "tags": ["SubscriptionOrder"],
+        "tags": ["Subscription Order"],
         "summary": "Get subscription order by ID",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "id",
@@ -4352,7 +4352,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Subscription order retrieved successfully",
+            "description": "Subscription order details",
             "content": {
               "application/json": {
                 "schema": {
@@ -4366,7 +4366,7 @@
             }
           },
           "404": {
-            "description": "Subscription order not found",
+            "description": "Order not found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }
@@ -4386,12 +4386,12 @@
     },
     "/api/subscription-order": {
       "get": {
-        "tags": ["SubscriptionOrder"],
+        "tags": ["Subscription Order"],
         "summary": "Get all subscription orders (admin only)",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
-            "description": "Subscription orders retrieved successfully",
+            "description": "List of all subscription orders",
             "content": {
               "application/json": {
                 "schema": {
@@ -4428,9 +4428,9 @@
     },
     "/api/subscription-order/update/{id}": {
       "put": {
-        "tags": ["SubscriptionOrder"],
+        "tags": ["Subscription Order"],
         "summary": "Update subscription order status (admin only)",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "id",
@@ -4458,7 +4458,7 @@
         },
         "responses": {
           "200": {
-            "description": "Subscription order status updated successfully",
+            "description": "Order status updated successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -4488,7 +4488,7 @@
             }
           },
           "404": {
-            "description": "Subscription order not found",
+            "description": "Order not found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }
@@ -4508,9 +4508,9 @@
     },
     "/api/subscription-order/cancel/{id}": {
       "delete": {
-        "tags": ["SubscriptionOrder"],
+        "tags": ["Subscription Order"],
         "summary": "Cancel subscription order",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "id",
@@ -4521,7 +4521,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Subscription order cancelled successfully",
+            "description": "Order cancelled successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -4543,7 +4543,7 @@
             }
           },
           "404": {
-            "description": "Subscription order not found",
+            "description": "Order not found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }
@@ -4563,9 +4563,9 @@
     },
     "/api/subscription-payment/generate-qr": {
       "post": {
-        "tags": ["SubscriptionPayment"],
+        "tags": ["Subscription Payment"],
         "summary": "Generate VietQR code for subscription payment",
-        "security": [{ "BearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -4582,14 +4582,14 @@
         },
         "responses": {
           "201": {
-            "description": "VietQR code generated successfully",
+            "description": "QR code generated successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "paymentId": { "type": "string" },
-                    "paymentImgUrl": { "type": "string" },
+                    "imageUrl": { "type": "string" },
                     "expiresAt": { "type": "string", "format": "date-time" }
                   }
                 }
@@ -4605,7 +4605,7 @@
             }
           },
           "404": {
-            "description": "Subscription order not found",
+            "description": "Order not found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }
