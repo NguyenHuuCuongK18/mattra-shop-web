@@ -56,7 +56,7 @@ const CheckoutPage = () => {
 
     // Fetch user vouchers
     const fetchVouchers = async () => {
-      if (!user?.id) return; // Ensure user.id is valid
+      if (!user?._id) return; // Ensure user._id is valid
       setLoadingVouchers(true);
       try {
         const response = await voucherAPI.getUserVouchers();
@@ -101,7 +101,7 @@ const CheckoutPage = () => {
         new Date(voucher.expires_at) > new Date() &&
         !voucher.is_used
       ) {
-        setSelectedVoucher(voucher.id);
+        setSelectedVoucher(voucher._id);
         const discountPercentage = voucher.discount_percentage / 100;
         const calculatedDiscount = subtotal * discountPercentage;
         const finalDiscount =
@@ -125,7 +125,7 @@ const CheckoutPage = () => {
   // Calculate discount when voucher is selected or coupon validated
   useEffect(() => {
     if (selectedVoucher && !couponCode) {
-      const voucher = vouchers.find((v) => v.voucherId.id === selectedVoucher);
+      const voucher = vouchers.find((v) => v.voucherId._id === selectedVoucher);
       if (voucher) {
         const { discount_percentage, max_discount } = voucher.voucherId;
         const discountPercentage = discount_percentage / 100;
@@ -289,8 +289,8 @@ const CheckoutPage = () => {
                           <option value="">Select a voucher</option>
                           {vouchers.map((voucher) => (
                             <option
-                              key={voucher.voucherId.id}
-                              value={voucher.voucherId.id}
+                              key={voucher.voucherId._id}
+                              value={voucher.voucherId._id}
                             >
                               {voucher.voucherId.discount_percentage}% off
                               {voucher.voucherId.max_discount > 0

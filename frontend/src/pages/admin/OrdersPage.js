@@ -48,11 +48,11 @@ function OrdersPage() {
       // Update order in the list
       setOrders((prevOrders) =>
         prevOrders.map((o) =>
-          o.id === orderId ? { ...o, status: newStatus } : o
+          o._id === orderId ? { ...o, status: newStatus } : o
         )
       );
 
-      if (currentOrder && currentOrder.id === orderId) {
+      if (currentOrder && currentOrder._id === orderId) {
         setCurrentOrder({ ...currentOrder, status: newStatus });
       }
     } catch (error) {
@@ -94,7 +94,7 @@ function OrdersPage() {
   const filteredOrders = orders.filter((order) => {
     const matchesStatus = statusFilter ? order.status === statusFilter : true;
     const matchesSearch = searchQuery
-      ? order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ? order._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         order.userId.username.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
     return matchesStatus && matchesSearch;
@@ -220,8 +220,8 @@ function OrdersPage() {
               <div className="modal-header">
                 <h5 className="modal-title">
                   Order #
-                  {currentOrder.id
-                    ? currentOrder.id.substring(0, 8).toUpperCase()
+                  {currentOrder._id
+                    ? currentOrder._id.substring(0, 8).toUpperCase()
                     : "N/A"}
                 </h5>
                 <button
@@ -307,7 +307,7 @@ function OrdersPage() {
                     }
                     size="sm"
                     onClick={() =>
-                      handleUpdateStatus(currentOrder.id, "unverified")
+                      handleUpdateStatus(currentOrder._id, "unverified")
                     }
                     disabled={
                       currentOrder.status === "unverified" || formSubmitting
@@ -323,7 +323,7 @@ function OrdersPage() {
                     }
                     size="sm"
                     onClick={() =>
-                      handleUpdateStatus(currentOrder.id, "pending")
+                      handleUpdateStatus(currentOrder._id, "pending")
                     }
                     disabled={
                       currentOrder.status === "pending" || formSubmitting
@@ -339,7 +339,7 @@ function OrdersPage() {
                     }
                     size="sm"
                     onClick={() =>
-                      handleUpdateStatus(currentOrder.id, "shipping")
+                      handleUpdateStatus(currentOrder._id, "shipping")
                     }
                     disabled={
                       currentOrder.status === "shipping" || formSubmitting
@@ -355,7 +355,7 @@ function OrdersPage() {
                     }
                     size="sm"
                     onClick={() =>
-                      handleUpdateStatus(currentOrder.id, "delivered")
+                      handleUpdateStatus(currentOrder._id, "delivered")
                     }
                     disabled={
                       currentOrder.status === "delivered" || formSubmitting
@@ -371,7 +371,7 @@ function OrdersPage() {
                     }
                     size="sm"
                     onClick={() =>
-                      handleUpdateStatus(currentOrder.id, "cancelled")
+                      handleUpdateStatus(currentOrder._id, "cancelled")
                     }
                     disabled={
                       currentOrder.status === "cancelled" || formSubmitting
