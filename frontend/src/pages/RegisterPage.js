@@ -1,11 +1,12 @@
-// src/pages/RegisterPage.js
+"use client";
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Container, Row, Col, Form, Alert, InputGroup } from "react-bootstrap";
 import { useAuth } from "../contexts/AuthContext";
-import { authAPI } from "../utils/api";
 import Button from "../components/ui/Button";
-import Input from "../components/ui/Input";
 import Card from "../components/ui/Card";
+import { authAPI } from "../utils/api";
 
 function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -18,9 +19,9 @@ function RegisterPage() {
     address: "",
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
-  const [error, setError] = useState("");
   const [codeError, setCodeError] = useState("");
 
   const { register } = useAuth();
@@ -50,14 +51,12 @@ function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       return;
     }
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError("Password must be at least 6 characters long");
       return;
     }
     if (!formData.verificationCode) {
@@ -66,6 +65,7 @@ function RegisterPage() {
     }
 
     setLoading(true);
+    setError("");
     try {
       const { confirmPassword, ...userData } = formData;
       await register(userData);
@@ -78,123 +78,145 @@ function RegisterPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-12">
-      <Card>
-        <Card.Header>
-          <h1 className="text-2xl font-bold text-center text-gray-900">
-            Create an Account
-          </h1>
-        </Card.Header>
-        <Card.Body>
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <Input
-                label="Username"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                required
-              />
-
-              <Input
-                label="Full Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-              />
-
-              <div className="flex items-end space-x-2">
-                <div className="flex-1">
-                  <Input
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
+    <Container className="py-5">
+      <Row className="justify-content-center">
+        <Col md={8} lg={6} xl={5}>
+          <Card>
+            <Card.Header className="text-center bg-white py-3">
+              <h1 className="fs-4 fw-bold">Create Your Account</h1>
+            </Card.Header>
+            <Card.Body className="p-4">
+              {error && <Alert variant="danger">{error}</Alert>}
+              <Form onSubmit={handleSubmit}>
+                {/* Username */}
+                <Form.Group className="mb-3" controlId="username">
+                  <Form.Label>Username</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="username"
+                    value={formData.username}
                     onChange={handleChange}
                     required
                   />
-                </div>
+                </Form.Group>
+
+                {/* Full Name */}
+                <Form.Group className="mb-3" controlId="name">
+                  <Form.Label>Full Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                {/* Email + Inline Request Code */}
+                <Form.Group className="mb-3" controlId="email">
+                  <Form.Label>Email</Form.Label>
+                  <InputGroup>
+                    <Form.Control
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleRequestCode}
+                      loading={codeLoading}
+                      disabled={codeLoading}
+                      size="sm"
+                    >
+                      {codeLoading ? "Sending..." : "Get Code"}
+                    </Button>
+                  </InputGroup>
+                  {codeError && (
+                    <div className="mt-1">
+                      <small className="text-danger">{codeError}</small>
+                    </div>
+                  )}
+                  {codeSent && (
+                    <div className="mt-1">
+                      <small className="text-success">
+                        Code sent! Check your email.
+                      </small>
+                    </div>
+                  )}
+                </Form.Group>
+
+                {/* Verification Code */}
+                <Form.Group className="mb-3" controlId="verificationCode">
+                  <Form.Label>Verification Code</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="verificationCode"
+                    value={formData.verificationCode}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                {/* Password */}
+                <Form.Group className="mb-3" controlId="password">
+                  <Form.Label>Password</Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                {/* Confirm Password */}
+                <Form.Group className="mb-3" controlId="confirmPassword">
+                  <Form.Label>Confirm Password</Form.Label>
+                  <Form.Control
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+
+                {/* Address */}
+                <Form.Group className="mb-4" controlId="address">
+                  <Form.Label>Address (Optional)</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+
+                {/* Sign Up */}
                 <Button
-                  type="button"
-                  onClick={handleRequestCode}
-                  loading={codeLoading}
-                  disabled={codeLoading}
-                  className="h-10 self-end"
+                  type="submit"
+                  className="w-100"
+                  loading={loading}
+                  disabled={loading}
                 >
-                  Request Code
+                  {loading ? "Creating Account..." : "Sign up"}
                 </Button>
-              </div>
-              {codeError && <p className="text-sm text-red-600">{codeError}</p>}
-              {codeSent && (
-                <p className="text-sm text-green-600">
-                  Code sent! Check your email.
-                </p>
-              )}
-
-              <Input
-                label="Verification Code"
-                name="verificationCode"
-                value={formData.verificationCode}
-                onChange={handleChange}
-                required
-              />
-
-              <Input
-                label="Password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
-
-              <Input
-                label="Confirm Password"
-                name="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-              />
-
-              <Input
-                label="Address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-              />
-
-              <Button
-                type="submit"
-                className="w-full"
-                loading={loading}
-                disabled={loading}
-              >
-                Sign up
-              </Button>
-            </div>
-          </form>
-        </Card.Body>
-        <Card.Footer>
-          <p className="text-center text-sm text-gray-600">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="font-medium text-primary-600 hover:text-primary-500"
-            >
-              Sign in
-            </Link>
-          </p>
-        </Card.Footer>
-      </Card>
-    </div>
+              </Form>
+            </Card.Body>
+            <Card.Footer className="text-center bg-white py-3">
+              <p className="mb-0">
+                Already have an account?{" "}
+                <Link to="/login" className="text-decoration-none">
+                  Sign in
+                </Link>
+              </p>
+            </Card.Footer>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 }
 
