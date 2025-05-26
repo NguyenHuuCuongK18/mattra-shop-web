@@ -6,15 +6,19 @@ import {
   Badge,
   Form,
   InputGroup,
-  Alert,
   Tabs,
   Tab,
   Modal,
 } from "react-bootstrap";
-import { subscriptionAPI, authAPI } from "../../utils/api";
+import {
+  subscriptionAPI,
+  authAPI,
+  subscriptionOrderAPI,
+} from "../../utils/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 import { toast } from "react-hot-toast";
+import Alert from "../../components/ui/Alert";
 
 function SubscriptionsPage() {
   const [activeTab, setActiveTab] = useState("plans");
@@ -43,30 +47,56 @@ function SubscriptionsPage() {
     status: "active",
     startDate: new Date().toISOString().split("T")[0],
   });
+  const [subscriptionOrders, setSubscriptionOrders] = useState([]);
+  const [orderSearchQuery, setOrderSearchQuery] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [plansResponse, usersResponse] = await Promise.all([
-          subscriptionAPI.getAllSubscriptions(),
-          authAPI.getAllUsers(),
-        ]);
+        const [plansResponse, usersResponse, ordersResponse] =
+          await Promise.all([
+            subscriptionAPI.getAllSubscriptions(),
+            authAPI.getAllUsers(),
+            subscriptionOrderAPI.getAllSubscriptionOrders(),
+          ]);
 
         setSubscriptionPlans(plansResponse.data.subscriptions || []);
         setUsers(usersResponse.data.users || []);
+        const allOrders = ordersResponse.data.orders || [];
+        setSubscriptionOrders(allOrders);
 
-        // Get subscribed users
-        const subscribedUsersResponse =
-          await subscriptionAPI.getSubscribedUsers();
-        const subscribedUsers = subscribedUsersResponse.data.users || [];
-
-        // Filter users with active subscriptions
-        const usersWithSubscriptions = subscribedUsers.filter(
-          (user) => user.subscription && user.subscription.status === "active"
+        // Build subscribers list from active subscription orders
+        const activeOrders = allOrders.filter(
+          (order) => order.status === "active"
         );
-
-        setSubscribers(usersWithSubscriptions);
+        const subsMap = new Map();
+        activeOrders.forEach((order) => {
+          const user = order.userId;
+          const subscription = order.subscriptionId;
+          if (!user) return;
+          const userId = user._id || user.id;
+          if (subsMap.has(userId)) return;
+          subsMap.set(userId, {
+            _id: userId,
+            name: user.name || user.username,
+            email: user.email,
+            username: user.username,
+            subscription: {
+              subscriptionId: subscription,
+              status: order.status,
+              startDate: order.createdAt,
+              endDate: subscription?.duration
+                ? new Date(
+                    new Date(order.createdAt).getTime() +
+                      subscription.duration * 24 * 60 * 60 * 1000
+                  ).toISOString()
+                : null,
+            },
+          });
+        });
+        setSubscribers(Array.from(subsMap.values()));
       } catch (error) {
         console.error("Error fetching subscription data:", error);
         setError("Failed to load subscription data. Please try again later.");
@@ -261,6 +291,52 @@ function SubscriptionsPage() {
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId, status) => {
+    try {
+      const response = await subscriptionAPI.updateSubscriptionOrderStatus(
+        orderId,
+        { status }
+      );
+      setSubscriptionOrders(
+        subscriptionOrders.map((order) =>
+          (order._id || order.id) === orderId ? response.data.order : order
+        )
+      );
+      toast.success(`Order status updated to ${status}`);
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      const errorMsg =
+        error.response?.data?.message || "Failed to update order status";
+      setError(errorMsg);
+      toast.error(errorMsg);
+    }
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to cancel this subscription order?"
+      )
+    )
+      return;
+
+    try {
+      const response = await subscriptionAPI.cancelSubscriptionOrder(orderId);
+      setSubscriptionOrders(
+        subscriptionOrders.map((order) =>
+          (order._id || order.id) === orderId ? response.data.order : order
+        )
+      );
+      toast.success("Subscription order cancelled successfully");
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      const errorMsg =
+        error.response?.data?.message || "Failed to cancel order";
+      setError(errorMsg);
+      toast.error(errorMsg);
+    }
+  };
+
   const handleViewPlan = (plan) => {
     setCurrentPlan(plan);
     setPlanFormData({
@@ -321,6 +397,24 @@ function SubscriptionsPage() {
         subscriber.username?.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
 
+    return matchesStatus && matchesSearch;
+  });
+
+  const filteredOrders = subscriptionOrders.filter((order) => {
+    const matchesStatus = orderStatusFilter
+      ? order.status === orderStatusFilter
+      : true;
+    const matchesSearch = orderSearchQuery
+      ? order.userId?.name
+          ?.toLowerCase()
+          .includes(orderSearchQuery.toLowerCase()) ||
+        order.userId?.email
+          ?.toLowerCase()
+          .includes(orderSearchQuery.toLowerCase()) ||
+        order.subscriptionId?.name
+          ?.toLowerCase()
+          .includes(orderSearchQuery.toLowerCase())
+      : true;
     return matchesStatus && matchesSearch;
   });
 
@@ -535,6 +629,186 @@ function SubscriptionsPage() {
                     <tr>
                       <td colSpan="7" className="text-center py-4">
                         No subscribers found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+          </Card>
+        </Tab>
+        <Tab eventKey="orders" title="Subscription Orders">
+          <div className="mb-4">
+            <div className="row g-3">
+              <div className="col-md-6">
+                <InputGroup>
+                  <InputGroup.Text>
+                    <i className="bi bi-search"></i>
+                  </InputGroup.Text>
+                  <Form.Control
+                    placeholder="Search by user or subscription"
+                    value={orderSearchQuery}
+                    onChange={(e) => setOrderSearchQuery(e.target.value)}
+                  />
+                </InputGroup>
+              </div>
+              <div className="col-md-4">
+                <Form.Select
+                  value={orderStatusFilter}
+                  onChange={(e) => setOrderStatusFilter(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="unverified">Unverified</option>
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="cancelled">Cancelled</option>
+                </Form.Select>
+              </div>
+            </div>
+          </div>
+
+          <Card>
+            <div className="table-responsive">
+              <Table hover className="mb-0">
+                <thead>
+                  <tr>
+                    <th>Order ID</th>
+                    <th>User</th>
+                    <th>Subscription</th>
+                    <th>Price</th>
+                    <th>Payment Method</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th className="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.length > 0 ? (
+                    filteredOrders.map((order) => (
+                      <tr key={order._id || order.id}>
+                        <td>
+                          <code className="text-muted">
+                            {(order._id || order.id).slice(-8)}
+                          </code>
+                        </td>
+                        <td>
+                          <div>
+                            <div className="fw-medium">
+                              {order.userId?.name ||
+                                order.userId?.username ||
+                                "Unknown User"}
+                            </div>
+                            <small className="text-muted">
+                              {order.userId?.email}
+                            </small>
+                          </div>
+                        </td>
+                        <td>
+                          <div>
+                            <div className="fw-medium">
+                              {order.subscriptionId?.name || "Unknown Plan"}
+                            </div>
+                            <small className="text-muted">
+                              {order.subscriptionId?.duration} days
+                            </small>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="fw-medium">
+                            ${order.price?.toFixed(2)}
+                          </span>
+                        </td>
+                        <td>
+                          <Badge
+                            bg={
+                              order.paymentMethod === "Online Banking"
+                                ? "info"
+                                : "warning"
+                            }
+                            className="text-dark"
+                          >
+                            {order.paymentMethod}
+                          </Badge>
+                        </td>
+                        <td>
+                          <Badge
+                            bg={
+                              order.status === "active"
+                                ? "success"
+                                : order.status === "pending"
+                                ? "warning"
+                                : order.status === "unverified"
+                                ? "secondary"
+                                : "danger"
+                            }
+                          >
+                            {order.status}
+                          </Badge>
+                        </td>
+                        <td>{formatDate(order.createdAt)}</td>
+                        <td className="text-end">
+                          <div className="btn-group btn-group-sm">
+                            {order.status === "unverified" && (
+                              <>
+                                <Button
+                                  variant="outline-success"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleUpdateOrderStatus(
+                                      order._id || order.id,
+                                      "pending"
+                                    )
+                                  }
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleCancelOrder(order._id || order.id)
+                                  }
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            )}
+                            {order.status === "pending" && (
+                              <Button
+                                variant="outline-success"
+                                size="sm"
+                                onClick={() =>
+                                  handleUpdateOrderStatus(
+                                    order._id || order.id,
+                                    "active"
+                                  )
+                                }
+                              >
+                                Activate
+                              </Button>
+                            )}
+                            {order.status === "active" && (
+                              <Button
+                                variant="outline-secondary"
+                                size="sm"
+                                onClick={() =>
+                                  handleUpdateOrderStatus(
+                                    order._id || order.id,
+                                    "cancelled"
+                                  )
+                                }
+                              >
+                                Deactivate
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="8" className="text-center py-4">
+                        No subscription orders found
                       </td>
                     </tr>
                   )}

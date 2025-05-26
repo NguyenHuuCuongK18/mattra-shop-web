@@ -80,7 +80,7 @@ const PaymentResultPage = () => {
               </Alert>
 
               <div className="d-grid gap-2">
-                <Button
+                {/* <Button
                   as={Link}
                   to={`/orders/${orderId}`}
                   variant="outline-secondary"
@@ -89,7 +89,7 @@ const PaymentResultPage = () => {
                 </Button>
                 <Button as={Link} to="/orders" variant="outline-success">
                   View All Orders
-                </Button>
+                </Button> */}
                 <Button as={Link} to="/" variant="primary">
                   Back to Home
                 </Button>

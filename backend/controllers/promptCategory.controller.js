@@ -42,9 +42,6 @@ exports.createPromptCategory = async (req, res) => {
 // Get all prompt categories
 exports.getAllPromptCategories = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
-    }
     const promptCategories = await PromptCategory.find({ isActive: true })
       .sort({ createdAt: -1 })
       .select("-__v");
@@ -61,9 +58,6 @@ exports.getAllPromptCategories = async (req, res) => {
 // Get prompt category by ID
 exports.getPromptCategoryById = async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
-    }
     const promptCategory = await PromptCategory.findById(req.params.id).select(
       "-__v"
     );
@@ -144,4 +138,3 @@ exports.deletePromptCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-

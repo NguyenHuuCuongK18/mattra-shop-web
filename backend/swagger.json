@@ -15,240 +15,282 @@
       "description": "Local server"
     }
   ],
-"components": {
-  "schemas": {
-    "User": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "username": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "avatar": { "type": "string" },
-        "phone": { "type": "string" },
-        "address": { "type": "string" },
-        "role": {
-          "type": "string",
-          "enum": ["user", "subscriber", "admin"]
-        },
-        "subscription": {
-          "type": "object",
-          "properties": {
-            "subscriptionId": { "type": "string" },
-            "status": {
-              "type": "string",
-              "enum": ["active", "inactive"]
-            },
-            "startDate": { "type": "string", "format": "date-time" },
-            "endDate": { "type": "string", "format": "date-time" }
-          }
-        },
-        "vouchers": {
-          "type": "array",
-          "items": {
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "username": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "avatar": { "type": "string" },
+          "phone": { "type": "string" },
+          "address": { "type": "string" },
+          "role": {
+            "type": "string",
+            "enum": ["user", "subscriber", "admin"]
+          },
+          "subscription": {
             "type": "object",
             "properties": {
-              "voucherId": { "type": "string" },
+              "subscriptionId": { "type": "string" },
               "status": {
                 "type": "string",
-                "enum": ["available", "used", "expired"]
-              }
-            },
-            "required": ["voucherId","status"]
-          }
-        }
-      },
-      "required": ["id","username","name","email","role"]
-    },
-
-    "Cart": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "productId": { "type": "string" },
-              "quantity": { "type": "integer", "minimum": 1 }
-            },
-            "required": ["productId","quantity"]
-          }
-        }
-      },
-      "required": ["id","items"]
-    },
-
-    "Category": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["id","name"]
-    },
-
-    "Product": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "price": { "type": "number", "minimum": 0 },
-        "image": { "type": "string" },
-        "stock": { "type": "integer", "minimum": 0 },
-        "category": {
-          "type": "string",
-          "description": "Reference to Category model"
-        },
-        "isFeatured": { "type": "boolean" }
-      },
-      "required": ["id","name","price","stock"]
-    },
-
-    "Payment": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { 
-          "type": "string",
-          "description": "Reference to User model"
-        },
-        "orderId": { 
-          "type": "string",
-          "description": "Reference to Order model"
-        },
-        "amount": { 
-          "type": "number",
-          "description": "Amount in cents"
-        },
-        "status": {
-          "type": "string",
-          "enum": ["pending", "completed", "failed"],
-          "default": "pending"
-        },
-        "paymentImgUrl": { "type": "string" },
-        "expiresAt": { "type": "string", "format": "date-time" },
-        "acqId": { "type": "string" },
-        "history": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "status": { "type": "string" },
-              "data": { "type": "object" },
-              "timestamp": { "type": "string", "format": "date-time" }
+                "enum": ["active", "inactive"]
+              },
+              "startDate": { "type": "string", "format": "date-time" },
+              "endDate": { "type": "string", "format": "date-time" }
+            }
+          },
+          "vouchers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "voucherId": { "type": "string" },
+                "status": {
+                  "type": "string",
+                  "enum": ["available", "used", "expired"]
+                }
+              },
+              "required": ["voucherId", "status"]
             }
           }
         },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "required": ["id", "username", "name", "email", "role"]
       },
-      "required": ["userId", "orderId", "amount"]
-    },
-
-    "Voucher": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "code": { "type": "string" },
-        "discount_percentage": { "type": "number", "minimum": 0, "maximum": 100 },
-        "max_discount": { "type": "number", "minimum": 0 },
-        "is_used": { "type": "boolean" },
-        "subscriberOnly": { "type": "boolean" },
-        "expires_at": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "discount_percentage", "max_discount", "expires_at"]
-    },
-
-    "Subscription": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "price": { "type": "number", "minimum": 0 },
-        "duration": { "type": "integer", "minimum": 1 },
-        "description": { "type": "string" },
-        "perks": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id","name","price","duration"]
-    },
-
-    "PromptCategory": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "type": {
-          "type": "string",
-          "enum": ["diet","info","other","recipe"]
-        },
-        "promptText": { "type": "string" },
-        "isActive": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id","name","promptText"]
-    },
-
-    "Review": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "productId": { "type": "string" },
-        "userId": { "type": "string" },
-        "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
-        "comment": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id","productId","userId","rating","comment"]
-    },
-
-    "BlacklistedToken": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "token": { "type": "string" },
-        "expiresAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["token","expiresAt"]
-    },
-    "Error": {
-      "type": "object",
-      "properties": {
-        "message": {
-          "type": "string",
-          "description": "Human-readable error message"
-        },
-        "errors": {
-          "type": "array",
-          "description": "Optional list of field-specific errors",
+      "Cart": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
           "items": {
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "productId": { "type": "string" },
+                "quantity": { "type": "integer", "minimum": 1 }
+              },
+              "required": ["productId", "quantity"]
+            }
           }
-        }
+        },
+        "required": ["id", "items"]
       },
-      "required": ["message"]
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "required": ["id", "name"]
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "price": { "type": "number", "minimum": 0 },
+          "image": { "type": "string" },
+          "stock": { "type": "integer", "minimum": 0 },
+          "categories": {
+            "type": "string",
+            "description": "Reference to Category model"
+          },
+          "isFeatured": { "type": "boolean" }
+        },
+        "required": ["id", "name", "price", "stock"]
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { 
+            "type": "string",
+            "description": "Reference to User model"
+          },
+          "orderId": { 
+            "type": "string",
+            "description": "Reference to Order model"
+          },
+          "amount": { 
+            "type": "number",
+            "description": "Amount in cents"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "completed", "failed"],
+            "default": "pending"
+          },
+          "paymentImgUrl": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "acqId": { "type": "string" },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string" },
+                "data": { "type": "object" },
+                "timestamp": { "type": "string", "format": "date-time" }
+              }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["userId", "orderId", "amount"]
+      },
+      "Voucher": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "code": { "type": "string" },
+          "discount_percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+          "max_discount": { "type": "number", "minimum": 0 },
+          "is_used": { "type": "boolean" },
+          "subscriberOnly": { "type": "boolean" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "discount_percentage", "max_discount", "expires_at"]
+      },
+      "Subscription": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "price": { "type": "number", "minimum": 0 },
+          "duration": { "type": "integer", "minimum": 1 },
+          "description": { "type": "string" },
+          "perks": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "price", "duration"]
+      },
+      "PromptCategory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["diet", "info", "other", "recipe"]
+          },
+          "promptText": { "type": "string" },
+          "isActive": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "promptText"]
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "productId": { "type": "string" },
+          "userId": { "type": "string" },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "comment": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "productId", "userId", "rating", "comment"]
+      },
+      "BlacklistedToken": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "token": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["token", "expiresAt"]
+      },
+      "SubscriptionOrder": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { "type": "string" },
+          "subscriptionId": { "type": "string" },
+          "price": { "type": "number", "minimum": 0 },
+          "paymentMethod": {
+            "type": "string",
+            "enum": ["Online Banking", "Cash on Delivery"]
+          },
+          "shippingAddress": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["unverified", "pending", "active", "cancelled"]
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "userId", "subscriptionId", "price", "paymentMethod", "status"]
+      },
+      "SubscriptionPayment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "userId": { "type": "string" },
+          "subscriptionOrderId": { "type": "string" },
+          "amount": { "type": "number", "minimum": 0 },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "completed", "failed"]
+          },
+          "paymentImgUrl": { "type": "string" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "acqId": { "type": "string" },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": { "type": "string" },
+                "data": { "type": "object" },
+                "timestamp": { "type": "string", "format": "date-time" }
+              }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "userId", "subscriptionOrderId", "amount"]
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "errors": {
+            "type": "array",
+            "description": "Optional list of field-specific errors",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["message"]
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
     }
   },
-  "securitySchemes": {
-    "BearerAuth": {
-      "type": "http",
-      "scheme": "bearer",
-      "bearerFormat": "JWT"
-    }
-  }
-},
   "security": [
     {
       "BearerAuth": []
@@ -4186,6 +4228,384 @@
           },
           "404": {
             "description": "Voucher or user not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscription-order/create": {
+      "post": {
+        "tags": ["SubscriptionOrder"],
+        "summary": "Create a new subscription order",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subscriptionId": { "type": "string" },
+                  "paymentMethod": { 
+                    "type": "string",
+                    "enum": ["Online Banking", "Cash on Delivery"]
+                  },
+                  "shippingAddress": { "type": "string" }
+                },
+                "required": ["subscriptionId", "paymentMethod", "shippingAddress"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Subscription order created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/SubscriptionOrder" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscription-order/my-orders": {
+      "get": {
+        "tags": ["SubscriptionOrder"],
+        "summary": "Get user's subscription orders",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Subscription orders retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "orders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SubscriptionOrder" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscription-order/{id}": {
+      "get": {
+        "tags": ["SubscriptionOrder"],
+        "summary": "Get subscription order by ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription order retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/SubscriptionOrder" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscription-order": {
+      "get": {
+        "tags": ["SubscriptionOrder"],
+        "summary": "Get all subscription orders (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Subscription orders retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "orders": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SubscriptionOrder" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscription-order/update/{id}": {
+      "put": {
+        "tags": ["SubscriptionOrder"],
+        "summary": "Update subscription order status (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": ["unverified", "pending", "active", "cancelled"]
+                  }
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subscription order status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/SubscriptionOrder" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Admin access required",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscription-order/cancel/{id}": {
+      "delete": {
+        "tags": ["SubscriptionOrder"],
+        "summary": "Cancel subscription order",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription order cancelled successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/SubscriptionOrder" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Cannot cancel order",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription order not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/subscription-payment/generate-qr": {
+      "post": {
+        "tags": ["SubscriptionPayment"],
+        "summary": "Generate VietQR code for subscription payment",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subscriptionOrderId": { "type": "string" }
+                },
+                "required": ["subscriptionOrderId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "VietQR code generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "paymentId": { "type": "string" },
+                    "paymentImgUrl": { "type": "string" },
+                    "expiresAt": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription order not found",
             "content": {
               "application/json": {
                 "schema": { "$ref": "#/components/schemas/Error" }

@@ -32,7 +32,7 @@ const CheckoutPage = () => {
   );
   const [discountAmount, setDiscountAmount] = useState(0);
   const [shippingAddress, setShippingAddress] = useState(user?.address || "");
-  const [paymentMethod, setPaymentMethod] = useState("Cash on Delivery");
+  const [paymentMethod, setPaymentMethod] = useState("Online Banking");
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [orderId, setOrderId] = useState(null);
@@ -152,9 +152,9 @@ const CheckoutPage = () => {
 
     setLoading(true);
     try {
-      // Create order without voucher initially
+      // Create order
       const orderData = {
-        paymentMethod,
+        paymentMethod: "Online Banking",
         shippingAddress,
         selectedItems: cart.items.map((item) => ({
           productId: item.productId._id || item.productId.id,
@@ -182,38 +182,34 @@ const CheckoutPage = () => {
       // Clear cart
       await clearCart();
 
-      if (paymentMethod === "Cash on Delivery") {
-        toast.success("Order placed successfully!");
-        navigate(`/orders/${order._id}`);
-      } else if (paymentMethod === "Online Banking") {
-        try {
-          const paymentResponse = await paymentAPI.generateVietQR({
+      // Process online banking payment
+      try {
+        const paymentResponse = await paymentAPI.generateVietQR({
+          orderId: order._id,
+        });
+        const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
+
+        // Store payment info
+        localStorage.setItem(
+          "currentPayment",
+          JSON.stringify({
+            paymentId,
+            paymentImgUrl,
+            expiresAt,
             orderId: order._id,
-          });
-          const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
+            amount: total,
+          })
+        );
 
-          // Store payment info
-          localStorage.setItem(
-            "currentPayment",
-            JSON.stringify({
-              paymentId,
-              paymentImgUrl,
-              expiresAt,
-              orderId: order._id,
-              amount: total,
-            })
-          );
-
-          toast.success("Order created! Redirecting to payment...");
-          navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
-        } catch (paymentError) {
-          console.error("Error generating payment QR:", paymentError);
-          toast.error(
-            paymentError.response?.data?.message ||
-              "Payment QR generation failed. Please contact support."
-          );
-          navigate(`/orders/${order._id}`);
-        }
+        toast.success("Order created! Redirecting to payment...");
+        navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
+      } catch (paymentError) {
+        console.error("Error generating payment QR:", paymentError);
+        toast.error(
+          paymentError.response?.data?.message ||
+            "Payment QR generation failed. Please contact support."
+        );
+        navigate(`/orders/${order._id}`);
       }
     } catch (error) {
       console.error("Error creating order:", error);
@@ -267,16 +263,6 @@ const CheckoutPage = () => {
                 <Form.Group className="mb-4">
                   <Form.Label>Payment Method</Form.Label>
                   <div>
-                    <Form.Check
-                      type="radio"
-                      id="cod"
-                      label="Cash on Delivery"
-                      name="paymentMethod"
-                      value="Cash on Delivery"
-                      checked={paymentMethod === "Cash on Delivery"}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="mb-2"
-                    />
                     <Form.Check
                       type="radio"
                       id="online"

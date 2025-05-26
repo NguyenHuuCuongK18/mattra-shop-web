@@ -5,6 +5,7 @@ const Voucher = require("../models/voucher.model");
 const User = require("../models/user.model");
 const { sendMail } = require("./mail.controller");
 
+// Create a new order
 exports.createOrder = async (req, res) => {
   try {
     const { paymentMethod, shippingAddress, voucherId, selectedItems } =
@@ -15,63 +16,46 @@ exports.createOrder = async (req, res) => {
         .json({ message: "Payment method and shipping address are required" });
     }
 
-    const validPaymentMethods = ["Online Banking", "Cash on Delivery"];
-    if (!validPaymentMethods.includes(paymentMethod)) {
-      return res.status(400).json({ message: "Invalid payment method" });
-    }
-
-    if (
-      !selectedItems ||
-      !Array.isArray(selectedItems) ||
-      selectedItems.length === 0
-    ) {
-      return res.status(400).json({
-        message: "Selected items array is required and must not be empty",
-      });
-    }
-
-    // Validate selected items
-    const orderItems = [];
+    // Validate selected items & compute subtotal
     let totalAmount = 0;
-    const productIds = selectedItems.map((item) => item.productId);
-    const products = await Product.find({ _id: { $in: productIds } });
-
+    const items = [];
     for (const item of selectedItems) {
-      if (!item.productId || !item.quantity || item.quantity < 1) {
-        return res.status(400).json({
-          message: "Each item must have a valid productId and quantity",
-        });
-      }
-      const product = products.find((p) => p._id.toString() === item.productId);
+      const product = await Product.findById(item.productId);
       if (!product) {
         return res
           .status(404)
-          .json({ message: `Product with ID ${item.productId} not found` });
+          .json({ message: `Product ${item.productId} not found` });
       }
-      if (product.stock < item.quantity) {
+      if (product.countInStock < item.quantity) {
         return res
           .status(400)
-          .json({ message: `Insufficient stock for ${product.name}` });
+          .json({ message: `Insufficient stock for product ${product.name}` });
       }
-      const itemPrice = product.price * item.quantity;
-      orderItems.push({
+      product.countInStock -= item.quantity;
+      await product.save();
+
+      const lineTotal = product.price * item.quantity;
+      totalAmount += lineTotal;
+      items.push({
         productId: product._id,
         quantity: item.quantity,
         price: product.price,
       });
-      totalAmount += itemPrice;
     }
 
-    // Apply voucher discount if provided
+    // Apply voucher if provided
     let discountApplied = 0;
     let appliedVoucherId = null;
     if (voucherId) {
+      // 1) Load user + their vouchers
       const user = await User.findById(req.user.id).populate(
         "vouchers.voucherId"
       );
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // 2) Find the specific voucher entry
       const userVoucher = user.vouchers.find(
         (v) =>
           v.voucherId._id.toString() === voucherId && v.status === "available"
@@ -82,61 +66,52 @@ exports.createOrder = async (req, res) => {
           .json({ message: "Voucher not available for this user" });
       }
       const voucher = userVoucher.voucherId;
-      if (voucher.is_used || voucher.expires_at < new Date()) {
-        userVoucher.status =
-          voucher.expires_at < new Date() ? "expired" : "used";
+
+      // 3) Check expiration & subscriber-only
+      if (voucher.expires_at < new Date()) {
+        userVoucher.status = "expired";
         await user.save();
-        return res.status(400).json({ message: "Voucher is used or expired" });
+        return res.status(400).json({ message: "Voucher has expired" });
       }
       if (voucher.subscriberOnly && user.role !== "subscriber") {
         return res
           .status(403)
           .json({ message: "This voucher is exclusive to subscribers" });
       }
+
+      // 4) Apply discount & mark _only_ the user’s voucher as used
       discountApplied = Math.min(
         (voucher.discount_percentage / 100) * totalAmount,
         voucher.max_discount || Infinity
       );
       totalAmount -= discountApplied;
-      voucher.is_used = true;
       userVoucher.status = "used";
       appliedVoucherId = voucher._id;
-      await voucher.save();
       await user.save();
     }
 
-    // Create order
+    // Create the order
     const order = new Order({
       userId: req.user.id,
-      items: orderItems,
+      items,
+      paymentMethod,
+      shippingAddress,
       totalAmount,
       discountApplied,
       voucherId: appliedVoucherId,
-      paymentMethod,
-      shippingAddress,
       status: "unverified",
+      createdAt: new Date(),
     });
     await order.save();
 
-    // Update stock
-    for (const item of orderItems) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity },
-      });
-    }
+    // Clear the user's cart
+    await Cart.findOneAndDelete({ userId: req.user.id });
 
-    // Clear cart items
-    await Cart.findOneAndUpdate(
-      { userId: req.user.id },
-      { $pull: { items: { productId: { $in: productIds } } } }
-    );
-
-    // Populate for response and email
+    // Send confirmation email
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
-      .populate("userId", "username email");
-
-    // Send order creation email
+      .populate("userId", "username email")
+      .populate("voucherId", "code discount_percentage max_discount");
     try {
       await sendMail(
         populatedOrder.userId.email,
@@ -162,7 +137,7 @@ exports.createOrder = async (req, res) => {
     res.status(500).json({ message: "Failed to create order" });
   }
 };
-
+// Apply a voucher to an existing order
 exports.applyVoucher = async (req, res) => {
   try {
     const { orderId, voucherId } = req.body;
@@ -172,34 +147,28 @@ exports.applyVoucher = async (req, res) => {
         .json({ message: "Order ID and voucher ID are required" });
     }
 
-    // Find the order
+    // 1) Find & validate order
     const order = await Order.findById(orderId);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-
-    // Verify user ownership
     if (order.userId.toString() !== req.user.id) {
       return res
         .status(403)
         .json({ message: "You can only apply vouchers to your own orders" });
     }
-
-    // Check order status
     if (order.status !== "unverified") {
       return res
         .status(400)
         .json({ message: "Vouchers can only be applied to unverified orders" });
     }
-
-    // Check if order already has a voucher
     if (order.voucherId) {
       return res
         .status(400)
         .json({ message: "Order already has a voucher applied" });
     }
 
-    // Find user and validate voucher
+    // 2) Load user + find matching voucher entry
     const user = await User.findById(req.user.id).populate(
       "vouchers.voucherId"
     );
@@ -217,11 +186,11 @@ exports.applyVoucher = async (req, res) => {
     }
     const voucher = userVoucher.voucherId;
 
-    // Validate voucher
-    if (voucher.is_used || voucher.expires_at < new Date()) {
-      userVoucher.status = voucher.expires_at < new Date() ? "expired" : "used";
+    // 3) Per-user expiration & subscriber-only checks
+    if (voucher.expires_at < new Date()) {
+      userVoucher.status = "expired";
       await user.save();
-      return res.status(400).json({ message: "Voucher is used or expired" });
+      return res.status(400).json({ message: "Voucher has expired" });
     }
     if (voucher.subscriberOnly && user.role !== "subscriber") {
       return res
@@ -229,32 +198,25 @@ exports.applyVoucher = async (req, res) => {
         .json({ message: "This voucher is exclusive to subscribers" });
     }
 
-    // Calculate discount
-    let baseTotal = order.totalAmount + order.discountApplied; // Original total before any discount
+    // 4) Apply discount to the existing order
+    const baseTotal = order.totalAmount + order.discountApplied;
     const discountApplied = Math.min(
       (voucher.discount_percentage / 100) * baseTotal,
       voucher.max_discount || Infinity
     );
-    const newTotalAmount = baseTotal - discountApplied;
-
-    // Update order
-    order.totalAmount = newTotalAmount;
+    order.totalAmount = baseTotal - discountApplied;
     order.discountApplied = discountApplied;
     order.voucherId = voucher._id;
     await order.save();
 
-    // Mark voucher as used
-    voucher.is_used = true;
+    // 5) Mark _only_ the user’s voucher as used
     userVoucher.status = "used";
-    await voucher.save();
     await user.save();
 
-    // Populate for response
+    // 6) (Optional) Send voucher-applied email
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
       .populate("userId", "username email");
-
-    // Send voucher applied email
     try {
       await sendMail(
         populatedOrder.userId.email,
@@ -318,64 +280,50 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+// Cancel (user-initiated) an order
 exports.cancelUserOrder = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id).populate("voucherId");
+    const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-
     if (order.userId.toString() !== req.user.id) {
       return res
         .status(403)
         .json({ message: "You can only cancel your own orders" });
     }
-
     if (order.status !== "unverified") {
       return res
         .status(400)
         .json({ message: "Order can only be cancelled in unverified status" });
     }
 
-    order.status = "cancelled";
-    // Revert voucher if applied
+    // Restore voucher to user if one was applied
     if (order.voucherId) {
       const user = await User.findById(req.user.id);
       const userVoucher = user.vouchers.find(
-        (v) => v.voucherId._id.toString() === order.voucherId._id.toString()
+        (v) => v.voucherId.toString() === order.voucherId.toString()
       );
       if (userVoucher) {
         userVoucher.status = "available";
-        order.voucherId.is_used = false;
-        await order.voucherId.save();
         await user.save();
       }
       order.voucherId = null;
       order.discountApplied = 0;
+      // Recompute totalAmount from line items
       order.totalAmount = order.items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
       );
     }
+
+    order.status = "cancelled";
     await order.save();
 
-    // Restore stock
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: item.quantity },
-      });
-    }
-
-    const populatedOrder = await Order.findById(order._id)
-      .populate("items.productId", "name price image")
-      .populate("userId", "username email");
-
-    res.status(200).json({
-      message: "Order cancelled successfully",
-      order: populatedOrder,
-    });
+    res.status(200).json({ message: "Order cancelled successfully", order });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Cancel order error:", error);
+    res.status(500).json({ message: "Failed to cancel order" });
   }
 };
 

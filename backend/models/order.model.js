@@ -24,7 +24,7 @@ const orderSchema = new mongoose.Schema(
     paymentMethod: {
       type: String,
       enum: ["Online Banking", "Cash on Delivery"],
-      default: "Cash on Delivery",
+      default: "Online Banking",
       required: true,
     },
     status: {

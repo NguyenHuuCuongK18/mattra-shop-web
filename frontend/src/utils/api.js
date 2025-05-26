@@ -36,10 +36,10 @@ export const authAPI = {
       headers: { "Content-Type": "multipart/form-data" },
     }),
   logout: () => api.post("/api/user/logout"),
-  getAllUsers: () => api.get("/api/user"),
+  getAllUsers: () => api.get("/api/user"), // Assuming admin-only endpoint
   updateSubscriptionStatus: (userId, subscriptionData) =>
     api.put(`/api/user/${userId}/subscription`, subscriptionData),
-  deleteUser: (userId) => api.delete(`/api/user/delete/${userId}`),
+  deleteUser: (userId) => api.delete(`/api/user/delete/${userId}`), // Assuming admin-only endpoint
 };
 
 // Product API
@@ -49,7 +49,7 @@ export const productAPI = {
   createProduct: (formData) =>
     api.post("/api/product/create", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-    }),
+    }), // Added missing create endpoint
   updateProduct: (id, formData) =>
     api.put(`/api/product/update/${id}`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -82,8 +82,8 @@ export const orderAPI = {
   getMyOrders: () => api.get("/api/order/my-orders"),
   getAllOrders: () => api.get("/api/order"),
   createOrder: (orderData) => api.post("/api/order/create", orderData),
-  applyVoucher: (orderId, voucherId) =>
-    api.post("/api/order/apply-voucher", { orderId, voucherId }),
+  applyVoucher: (orderId, voucherCode) =>
+    api.post("/api/order/apply-voucher", { orderId, voucherCode }),
   updateOrderStatus: (id, statusData) =>
     api.put(`/api/order/update/${id}`, statusData),
   cancelOrder: (id) => api.delete(`/api/order/cancel/${id}`),
@@ -96,10 +96,31 @@ export const subscriptionAPI = {
   getSubscriptionById: (id) => api.get(`/api/subscription/${id}`),
   getSubscribedUsers: () => api.get("/api/subscription/subscribed-users"),
   createSubscription: (subscriptionData) =>
-    api.post("/api/subscription/create", subscriptionData),
+    api.post("/api/subscription/create-order", subscriptionData),
   updateSubscription: (id, subscriptionData) =>
     api.put(`/api/subscription/update/${id}`, subscriptionData),
   deleteSubscription: (id) => api.delete(`/api/subscription/delete/${id}`),
+};
+
+// Subscription Order API
+export const subscriptionOrderAPI = {
+  createSubscriptionOrder: (data) =>
+    api.post("/api/subscription-order/create", data),
+  getMySubscriptionOrders: () => api.get("/api/subscription-order/my-orders"),
+  getSubscriptionOrderById: (id) => api.get(`/api/subscription-order/${id}`),
+  getAllSubscriptionOrders: () => api.get("/api/subscription-order"), // Added admin-only endpoint
+  updateSubscriptionOrderStatus: (id, statusData) =>
+    api.put(`/api/subscription-order/update/${id}`, statusData),
+  cancelSubscriptionOrder: (id) =>
+    api.delete(`/api/subscription-order/cancel/${id}`),
+};
+
+// Subscription Payment API
+export const subscriptionPaymentAPI = {
+  generateVietQR: ({ subscriptionOrderId }) =>
+    api.post("/api/vietqr/subscription/create", {
+      subscriptionOrderId,
+    }),
 };
 
 // Voucher API
@@ -109,7 +130,7 @@ export const voucherAPI = {
   getUserVouchers: () => api.get("/api/voucher/user"),
   createVoucher: (voucherData) => api.post("/api/voucher/create", voucherData),
   assignVoucher: (voucherId, userId) =>
-    api.post("/api/voucher/assign", { voucherId, userId }),
+    api.post("/api/voucher/assign", { userId, voucherId }),
   assignVoucherToAll: (voucherId) =>
     api.post("/api/voucher/assign-everyone", { voucherId }),
   assignVoucherToSubscribers: (voucherId) =>
@@ -158,6 +179,8 @@ export const paymentAPI = {
   generateVietQR: ({ orderId }) => api.post("/api/vietqr/create", { orderId }),
   logPaymentStatus: (paymentId, status, payload) =>
     api.post("/api/vietqr/status/log", { paymentId, status, payload }),
+  verifyPaymentStatus: (paymentId) =>
+    api.get(`/api/vietqr/${paymentId}/verify`), // Added missing endpoint
 };
 
 export default api;

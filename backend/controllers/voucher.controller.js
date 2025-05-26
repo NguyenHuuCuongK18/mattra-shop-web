@@ -1,5 +1,6 @@
 const Voucher = require("../models/voucher.model");
 const User = require("../models/user.model");
+const mongoose = require("mongoose");
 
 // Utility function to generate a unique voucher code
 const generateVoucherCode = async () => {
@@ -52,7 +53,6 @@ exports.createVoucher = async (req, res) => {
       subscriberOnly: !!subscriberOnly,
       expires_at: expiresAtDate,
       created_at: new Date(),
-      is_used: false,
     });
     await voucher.save();
 
@@ -335,16 +335,18 @@ exports.validateCoupon = async (req, res) => {
     if (!voucher) {
       return res.status(404).json({ message: "Voucher not found" });
     }
-    if (voucher.is_used || voucher.expires_at <= new Date()) {
-      return res.status(400).json({ message: "Voucher is used or expired" });
+
+    if (voucher.expires_at <= new Date()) {
+      return res.status(400).json({ message: "Voucher has expired" });
     }
+
     if (voucher.subscriberOnly && req.user.role !== "subscriber") {
       return res
         .status(403)
         .json({ message: "This voucher is exclusive to subscribers" });
     }
 
-    // Check if the user has this voucher assigned
+    // Check assignment & availability
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -374,7 +376,6 @@ exports.validateCoupon = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 exports.updateVoucher = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -486,22 +487,18 @@ exports.applyVoucher = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const uvEntry = user.vouchers.find(
-      (v) =>
-        v.voucherId.toString() === voucher._id.toString() &&
-        v.status === "available"
-    );
-    if (!uvEntry) {
-      return res
-        .status(403)
-        .json({ message: "Voucher not assigned or already used by this user" });
+    if (!user.vouchers || !Array.isArray(user.vouchers)) {
+      return res.status(400).json({ message: "User has no vouchers" });
     }
-
-    // 3) Mark voucher globally as used
-    voucher.is_used = true;
-    await voucher.save();
-
-    // 4) Update this user's voucher entry to "used"
+    if (user.vouchers.status === "used") {
+      return res
+        .status(400)
+        .json({ message: "User has already used this voucher" });
+    }
+    if (user.vouchers.status === "expired") {
+      return res.status(400).json({ message: "User's voucher has expired" });
+    }
+    // 3) Update this user's voucher entry to "used"
     user.vouchers = user.vouchers.map((v) =>
       v.voucherId.toString() === voucher._id.toString()
         ? { ...v.toObject(), status: "used" }
@@ -509,7 +506,7 @@ exports.applyVoucher = async (req, res) => {
     );
     await user.save();
 
-    // 5) Respond with the voucher details for front-end discount calculation
+    // 4) Respond with the voucher details for front-end discount calculation
     res.status(200).json({
       message: "Voucher applied successfully",
       voucher: {

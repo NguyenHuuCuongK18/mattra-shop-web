@@ -1,23 +1,26 @@
 "use client";
 
 import Alert from "../components/ui/Alert";
-import { useState, useEffect } from "react";
-import { Container, Row, Col, Badge, Modal, Spinner } from "react-bootstrap";
-import { useAuth } from "../contexts/AuthContext";
-import { subscriptionAPI, paymentAPI } from "../utils/api";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import { Container, Row, Col, Badge, Spinner } from "react-bootstrap";
+import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  subscriptionAPI,
+  subscriptionOrderAPI,
+  subscriptionPaymentAPI,
+} from "../utils/api"; // Use subscription-specific APIs
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 function SubscriptionsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [qrCode, setQrCode] = useState(null);
-  const [paymentId, setPaymentId] = useState(null);
 
   useEffect(() => {
     const fetchSubscriptionPlans = async () => {
@@ -38,50 +41,57 @@ function SubscriptionsPage() {
   const handleSubscribe = async (plan) => {
     if (!user) {
       toast.error("Please login to subscribe");
+      navigate("/login");
       return;
     }
 
     setSelectedPlan(plan);
     setPaymentLoading(true);
-    setShowPaymentModal(true);
 
     try {
-      // Create a temporary order for subscription payment
+      // Step 1: Create subscription order
       const orderData = {
-        paymentMethod: "Online Banking",
+        subscriptionId: plan._id,
+        paymentMethod: "Online Banking", // Match backend expectation
         shippingAddress: user.address || "Subscription Service",
-        selectedItems: [], // Empty for subscription
-        subscriptionId: plan._id || plan.id,
-        isSubscription: true,
       };
 
-      // Note: You might need to create a special subscription order endpoint
-      // For now, we'll use the payment API directly
-      const paymentResponse = await paymentAPI.generateVietQR({
-        orderId: `subscription_${plan._id || plan.id}_${Date.now()}`,
-        amount: plan.price,
+      const orderResponse = await subscriptionOrderAPI.createSubscriptionOrder(
+        orderData
+      );
+      const subscriptionOrderId = orderResponse.data.subscriptionOrder._id;
+
+      // Step 2: Generate VietQR code for subscription payment
+      const paymentResponse = await subscriptionPaymentAPI.generateVietQR({
+        subscriptionOrderId,
       });
 
-      setQrCode(paymentResponse.data.qrCode);
-      setPaymentId(paymentResponse.data.paymentId);
+      const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
+
+      // Step 3: Store payment info in localStorage
+      localStorage.setItem(
+        "currentPayment",
+        JSON.stringify({
+          paymentId,
+          paymentImgUrl,
+          expiresAt,
+          orderId: subscriptionOrderId,
+          amount: plan.price,
+          type: "subscription",
+        })
+      );
+
+      // Step 4: Navigate to payment page
+      navigate(
+        `/payment?paymentId=${paymentId}&orderId=${subscriptionOrderId}`
+      );
     } catch (error) {
       console.error("Error creating subscription payment:", error);
-      toast.error("Failed to create payment. Please try again.");
-      setShowPaymentModal(false);
+      toast.error(
+        error.response?.data?.message || "Failed to create subscription order"
+      );
     } finally {
       setPaymentLoading(false);
-    }
-  };
-
-  const handlePaymentComplete = () => {
-    setShowPaymentModal(false);
-    setQrCode(null);
-    setPaymentId(null);
-    setSelectedPlan(null);
-
-    // Redirect to payment result page
-    if (paymentId) {
-      window.location.href = `/payment/result?paymentId=${paymentId}&type=subscription`;
     }
   };
 
@@ -104,14 +114,15 @@ function SubscriptionsPage() {
         </p>
       </div>
 
-      {user?.subscription?.status === "active" && (
+      {user?.subscription?.status === "active" ? (
         <Alert variant="success" className="mb-4">
-          <Alert.Heading className="h6">
+          <div className="alert-heading h6 mb-2">
             <i className="bi bi-check-circle me-2"></i>
             Active Subscription
-          </Alert.Heading>
+          </div>
           <p className="mb-0">
-            You currently have an active subscription.
+            You currently have an active subscription (
+            {user.subscription.subscriptionId?.name}).
             {user.subscription.endDate && (
               <>
                 {" "}
@@ -120,6 +131,10 @@ function SubscriptionsPage() {
               </>
             )}
           </p>
+        </Alert>
+      ) : (
+        <Alert variant="info" className="mb-4">
+          <p className="mb-0">No active subscription. Explore plans below.</p>
         </Alert>
       )}
 
@@ -147,16 +162,12 @@ function SubscriptionsPage() {
                     <span className="display-5 fw-bold">
                       ${plan.price.toFixed(2)}
                     </span>
-                    <span className="text-secondary">
-                      /{plan.duration} days
-                    </span>
+                    <span className="text-secondary">/month</span>
                   </div>
-
                   <div className="mb-4 flex-grow-1">
                     <p className="text-muted">
                       {plan.description || "Premium tea subscription service"}
                     </p>
-
                     {plan.perks && plan.perks.length > 0 && (
                       <ul className="list-unstyled">
                         {plan.perks.map((perk, perkIndex) => (
@@ -171,16 +182,28 @@ function SubscriptionsPage() {
                       </ul>
                     )}
                   </div>
-
                   <Button
                     variant={index === 1 ? "success" : "outline-success"}
                     className="w-100"
                     onClick={() => handleSubscribe(plan)}
-                    disabled={user?.subscription?.status === "active"}
+                    disabled={paymentLoading}
                   >
-                    {user?.subscription?.status === "active"
-                      ? "Already Subscribed"
-                      : "Subscribe Now"}
+                    {paymentLoading && selectedPlan?._id === plan._id ? (
+                      <>
+                        <Spinner
+                          as="span"
+                          animation="border"
+                          size="sm"
+                          role="status"
+                          aria-hidden="true"
+                        />
+                        <span className="ms-2">Processing...</span>
+                      </>
+                    ) : user?.subscription?.status === "active" ? (
+                      "View Plans"
+                    ) : (
+                      "Subscribe Now"
+                    )}
                   </Button>
                 </Card.Body>
               </Card>
@@ -252,87 +275,6 @@ function SubscriptionsPage() {
           </Col>
         </Row>
       </div>
-
-      {/* Payment Modal */}
-      <Modal
-        show={showPaymentModal}
-        onHide={() => setShowPaymentModal(false)}
-        centered
-        size="md"
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Complete Subscription Payment</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="text-center">
-          {paymentLoading ? (
-            <div className="py-4">
-              <Spinner animation="border" variant="primary" />
-              <p className="mt-3">Generating payment QR code...</p>
-            </div>
-          ) : qrCode ? (
-            <div>
-              <h5 className="mb-3">Scan QR Code to Pay</h5>
-              <div className="mb-3">
-                <img
-                  src={qrCode || "/placeholder.svg"}
-                  alt="Payment QR Code"
-                  className="img-fluid"
-                  style={{ maxWidth: "300px" }}
-                />
-              </div>
-              <div className="bg-light p-3 rounded mb-3">
-                <div className="row">
-                  <div className="col-6 text-start">
-                    <strong>Plan:</strong>
-                  </div>
-                  <div className="col-6 text-end">{selectedPlan?.name}</div>
-                </div>
-                <div className="row">
-                  <div className="col-6 text-start">
-                    <strong>Duration:</strong>
-                  </div>
-                  <div className="col-6 text-end">
-                    {selectedPlan?.duration} days
-                  </div>
-                </div>
-                <div className="row">
-                  <div className="col-6 text-start">
-                    <strong>Amount:</strong>
-                  </div>
-                  <div className="col-6 text-end">
-                    <strong>${selectedPlan?.price.toFixed(2)}</strong>
-                  </div>
-                </div>
-              </div>
-              <p className="text-muted small">
-                Use your banking app to scan this QR code and complete the
-                payment. After payment, click the button below to verify your
-                payment status.
-              </p>
-            </div>
-          ) : (
-            <div className="py-4">
-              <i className="bi bi-exclamation-triangle display-1 text-warning"></i>
-              <p className="mt-3">
-                Failed to generate payment QR code. Please try again.
-              </p>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() => setShowPaymentModal(false)}
-          >
-            Cancel
-          </Button>
-          {qrCode && (
-            <Button variant="primary" onClick={handlePaymentComplete}>
-              I've Made the Payment
-            </Button>
-          )}
-        </Modal.Footer>
-      </Modal>
     </Container>
   );
 }
