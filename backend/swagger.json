@@ -4054,6 +4054,154 @@
           }
         }
       }
+    },
+    "/api/order/apply-voucher": {
+      "post": {
+        "tags": ["Order"],
+        "summary": "Apply voucher to an order",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "orderId": { "type": "string" },
+                  "voucherCode": { "type": "string" }
+                },
+                "required": ["orderId", "voucherCode"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Voucher applied to order successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "order": { "$ref": "#/components/schemas/Order" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or voucher cannot be applied",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to apply voucher",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Order or voucher not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/voucher/apply": {
+      "post": {
+        "tags": ["Voucher"],
+        "summary": "Apply (redeem) a voucher code",
+        "description": "Marks a voucher as used and updates the user's voucher status. The voucher must be assigned to the user and in 'available' status.",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": { "type": "string" }
+                },
+                "required": ["code"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Voucher applied successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "voucher": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "code": { "type": "string" },
+                        "discount_percentage": { "type": "number" },
+                        "max_discount": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or voucher is used/expired",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to use this voucher",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "404": {
+            "description": "Voucher or user not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
