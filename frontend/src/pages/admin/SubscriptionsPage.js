@@ -28,11 +28,11 @@ function SubscriptionsPage() {
   const [error, setError] = useState(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showSubscriberModal, setShowSubscriberModal] = useState(false);
-  const [currentSubscription, setCurrentSubscription] = useState(null);
   const [currentPlan, setCurrentPlan] = useState(null);
   const [currentSubscriber, setCurrentSubscriber] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("subscriber"); // Default to 'subscriber'
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
   const [planFormData, setPlanFormData] = useState({
@@ -64,43 +64,12 @@ function SubscriptionsPage() {
 
         setSubscriptionPlans(plansResponse.data.subscriptions || []);
         setUsers(usersResponse.data.users || []);
-        const allOrders = ordersResponse.data.orders || [];
-        setSubscriptionOrders(allOrders);
-
-        // Build subscribers list from active subscription orders
-        const activeOrders = allOrders.filter(
-          (order) => order.status === "active"
-        );
-        const subsMap = new Map();
-        activeOrders.forEach((order) => {
-          const user = order.userId;
-          const subscription = order.subscriptionId;
-          if (!user) return;
-          const userId = user._id || user.id;
-          if (subsMap.has(userId)) return;
-          subsMap.set(userId, {
-            _id: userId,
-            name: user.name || user.username,
-            email: user.email,
-            username: user.username,
-            subscription: {
-              subscriptionId: subscription,
-              status: order.status,
-              startDate: order.createdAt,
-              endDate: subscription?.duration
-                ? new Date(
-                    new Date(order.createdAt).getTime() +
-                      subscription.duration * 24 * 60 * 60 * 1000
-                  ).toISOString()
-                : null,
-            },
-          });
-        });
-        setSubscribers(Array.from(subsMap.values()));
+        setSubscribers(usersResponse.data.users || []); // Set all users as subscribers initially
+        setSubscriptionOrders(ordersResponse.data.orders || []);
       } catch (error) {
-        console.error("Error fetching subscription data:", error);
-        setError("Failed to load subscription data. Please try again later.");
-        toast.error("Failed to load subscription data");
+        console.error("Error fetching data:", error);
+        setError("Failed to load data. Please try again later.");
+        toast.error("Failed to load data");
       } finally {
         setLoading(false);
       }
@@ -243,6 +212,15 @@ function SubscriptionsPage() {
         setSubscribers([...subscribers, updatedUser]);
       }
 
+      // Update the users list to keep it in sync
+      setUsers([
+        ...users.map((user) =>
+          (user._id || user.id) === (updatedUser._id || updatedUser.id)
+            ? updatedUser
+            : user
+        ),
+      ]);
+
       setShowSubscriberModal(false);
       setUserSubscriptionFormData({
         userId: "",
@@ -278,6 +256,13 @@ function SubscriptionsPage() {
       setSubscribers(
         subscribers.map((sub) =>
           (sub._id || sub.id) === userId ? response.data.user : sub
+        )
+      );
+
+      // Update the users list to keep it in sync
+      setUsers(
+        users.map((user) =>
+          (user._id || user.id) === userId ? response.data.user : user
         )
       );
 
@@ -361,6 +346,19 @@ function SubscriptionsPage() {
 
   const handleViewSubscriber = (subscriber) => {
     setCurrentSubscriber(subscriber);
+    setUserSubscriptionFormData({
+      userId: subscriber._id || subscriber.id,
+      subscriptionId:
+        subscriber.subscription?.subscriptionId?._id ||
+        subscriber.subscription?.subscriptionId ||
+        "",
+      status: subscriber.subscription?.status || "active",
+      startDate: subscriber.subscription?.startDate
+        ? new Date(subscriber.subscription.startDate)
+            .toISOString()
+            .split("T")[0]
+        : new Date().toISOString().split("T")[0],
+    });
     setShowSubscriberModal(true);
   };
 
@@ -385,19 +383,19 @@ function SubscriptionsPage() {
     });
   };
 
-  // Filter subscribers based on search query and status filter
+  // Filter subscribers based on search query, status, and role
   const filteredSubscribers = subscribers.filter((subscriber) => {
+    const matchesRole = roleFilter ? subscriber.role === roleFilter : true;
     const matchesStatus = statusFilter
       ? subscriber.subscription?.status === statusFilter
       : true;
-
     const matchesSearch = searchQuery
       ? subscriber.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         subscriber.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         subscriber.username?.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
 
-    return matchesStatus && matchesSearch;
+    return matchesRole && matchesStatus && matchesSearch;
   });
 
   const filteredOrders = subscriptionOrders.filter((order) => {
@@ -509,7 +507,7 @@ function SubscriptionsPage() {
         <Tab eventKey="subscribers" title="Subscribers">
           <div className="mb-4">
             <div className="row g-3">
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <InputGroup>
                   <InputGroup.Text>
                     <i className="bi bi-search"></i>
@@ -521,7 +519,18 @@ function SubscriptionsPage() {
                   />
                 </InputGroup>
               </div>
-              <div className="col-md-4">
+              <div className="col-md-3">
+                <Form.Select
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <option value="">All Roles</option>
+                  <option value="subscriber">Subscribers</option>
+                  <option value="user">Non-Subscribers</option>
+                  <option value="admin">Admins</option>
+                </Form.Select>
+              </div>
+              <div className="col-md-3">
                 <Form.Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
@@ -547,6 +556,7 @@ function SubscriptionsPage() {
                   <tr>
                     <th>User</th>
                     <th>Email</th>
+                    <th>Role</th>
                     <th>Subscription</th>
                     <th>Start Date</th>
                     <th>End Date</th>
@@ -560,6 +570,7 @@ function SubscriptionsPage() {
                       <tr key={subscriber._id || subscriber.id}>
                         <td>{subscriber.name || subscriber.username}</td>
                         <td>{subscriber.email}</td>
+                        <td>{subscriber.role}</td>
                         <td>
                           {subscriber.subscription?.subscriptionId
                             ? typeof subscriber.subscription.subscriptionId ===
@@ -601,7 +612,7 @@ function SubscriptionsPage() {
                               className="text-danger p-0"
                               onClick={() =>
                                 handleUpdateSubscriptionStatus(
-                                  subscriber.id,
+                                  subscriber._id || subscriber.id,
                                   "inactive"
                                 )
                               }
@@ -614,7 +625,7 @@ function SubscriptionsPage() {
                               className="text-success p-0"
                               onClick={() =>
                                 handleUpdateSubscriptionStatus(
-                                  subscriber.id,
+                                  subscriber._id || subscriber.id,
                                   "active"
                                 )
                               }
@@ -627,7 +638,7 @@ function SubscriptionsPage() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="7" className="text-center py-4">
+                      <td colSpan="8" className="text-center py-4">
                         No subscribers found
                       </td>
                     </tr>
