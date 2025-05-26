@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const voucherController = require("../controllers/voucher.controller");
 const authMiddleware = require("../middlewares/auth.middleware");
+const mongoose = require("mongoose");
 
 // Create voucher (admin only)
 router.post("/create", authMiddleware, voucherController.createVoucher);
@@ -29,11 +30,11 @@ router.post("/claim", authMiddleware, voucherController.claimVoucher);
 // Get all vouchers
 router.get("/", voucherController.getAllVouchers);
 
+// Get user-specific vouchers (placed before dynamic ID route)
+router.get("/user", authMiddleware, voucherController.getUserVouchers);
+
 // Get voucher by ID
 router.get("/:id", voucherController.getVoucherById);
-
-// Get user-specific vouchers
-router.get("/user", authMiddleware, voucherController.getUserVouchers);
 
 // Validate coupon code
 router.post("/validate", authMiddleware, voucherController.validateCoupon);

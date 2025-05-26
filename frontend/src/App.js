@@ -1,11 +1,7 @@
 import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
+import Restricted from "./Restricted";
 
 // Layouts
 import MainLayout from "./layouts/MainLayout";
@@ -28,7 +24,7 @@ import CheckoutPage from "./pages/user/CheckoutPage";
 import OrdersPage from "./pages/user/OrdersPage";
 import OrderDetailPage from "./pages/user/OrderDetailPage";
 import ChatPage from "./pages/user/ChatPage";
-import PaymentPage from "./pages/user/PaymentPage"; // ← Added import
+import PaymentPage from "./pages/user/PaymentPage";
 import PaymentResultPage from "./pages/user/PaymentResultPage";
 
 // Admin Pages
@@ -55,9 +51,9 @@ function App() {
   console.log("App rendering, current location:", window.location.pathname);
 
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-        {/* Public & Protected User Routes under MainLayout */}
+        {/* Public & Protected User Routes */}
         <Route path="/" element={<MainLayout />}>
           {/* Public */}
           <Route index element={<HomePage />} />
@@ -75,37 +71,63 @@ function App() {
           <Route path="reset-password" element={<ResetPasswordPage />} />
           <Route path="subscriptions" element={<SubscriptionsPage />} />
 
-          {/* Protected User */}
+          {/* Protected */}
           <Route
             path="profile"
-            element={user ? <ProfilePage /> : <Navigate to="/login" />}
+            element={
+              <Restricted>
+                <ProfilePage />
+              </Restricted>
+            }
           />
           <Route
             path="cart"
-            element={user ? <CartPage /> : <Navigate to="/login" />}
+            element={
+              <Restricted>
+                <CartPage />
+              </Restricted>
+            }
           />
           <Route
             path="checkout"
-            element={user ? <CheckoutPage /> : <Navigate to="/login" />}
+            element={
+              <Restricted>
+                <CheckoutPage />
+              </Restricted>
+            }
           />
-          {/* Payment initiation page */}
           <Route
             path="payment"
-            element={user ? <PaymentPage /> : <Navigate to="/login" />}
+            element={
+              <Restricted>
+                <PaymentPage />
+              </Restricted>
+            }
           />
-          {/* VietQR return/receipt page */}
           <Route path="payment/result" element={<PaymentResultPage />} />
           <Route
             path="orders"
-            element={user ? <OrdersPage /> : <Navigate to="/login" />}
+            element={
+              <Restricted>
+                <OrdersPage />
+              </Restricted>
+            }
           />
           <Route
             path="orders/:id"
-            element={user ? <OrderDetailPage /> : <Navigate to="/login" />}
+            element={
+              <Restricted>
+                <OrderDetailPage />
+              </Restricted>
+            }
           />
           <Route
             path="chat"
-            element={user ? <ChatPage /> : <Navigate to="/login" />}
+            element={
+              <Restricted>
+                <ChatPage />
+              </Restricted>
+            }
           />
         </Route>
 
@@ -141,7 +163,7 @@ function App() {
           }
         />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 

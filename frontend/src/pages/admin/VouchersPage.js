@@ -463,7 +463,6 @@ function VouchersPage() {
                         <Form.Control.Feedback type="invalid">
                           {formErrors.max_discount}
                         </Form.Control.Feedback>
-                        <Form.Text className="text-muted">Optional</Form.Text>
                       </Form.Group>
                     </div>
                   </div>

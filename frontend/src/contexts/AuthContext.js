@@ -13,14 +13,23 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const normalizeUser = (userData) => ({
+    ...userData,
+    subscription: userData.subscription
+      ? {
+          ...userData.subscription,
+          plan: userData.subscription.subscriptionId?.name || "Standard",
+        }
+      : null,
+  });
+
   useEffect(() => {
-    // Check if user is logged in on mount
     const checkLoggedIn = async () => {
       try {
         const token = localStorage.getItem("token");
         if (token) {
           const response = await authAPI.getProfile();
-          setUser(response.data);
+          setUser(normalizeUser(response.data));
         }
       } catch (err) {
         console.error("Authentication error:", err);
@@ -39,7 +48,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.register(userData);
       localStorage.setItem("token", response.data.token);
-      setUser(response.data.user);
+      setUser(normalizeUser(response.data.user));
       toast.success("Registration successful!");
       return response.data;
     } catch (err) {
@@ -58,7 +67,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.login(credentials);
       localStorage.setItem("token", response.data.token);
-      setUser(response.data.user);
+      setUser(normalizeUser(response.data.user));
       toast.success("Login successful!");
       return response.data;
     } catch (err) {
@@ -92,7 +101,7 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       const response = await authAPI.updateProfile(userData);
-      setUser(response.data.user);
+      setUser(normalizeUser(response.data.user));
       toast.success("Profile updated successfully");
       return response.data;
     } catch (err) {
@@ -113,7 +122,7 @@ export const AuthProvider = ({ children }) => {
       const formData = new FormData();
       formData.append("avatar", file);
       const response = await authAPI.uploadAvatar(formData);
-      setUser(response.data.user);
+      setUser(normalizeUser(response.data.user));
       toast.success("Profile picture updated");
       return response.data;
     } catch (err) {
@@ -133,11 +142,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.changePassword(passwordData);
       toast.success("Password changed successfully");
-      await logout(); // Log out after password change
+      await logout();
       return response.data;
     } catch (err) {
       const errorMessage =
-        err.response?.data?.message || "Password change failed";
+        err.response?.data?.data?.message || "Password change failed";
       setError(errorMessage);
       toast.error(errorMessage);
       throw err;
@@ -155,7 +164,7 @@ export const AuthProvider = ({ children }) => {
       return response.data;
     } catch (err) {
       const errorMessage =
-        err.response?.data?.message || "Password reset request failed";
+        err.response?.data?.msg || "Password reset request failed";
       setError(errorMessage);
       toast.error(errorMessage);
       throw err;
@@ -172,8 +181,7 @@ export const AuthProvider = ({ children }) => {
       toast.success("Password reset successful");
       return response.data;
     } catch (err) {
-      const errorMessage =
-        err.response?.data?.message || "Password reset failed";
+      const errorMessage = err.response?.data?.msg || "Password reset failed";
       setError(errorMessage);
       toast.error(errorMessage);
       throw err;

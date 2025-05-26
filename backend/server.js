@@ -19,6 +19,8 @@ require("./models/voucher.model");
 require("./models/subscription.model");
 require("./models/promptCategory.model");
 require("./models/payment.model");
+require("./models/subscriptionOrder.model");
+require("./models/subscriptionPayment.model");
 
 // MongoDB Connection
 const connectDB = async () => {
@@ -67,6 +69,7 @@ const geminiAIRoute = require("./routes/geminiAI.route");
 const promptCategoryRoute = require("./routes/promptCategory.route");
 const reviewRoute = require("./routes/review.route");
 const paymentRoute = require("./routes/payment.route");
+const subscriptionOrderRoute = require("./routes/subscriptionOrder.route");
 
 app.use("/api/user", userRoute);
 app.use("/api/product", productRoute);
@@ -79,6 +82,7 @@ app.use("/api/geminiAI", geminiAIRoute);
 app.use("/api/promptCategory", promptCategoryRoute);
 app.use("/api/review", reviewRoute);
 app.use("/api/vietqr", paymentRoute);
+app.use("/api/subscription-order", subscriptionOrderRoute);
 
 // Root endpoint
 app.get("/", (req, res) => {

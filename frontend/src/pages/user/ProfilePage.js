@@ -15,6 +15,7 @@ import {
   Spinner,
 } from "react-bootstrap";
 import { voucherAPI } from "../../utils/api";
+import { toast } from "react-hot-toast";
 
 function ProfilePage() {
   const { user, updateProfile, changePassword, uploadAvatar } = useAuth();
@@ -30,14 +31,12 @@ function ProfilePage() {
     confirmPassword: "",
   });
 
-  // Avatar state
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || "");
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const [avatarSuccess, setAvatarSuccess] = useState("");
 
-  // Profile and password loading/error/success states
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
@@ -45,7 +44,6 @@ function ProfilePage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
-  // Vouchers state
   const [vouchers, setVouchers] = useState([]);
   const [voucherLoading, setVoucherLoading] = useState(false);
   const [voucherError, setVoucherError] = useState("");
@@ -69,12 +67,10 @@ function ProfilePage() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith("image/")) {
         setAvatarError("Please select an image file");
         return;
       }
-      // Validate file size (e.g., max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setAvatarError("File size must be less than 5MB");
         return;
@@ -95,15 +91,13 @@ function ProfilePage() {
     setAvatarSuccess("");
 
     try {
-      // Update profile information
       await updateProfile(profileData);
       setProfileSuccess("Profile updated successfully!");
 
-      // Upload avatar if selected
       if (avatarFile) {
         await uploadAvatar(avatarFile);
         setAvatarSuccess("Avatar updated successfully!");
-        setAvatarFile(null); // Clear file input
+        setAvatarFile(null);
       }
     } catch (error) {
       console.error("Profile update error:", error);
@@ -121,7 +115,6 @@ function ProfilePage() {
     setPasswordError("");
     setPasswordSuccess("");
 
-    // Validate passwords
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordError("Passwords do not match");
       setPasswordLoading(false);
@@ -157,12 +150,12 @@ function ProfilePage() {
     }
   };
 
-  // Update avatar preview when user changes
   useEffect(() => {
     setAvatarPreview(user?.avatar || "");
   }, [user?.avatar]);
-  // Fetch user vouchers
+
   useEffect(() => {
+    console.log("User subscription:", user?.subscription);
     const fetchVouchers = async () => {
       setVoucherLoading(true);
       setVoucherError("");
@@ -556,7 +549,7 @@ function ProfilePage() {
                     Subscription Details
                   </h3>
                   <div className="table-responsive">
-                    <table className="table table-borderless subscription-table">
+                    <table className="table table-borderless">
                       <tbody>
                         <tr>
                           <td className="text-secondary fw-medium">
@@ -564,7 +557,7 @@ function ProfilePage() {
                             Subscription ID
                           </td>
                           <td className="fw-bold">
-                            {user.subscription.subscriptionId}
+                            {user.subscription.subscriptionId?._id || "N/A"}
                           </td>
                         </tr>
                         <tr>
@@ -573,16 +566,8 @@ function ProfilePage() {
                             Plan
                           </td>
                           <td className="fw-bold">
-                            {user.subscription.plan || "Standard"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="text-secondary fw-medium">
-                            <i className="bi bi-calendar-check me-2"></i>
-                            Billing Cycle
-                          </td>
-                          <td className="fw-bold">
-                            {user.subscription.billingCycle || "Monthly"}
+                            {user.subscription.subscriptionId?.name ||
+                              "Standard"}
                           </td>
                         </tr>
                       </tbody>
@@ -590,15 +575,12 @@ function ProfilePage() {
                   </div>
 
                   <div className="d-flex flex-wrap gap-2 justify-content-end mt-4">
-                    <Button variant="outline" className="btn-modern-outline">
+                    <Button variant="outline-success" className="btn-modern">
                       <i className="bi bi-gear me-2"></i>
                       Manage Subscription
                     </Button>
                     {user.subscription.status === "active" && (
-                      <Button
-                        variant="outline"
-                        className="btn-modern-outline text-danger"
-                      >
+                      <Button variant="outline-danger" className="btn-modern">
                         <i className="bi bi-x-circle me-2"></i>
                         Cancel Subscription
                       </Button>
@@ -648,7 +630,7 @@ function ProfilePage() {
                         <div>
                           <h5 className="mb-1">{voucherId.code}</h5>
                           <small>
-                            Discount: {voucherId.discount_percentage}% (max{" "}
+                            Discount: {voucherId.discount_percentage}% (max $
                             {voucherId.max_discount})
                           </small>
                           <br />
@@ -657,7 +639,7 @@ function ProfilePage() {
                           </small>
                         </div>
                         <span
-                          className={`badge bg-${badgeVariant}-subtle text-${badgeVariant} px-3 py-2 rounded-pill`}
+                          className={`badge bg-${badgeVariant} px-3 py-2 rounded-pill`}
                         >
                           {label}
                         </span>
@@ -683,13 +665,13 @@ function ProfilePage() {
                 <i className="bi bi-envelope me-2 text-success"></i>
                 Email Notifications
               </p>
-              <p className="mb-0 small text-secondary">
+              <p className="mb-0 small text-muted">
                 Receive emails about your account activity and orders
               </p>
             </div>
             <div className="form-check form-switch">
               <input
-                className="form-check-input form-switch-modern"
+                className="form-check-input"
                 type="checkbox"
                 id="emailNotifications"
                 defaultChecked
@@ -703,13 +685,13 @@ function ProfilePage() {
                 <i className="bi bi-megaphone me-2 text-success"></i>
                 Marketing Communications
               </p>
-              <p className="mb-0 small text-secondary">
+              <p className="mb-0 small text-muted">
                 Receive emails about promotions and new products
               </p>
             </div>
             <div className="form-check form-switch">
               <input
-                className="form-check-input form-switch-modern"
+                className="form-check-input"
                 type="checkbox"
                 id="marketingEmails"
               />
@@ -722,14 +704,11 @@ function ProfilePage() {
                 <i className="bi bi-trash me-2"></i>
                 Delete Account
               </p>
-              <p className="mb-0 small text-secondary">
+              <p className="mb-0 small text-muted">
                 Permanently delete your account and all data
               </p>
             </div>
-            <Button
-              variant="outline"
-              className="btn-modern-outline text-danger"
-            >
+            <Button variant="outline-danger" className="btn-modern">
               <i className="bi bi-trash me-2"></i>
               Delete Account
             </Button>
