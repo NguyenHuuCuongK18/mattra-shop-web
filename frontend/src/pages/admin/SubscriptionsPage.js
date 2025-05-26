@@ -32,7 +32,7 @@ function SubscriptionsPage() {
   const [currentSubscriber, setCurrentSubscriber] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState("subscriber"); // Default to 'subscriber'
+  const [roleFilter, setRoleFilter] = useState("subscriber");
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
   const [planFormData, setPlanFormData] = useState({
@@ -64,7 +64,7 @@ function SubscriptionsPage() {
 
         setSubscriptionPlans(plansResponse.data.subscriptions || []);
         setUsers(usersResponse.data.users || []);
-        setSubscribers(usersResponse.data.users || []); // Set all users as subscribers initially
+        setSubscribers(usersResponse.data.users || []);
         setSubscriptionOrders(ordersResponse.data.orders || []);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -196,7 +196,6 @@ function SubscriptionsPage() {
         startDate: new Date(userSubscriptionFormData.startDate).toISOString(),
       });
 
-      // Update the subscribers list
       const updatedUser = response.data.user;
       const existingIndex = subscribers.findIndex(
         (sub) => (sub._id || sub.id) === (updatedUser._id || updatedUser.id)
@@ -212,7 +211,6 @@ function SubscriptionsPage() {
         setSubscribers([...subscribers, updatedUser]);
       }
 
-      // Update the users list to keep it in sync
       setUsers([
         ...users.map((user) =>
           (user._id || user.id) === (updatedUser._id || updatedUser.id)
@@ -252,14 +250,12 @@ function SubscriptionsPage() {
         status: status,
       });
 
-      // Update the subscribers list
       setSubscribers(
         subscribers.map((sub) =>
           (sub._id || sub.id) === userId ? response.data.user : sub
         )
       );
 
-      // Update the users list to keep it in sync
       setUsers(
         users.map((user) =>
           (user._id || user.id) === userId ? response.data.user : user
@@ -278,7 +274,7 @@ function SubscriptionsPage() {
 
   const handleUpdateOrderStatus = async (orderId, status) => {
     try {
-      const response = await subscriptionAPI.updateSubscriptionOrderStatus(
+      const response = await subscriptionOrderAPI.updateSubscriptionOrderStatus(
         orderId,
         { status }
       );
@@ -306,7 +302,9 @@ function SubscriptionsPage() {
       return;
 
     try {
-      const response = await subscriptionAPI.cancelSubscriptionOrder(orderId);
+      const response = await subscriptionOrderAPI.cancelSubscriptionOrder(
+        orderId
+      );
       setSubscriptionOrders(
         subscriptionOrders.map((order) =>
           (order._id || order.id) === orderId ? response.data.order : order
@@ -383,7 +381,6 @@ function SubscriptionsPage() {
     });
   };
 
-  // Filter subscribers based on search query, status, and role
   const filteredSubscribers = subscribers.filter((subscriber) => {
     const matchesRole = roleFilter ? subscriber.role === roleFilter : true;
     const matchesStatus = statusFilter
@@ -785,31 +782,39 @@ function SubscriptionsPage() {
                               </>
                             )}
                             {order.status === "pending" && (
-                              <Button
-                                variant="outline-success"
-                                size="sm"
-                                onClick={() =>
-                                  handleUpdateOrderStatus(
-                                    order._id || order.id,
-                                    "active"
-                                  )
-                                }
-                              >
-                                Activate
-                              </Button>
+                              <>
+                                <Button
+                                  variant="outline-success"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleUpdateOrderStatus(
+                                      order._id || order.id,
+                                      "active"
+                                    )
+                                  }
+                                >
+                                  Activate
+                                </Button>
+                                <Button
+                                  variant="outline-danger"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleCancelOrder(order._id || order.id)
+                                  }
+                                >
+                                  Cancel
+                                </Button>
+                              </>
                             )}
                             {order.status === "active" && (
                               <Button
-                                variant="outline-secondary"
+                                variant="outline-danger"
                                 size="sm"
                                 onClick={() =>
-                                  handleUpdateOrderStatus(
-                                    order._id || order.id,
-                                    "cancelled"
-                                  )
+                                  handleCancelOrder(order._id || order.id)
                                 }
                               >
-                                Deactivate
+                                Cancel
                               </Button>
                             )}
                           </div>
