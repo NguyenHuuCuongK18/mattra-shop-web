@@ -438,3 +438,74 @@ exports.deleteVoucher = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+/**
+ * Apply (redeem) a voucher by code.
+ * - User must be logged in (authMiddleware).
+ * - Voucher must exist, be unused, unexpired, and (if subscriber-only) user must be subscriber.
+ * - Voucher must already be assigned to this user and in "available" status.
+ * Marks the voucher as used and updates the user's voucher status.
+ */
+exports.applyVoucher = async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ message: "Voucher code is required" });
+    }
+
+    // 1) Find voucher
+    const voucher = await Voucher.findOne({ code });
+    if (!voucher) {
+      return res.status(404).json({ message: "Voucher not found" });
+    }
+    if (voucher.is_used || voucher.expires_at <= new Date()) {
+      return res.status(400).json({ message: "Voucher is used or expired" });
+    }
+    if (voucher.subscriberOnly && req.user.role !== "subscriber") {
+      return res
+        .status(403)
+        .json({ message: "This voucher is exclusive to subscribers" });
+    }
+
+    // 2) Load user and ensure voucher was assigned
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const uvEntry = user.vouchers.find(
+      (v) =>
+        v.voucherId.toString() === voucher._id.toString() &&
+        v.status === "available"
+    );
+    if (!uvEntry) {
+      return res
+        .status(403)
+        .json({ message: "Voucher not assigned or already used by this user" });
+    }
+
+    // 3) Mark voucher globally as used
+    voucher.is_used = true;
+    await voucher.save();
+
+    // 4) Update this user's voucher entry to "used"
+    user.vouchers = user.vouchers.map((v) =>
+      v.voucherId.toString() === voucher._id.toString()
+        ? { ...v.toObject(), status: "used" }
+        : v
+    );
+    await user.save();
+
+    // 5) Respond with the voucher details for front-end discount calculation
+    res.status(200).json({
+      message: "Voucher applied successfully",
+      voucher: {
+        id: voucher._id,
+        code: voucher.code,
+        discount_percentage: voucher.discount_percentage,
+        max_discount: voucher.max_discount,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

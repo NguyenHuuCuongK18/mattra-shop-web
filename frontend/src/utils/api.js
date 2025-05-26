@@ -117,6 +117,7 @@ export const voucherAPI = {
     api.put(`/api/voucher/update/${id}`, voucherData),
   deleteVoucher: (id) => api.delete(`/api/voucher/delete/${id}`),
   validateVoucher: (code) => api.post("/api/voucher/validate", { code }),
+  applyVoucher: (code) => api.post("/api/voucher/apply", { code }),
 };
 
 // Gemini AI API

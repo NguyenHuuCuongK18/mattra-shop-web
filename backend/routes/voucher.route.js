@@ -44,4 +44,7 @@ router.put("/update/:id", authMiddleware, voucherController.updateVoucher);
 // Delete voucher (admin only)
 router.delete("/delete/:id", authMiddleware, voucherController.deleteVoucher);
 
+// Apply (redeem) a voucher code
+router.post("/apply", authMiddleware, voucherController.applyVoucher);
+
 module.exports = router;

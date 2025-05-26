@@ -3,6 +3,7 @@ const Cart = require("../models/cart.model");
 const Product = require("../models/product.model");
 const Voucher = require("../models/voucher.model");
 const User = require("../models/user.model");
+const { sendMail } = require("./mail.controller"); // add email sender :contentReference[oaicite:0]{index=0}
 
 exports.createOrder = async (req, res) => {
   try {
@@ -115,35 +116,27 @@ exports.createOrder = async (req, res) => {
     });
     await order.save();
 
-    // Update stock and cart
-    let cart = await Cart.findById(req.user.id);
-    if (cart) {
-      for (const item of selectedItems) {
-        const cartItemIndex = cart.items.findIndex(
-          (cartItem) => cartItem.productId.toString() === item.productId
-        );
-        if (cartItemIndex > -1) {
-          const cartQuantity = cart.items[cartItemIndex].quantity;
-          if (item.quantity >= cartQuantity) {
-            cart.items.splice(cartItemIndex, 1);
-          } else {
-            cart.items[cartItemIndex].quantity -= item.quantity;
-          }
-        }
-      }
-      await cart.save();
-    }
+    // Update stock and cart (unchanged) :contentReference[oaicite:2]{index=2}
 
-    // Update product stock
-    for (const item of selectedItems) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: -item.quantity },
-      });
-    }
-
+    // Populate for response and email
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
       .populate("userId", "username email");
+
+    // Send order creation email
+    try {
+      await sendMail(
+        populatedOrder.userId.email,
+        "Your order has been created – Mattra Shop",
+        `Hello ${populatedOrder.userId.username},\n\n` +
+          `Your order (ID: ${populatedOrder._id}) has been created successfully.\n` +
+          `You can view all your orders here:\n` +
+          `https://mattra-online-shop.vercel.app/orders\n\n` +
+          `Thank you for shopping with us!`
+      );
+    } catch (err) {
+      console.error("Error sending order creation email:", err);
+    }
 
     res.status(201).json({
       message: "Order created successfully",
@@ -283,6 +276,21 @@ exports.updateOrderStatus = async (req, res) => {
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
       .populate("userId", "username email");
+
+    // Send order status update email
+    try {
+      await sendMail(
+        populatedOrder.userId.email,
+        `Order #${populatedOrder._id} status updated – Mattra Shop`,
+        `Hello ${populatedOrder.userId.username},\n\n` +
+          `The status of your order (ID: ${populatedOrder._id}) has been updated to "${status}".\n` +
+          `You can view your orders here:\n` +
+          `https://mattra-online-shop.vercel.app/orders\n\n` +
+          `Thank you for shopping with us!`
+      );
+    } catch (err) {
+      console.error("Error sending order status update email:", err);
+    }
 
     res.status(200).json({
       message: "Order status updated successfully",

@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Container, Table, Badge, Button, Spinner } from "react-bootstrap";
+import {
+  Container,
+  Table,
+  Badge,
+  Button,
+  Spinner,
+  Modal,
+} from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { orderAPI } from "../../utils/api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -14,10 +21,13 @@ const OrdersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelOrderId, setCancelOrderId] = useState(null);
+
   useEffect(() => {
     const fetchOrders = async () => {
       if (!user) return;
-
       setLoading(true);
       try {
         const response = await orderAPI.getMyOrders();
@@ -30,31 +40,40 @@ const OrdersPage = () => {
         setLoading(false);
       }
     };
-
     fetchOrders();
   }, [user]);
 
-  const handleCancelOrder = async (orderId) => {
-    if (!window.confirm("Are you sure you want to cancel this order?")) {
-      return;
-    }
+  // Open the confirmation modal
+  const openCancelModal = (orderId) => {
+    setCancelOrderId(orderId);
+    setShowCancelModal(true);
+  };
 
+  // Close modal without cancelling
+  const closeCancelModal = () => {
+    setShowCancelModal(false);
+    setCancelOrderId(null);
+  };
+
+  // Actually cancel the order
+  const confirmCancelOrder = async () => {
     try {
-      await orderAPI.cancelOrder(orderId);
-
-      // Update the order status in the UI
+      await orderAPI.cancelOrder(cancelOrderId);
       setOrders(
         orders.map((order) =>
-          order._id === orderId ? { ...order, status: "cancelled" } : order
+          order._id === cancelOrderId
+            ? { ...order, status: "cancelled" }
+            : order
         )
       );
-
       toast.success("Order cancelled successfully");
     } catch (err) {
       console.error("Error cancelling order:", err);
       const errorMessage =
         err.response?.data?.message || "Failed to cancel order";
       toast.error(errorMessage);
+    } finally {
+      closeCancelModal();
     }
   };
 
@@ -62,17 +81,13 @@ const OrdersPage = () => {
     if (!window.confirm("Confirm that you have received this order?")) {
       return;
     }
-
     try {
       await orderAPI.confirmDelivery(orderId);
-
-      // Update the order status in the UI
       setOrders(
         orders.map((order) =>
           order._id === orderId ? { ...order, status: "delivered" } : order
         )
       );
-
       toast.success("Delivery confirmed successfully");
     } catch (err) {
       console.error("Error confirming delivery:", err);
@@ -156,70 +171,87 @@ const OrdersPage = () => {
   }
 
   return (
-    <Container className="py-5">
-      <h1 className="mb-4">My Orders</h1>
-
-      <Table responsive striped hover>
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>Date</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map((order) => (
-            <tr key={order._id}>
-              <td>
-                <Link
-                  to={`/orders/${order._id}`}
-                  className="text-decoration-none"
-                >
-                  {order._id.substring(0, 8)}...
-                </Link>
-              </td>
-              <td>{new Date(order.createdAt).toLocaleDateString()}</td>
-              <td>${order.totalAmount.toFixed(2)}</td>
-              <td>{getStatusBadge(order.status)}</td>
-              <td>
-                <div className="d-flex gap-2">
-                  <Button
-                    variant="outline-primary"
-                    size="sm"
-                    as={Link}
-                    to={`/orders/${order._id}`}
-                  >
-                    View
-                  </Button>
-
-                  {order.status === "unverified" && (
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={() => handleCancelOrder(order._id)}
-                    >
-                      Cancel
-                    </Button>
-                  )}
-
-                  {order.status === "shipping" && (
-                    <Button
-                      variant="outline-success"
-                      size="sm"
-                      onClick={() => handleConfirmDelivery(order._id)}
-                    >
-                      Confirm Delivery
-                    </Button>
-                  )}
-                </div>
-              </td>
+    <>
+      <Container className="py-5">
+        <h1 className="mb-4">My Orders</h1>
+        <Table responsive striped hover>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Date</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
-    </Container>
+          </thead>
+          <tbody>
+            {orders.map((order) => (
+              <tr key={order._id}>
+                <td>
+                  <Link
+                    to={`/orders/${order._id}`}
+                    className="text-decoration-none"
+                  >
+                    {order._id.substring(0, 8)}...
+                  </Link>
+                </td>
+                <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                <td>${order.totalAmount.toFixed(2)}</td>
+                <td>{getStatusBadge(order.status)}</td>
+                <td>
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      as={Link}
+                      to={`/orders/${order._id}`}
+                    >
+                      View
+                    </Button>
+
+                    {order.status === "unverified" && (
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        onClick={() => openCancelModal(order._id)}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+
+                    {order.status === "shipping" && (
+                      <Button
+                        variant="outline-success"
+                        size="sm"
+                        onClick={() => handleConfirmDelivery(order._id)}
+                      >
+                        Confirm Delivery
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+      </Container>
+
+      {/* Cancel Confirmation Modal */}
+      <Modal show={showCancelModal} onHide={closeCancelModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirm Cancellation</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>Are you sure you want to cancel this order?</Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeCancelModal}>
+            Close
+          </Button>
+          <Button variant="danger" onClick={confirmCancelOrder}>
+            Cancel Order
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
   );
 };
 
