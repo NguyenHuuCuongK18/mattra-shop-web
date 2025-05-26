@@ -44,8 +44,8 @@ function VouchersPage() {
         setUsers(usersResponse.data.users || []);
       } catch (error) {
         console.error("Error fetching data:", error);
-        setError("Failed to load vouchers. Please try again later.");
-        toast.error("Failed to load vouchers");
+        setError("Failed to load vouchers or users. Please try again later.");
+        toast.error("Failed to load vouchers or users");
       } finally {
         setLoading(false);
       }
@@ -91,10 +91,12 @@ function VouchersPage() {
         "Discount percentage must be between 1 and 100";
     if (
       formData.max_discount &&
-      (isNaN(formData.max_discount) || Number(formData.max_discount) <= 0)
+      (isNaN(formData.max_discount) || Number(formData.max_discount) < 0)
     )
-      errors.max_discount = "Max discount must be a positive number";
+      errors.max_discount = "Max discount must be non-negative";
     if (!formData.expiry_date) errors.expiry_date = "Expiry date is required";
+    else if (new Date(formData.expiry_date) <= new Date())
+      errors.expiry_date = "Expiry date must be in the future";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -134,9 +136,7 @@ function VouchersPage() {
       code: voucher.code,
       discount_percentage: voucher.discount_percentage.toString(),
       max_discount: voucher.max_discount ? voucher.max_discount.toString() : "",
-      expiry_date: new Date(voucher.expiry_date || voucher.expires_at)
-        .toISOString()
-        .split("T")[0],
+      expiry_date: new Date(voucher.expires_at).toISOString().split("T")[0],
       subscriberOnly: voucher.subscriberOnly || false,
       description: voucher.description || "",
     });
@@ -153,7 +153,7 @@ function VouchersPage() {
     setCurrentVoucher(voucher);
     setAssignFormData({
       userId: "",
-      voucherId: voucher._id || voucher.id,
+      voucherId: voucher._id,
     });
     setIsAssignModalOpen(true);
   };
@@ -166,19 +166,21 @@ function VouchersPage() {
     setFormSubmitting(true);
     try {
       const voucherData = {
-        ...formData,
+        code: formData.code,
         discount_percentage: Number.parseFloat(formData.discount_percentage),
         max_discount: formData.max_discount
           ? Number.parseFloat(formData.max_discount)
           : 0,
         expires_at: new Date(formData.expiry_date).toISOString(),
+        subscriberOnly: formData.subscriberOnly,
+        description: formData.description,
       };
 
       let response;
       if (currentVoucher) {
         // Update existing voucher
         response = await voucherAPI.updateVoucher(
-          currentVoucher.id,
+          currentVoucher._id,
           voucherData
         );
         toast.success("Voucher updated successfully");
@@ -190,10 +192,9 @@ function VouchersPage() {
 
       // Update vouchers list
       if (currentVoucher) {
-        const voucherId = currentVoucher._id || currentVoucher.id;
         setVouchers(
           vouchers.map((v) =>
-            (v._id || v.id) === voucherId ? response.data.voucher : v
+            v._id === currentVoucher._id ? response.data.voucher : v
           )
         );
       } else {
@@ -217,11 +218,10 @@ function VouchersPage() {
 
     setFormSubmitting(true);
     try {
-      await voucherAPI.deleteVoucher(currentVoucher.id);
+      await voucherAPI.deleteVoucher(currentVoucher._id);
 
       // Remove voucher from list
-      const voucherId = currentVoucher._id || currentVoucher.id;
-      setVouchers(vouchers.filter((v) => (v._id || v.id) !== voucherId));
+      setVouchers(vouchers.filter((v) => v._id !== currentVoucher._id));
       setIsDeleteModalOpen(false);
       toast.success("Voucher deleted successfully");
     } catch (error) {
@@ -244,10 +244,10 @@ function VouchersPage() {
 
     setFormSubmitting(true);
     try {
-      await voucherAPI.applyVoucher({
-        userId: assignFormData.userId,
-        voucherId: assignFormData.voucherId,
-      });
+      await voucherAPI.assignVoucher(
+        assignFormData.voucherId,
+        assignFormData.userId
+      );
 
       toast.success("Voucher assigned successfully");
       setIsAssignModalOpen(false);
@@ -333,34 +333,26 @@ function VouchersPage() {
             <tbody>
               {filteredVouchers.length > 0 ? (
                 filteredVouchers.map((voucher) => (
-                  <tr key={voucher._id || voucher.id}>
+                  <tr key={voucher._id}>
                     <td>{voucher.code}</td>
                     <td>
                       {voucher.discount_percentage}%
                       {voucher.max_discount > 0 &&
                         ` (Max: $${voucher.max_discount})`}
                     </td>
-                    <td>
-                      {new Date(
-                        voucher.expiry_date || voucher.expires_at
-                      ).toLocaleDateString()}
-                    </td>
+                    <td>{new Date(voucher.expires_at).toLocaleDateString()}</td>
                     <td>{voucher.subscriberOnly ? "Yes" : "No"}</td>
                     <td>
                       <Badge
                         bg={
-                          isVoucherExpired(
-                            voucher.expiry_date || voucher.expires_at
-                          )
+                          isVoucherExpired(voucher.expires_at)
                             ? "danger"
                             : voucher.is_used
                             ? "secondary"
                             : "success"
                         }
                       >
-                        {isVoucherExpired(
-                          voucher.expiry_date || voucher.expires_at
-                        )
+                        {isVoucherExpired(voucher.expires_at)
                           ? "Expired"
                           : voucher.is_used
                           ? "Used"
@@ -573,10 +565,7 @@ function VouchersPage() {
                     >
                       <option value="">Choose a user</option>
                       {users.map((user) => (
-                        <option
-                          key={user._id || user.id}
-                          value={user._id || user.id}
-                        >
+                        <option key={user._id} value={user._id}>
                           {user.name || user.username} ({user.email})
                         </option>
                       ))}
