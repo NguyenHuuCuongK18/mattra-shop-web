@@ -163,3 +163,21 @@ exports.verifyPayment = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
+
+/**
+ * Get all payments for the current user
+ */
+exports.getMyPayments = async (req, res) => {
+  try {
+    const payments = await Payment.find({ userId: req.user.id }).sort({
+      createdAt: -1,
+    });
+    return res.json({
+      message: "Payments retrieved successfully",
+      payments,
+    });
+  } catch (err) {
+    console.error("Error fetching user payments:", err);
+    return res.status(500).json({ message: err.message });
+  }
+};
