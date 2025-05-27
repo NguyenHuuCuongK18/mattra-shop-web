@@ -153,14 +153,14 @@ const PaymentPage = () => {
                   <i className="bi bi-arrow-right-circle me-2"></i>
                   Proceed
                 </Button>
-
+                {/* 
                 <Button
                   as={Link}
                   to={`/orders/${orderId}`}
                   variant="outline-secondary"
                 >
                   View Order Details
-                </Button>
+                </Button> */}
 
                 <Button as={Link} to="/" variant="outline-primary">
                   Back to Home
