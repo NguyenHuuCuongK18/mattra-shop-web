@@ -35,7 +35,6 @@ const CheckoutPage = () => {
   const [paymentMethod, setPaymentMethod] = useState("Online Banking");
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
-  const [orderId, setOrderId] = useState(null);
 
   // Calculate subtotal
   const calculateSubtotal = () => {
@@ -150,10 +149,9 @@ const CheckoutPage = () => {
       return;
     }
 
-    const loadingToast = toast.loading("Processing your order...");
     setLoading(true);
     try {
-      // Create order
+      // 1. Create the order
       const orderData = {
         paymentMethod: "Online Banking",
         shippingAddress,
@@ -162,47 +160,25 @@ const CheckoutPage = () => {
           quantity: item.quantity,
         })),
       };
-
-      const orderPromise = orderAPI.createOrder(orderData);
-
-      // Wait for order creation
-      const orderResponse = await orderPromise;
+      const orderResponse = await orderAPI.createOrder(orderData);
       const order = orderResponse.data.order;
-      setOrderId(order._id);
 
-      // Prepare promises for parallel execution
-      const promises = [];
-
-      // Apply voucher if selected (not parallelized as it depends on order._id)
+      // 2. Apply voucher (silent failure)
       if (selectedVoucher) {
-        promises.push(
-          orderAPI
-            .applyVoucher(order._id, selectedVoucher._id)
-            .catch((voucherError) => {
-              console.error("Error applying voucher:", voucherError);
-              toast.error(
-                voucherError.response?.data?.message ||
-                  "Failed to apply voucher"
-              );
-              return null; // Proceed even if voucher fails
-            })
-        );
+        try {
+          await orderAPI.applyVoucher(order._id, selectedVoucher._id);
+        } catch (err) {
+          console.error("Voucher apply failed:", err);
+        }
       }
 
-      // Generate VietQR (depends on order._id)
-      promises.push(paymentAPI.generateVietQR({ orderId: order._id }));
-
-      // Clear cart (can run independently)
-      promises.push(clearCart());
-
-      // Execute voucher application, payment QR generation, and cart clearing in parallel
-      const [voucherResult, paymentResponse, clearCartResult] =
-        await Promise.all(promises);
-
-      // Process payment response
+      // 3. Generate the VietQR payment
+      const paymentResponse = await paymentAPI.generateVietQR({
+        orderId: order._id,
+      });
       const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
 
-      // Store payment info
+      // 4. Store payment info locally
       localStorage.setItem(
         "currentPayment",
         JSON.stringify({
@@ -214,16 +190,14 @@ const CheckoutPage = () => {
         })
       );
 
-      toast.dismiss(loadingToast);
-      toast.success("Order created! Redirecting to payment...");
+      // 5. Clear the cart
+      await clearCart();
+
+      // 6. Redirect immediately to payment page
       navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
     } catch (error) {
-      console.error("Error processing checkout:", error);
-      toast.dismiss(loadingToast);
-      toast.error(error.response?.data?.message || "Failed to place order");
-      if (orderId) {
-        navigate(`/orders/${orderId}`);
-      }
+      console.error("Error during checkout:", error);
+      // No intermediate error toasts per UX requirement
     } finally {
       setLoading(false);
     }
@@ -270,6 +244,33 @@ const CheckoutPage = () => {
                     required
                   />
                 </Form.Group>
+
+                <Form.Group className="mb-4">
+                  <Form.Label>Coupon Code</Form.Label>
+                  <Row>
+                    <Col>
+                      <Form.Control
+                        type="text"
+                        placeholder="Enter coupon code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        isInvalid={!!couponError}
+                      />
+                      <Form.Control.Feedback type="invalid">
+                        {couponError}
+                      </Form.Control.Feedback>
+                    </Col>
+                    <Col xs="auto">
+                      <BootstrapButton
+                        onClick={handleApplyCoupon}
+                        disabled={!couponCode.trim()}
+                      >
+                        Apply
+                      </BootstrapButton>
+                    </Col>
+                  </Row>
+                </Form.Group>
+
                 <Form.Group className="mb-4">
                   <Form.Label>Payment Method</Form.Label>
                   <div>
@@ -284,59 +285,7 @@ const CheckoutPage = () => {
                     />
                   </div>
                 </Form.Group>
-                {(vouchers.length > 0 || couponCode) && (
-                  <Form.Group className="mb-4">
-                    <Form.Label>Apply Voucher</Form.Label>
-                    <Row>
-                      <Col md={8}>
-                        <Form.Select
-                          value={selectedVoucher?._id || ""}
-                          onChange={(e) => handleSelectVoucher(e.target.value)}
-                          disabled={loadingVouchers || couponCode}
-                        >
-                          <option value="">Select a voucher</option>
-                          {vouchers.map((voucher) => (
-                            <option
-                              key={voucher.voucherId._id}
-                              value={voucher.voucherId._id}
-                            >
-                              {voucher.voucherId.code} -{" "}
-                              {voucher.voucherId.discount_percentage}% off
-                              {voucher.voucherId.max_discount > 0
-                                ? ` (max $${voucher.voucherId.max_discount})`
-                                : ""}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      </Col>
-                      <Col md={4}>
-                        <Button
-                          variant="outline-secondary"
-                          onClick={handleApplyCoupon}
-                          disabled={!couponCode || loadingVouchers}
-                        >
-                          Apply Code
-                        </Button>
-                      </Col>
-                    </Row>
-                    <Form.Control
-                      type="text"
-                      className="mt-2"
-                      placeholder="Enter voucher code"
-                      value={couponCode}
-                      onChange={(e) => {
-                        setCouponCode(e.target.value);
-                        setSelectedVoucher(null);
-                        setDiscountAmount(0);
-                        setCouponError("");
-                      }}
-                      isInvalid={!!couponError}
-                    />
-                    <Form.Control.Feedback type="invalid">
-                      {couponError}
-                    </Form.Control.Feedback>
-                  </Form.Group>
-                )}
+
                 <Button
                   type="submit"
                   disabled={loading || !shippingAddress.trim()}
@@ -361,6 +310,7 @@ const CheckoutPage = () => {
             </Card.Body>
           </Card>
         </Col>
+
         <Col md={4}>
           <Card>
             <Card.Header>
@@ -369,13 +319,10 @@ const CheckoutPage = () => {
             <ListGroup variant="flush">
               {cart.items.map((item) => (
                 <ListGroup.Item key={item.productId._id || item.productId.id}>
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div>
-                      <p className="mb-0 fw-bold">{item.productId.name}</p>
-                      <small className="text-muted">
-                        ${item.productId.price.toFixed(2)} x {item.quantity}
-                      </small>
-                    </div>
+                  <div className="d-flex justify-content-between">
+                    <span>
+                      {item.productId.name} x {item.quantity}
+                    </span>
                     <span>
                       ${(item.productId.price * item.quantity).toFixed(2)}
                     </span>
@@ -390,10 +337,8 @@ const CheckoutPage = () => {
               </ListGroup.Item>
               <ListGroup.Item>
                 <div className="d-flex justify-content-between">
-                  <span>Shipping</span>
-                  <span>
-                    {shippingFee === 0 ? "Free" : `$${shippingFee.toFixed(2)}`}
-                  </span>
+                  <span>Shipping Fee</span>
+                  <span>${shippingFee.toFixed(2)}</span>
                 </div>
               </ListGroup.Item>
               {discountAmount > 0 && (
@@ -404,8 +349,8 @@ const CheckoutPage = () => {
                   </div>
                 </ListGroup.Item>
               )}
-              <ListGroup.Item>
-                <div className="d-flex justify-content-between fw-bold">
+              <ListGroup.Item className="fw-bold">
+                <div className="d-flex justify-content-between">
                   <span>Total</span>
                   <span>${total.toFixed(2)}</span>
                 </div>

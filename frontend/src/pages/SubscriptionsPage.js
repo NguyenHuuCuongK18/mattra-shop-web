@@ -167,7 +167,9 @@ function SubscriptionsPage() {
                     <span className="display-5 fw-bold">
                       ${plan.price.toFixed(2)}
                     </span>
-                    <span className="text-secondary">/month</span>
+                    <span className="text-secondary">
+                      /{plan.duration} month{plan.duration > 1 ? "s" : ""}
+                    </span>{" "}
                   </div>
                   <div className="mb-4 flex-grow-1">
                     <p className="text-muted">
