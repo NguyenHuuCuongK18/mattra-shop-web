@@ -96,7 +96,7 @@ function CategoriesPage() {
       if (currentCategory) {
         // Update existing category
         response = await categoryAPI.updateCategory(
-          currentCategory.id,
+          currentCategory._id,
           formData
         );
       } else {
@@ -108,7 +108,7 @@ function CategoriesPage() {
       if (currentCategory) {
         setCategories(
           categories.map((c) =>
-            c.id === currentCategory.id ? response.data.category : c
+            c._id === currentCategory._id ? response.data.category : c
           )
         );
       } else {
@@ -129,10 +129,10 @@ function CategoriesPage() {
 
     setFormSubmitting(true);
     try {
-      await categoryAPI.deleteCategory(currentCategory.id);
+      await categoryAPI.deleteCategory(currentCategory._id);
 
       // Remove category from list
-      setCategories(categories.filter((c) => c.id !== currentCategory.id));
+      setCategories(categories.filter((c) => c._id !== currentCategory._id));
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error("Error deleting category:", error);
@@ -182,7 +182,7 @@ function CategoriesPage() {
             <tbody>
               {categories.length > 0 ? (
                 categories.map((category) => (
-                  <tr key={category.id}>
+                  <tr key={category._id}>
                     <td>{category.name}</td>
                     <td>{category.description || "-"}</td>
                     <td>{category.productCount || 0}</td>
