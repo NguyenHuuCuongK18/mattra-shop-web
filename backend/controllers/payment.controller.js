@@ -21,7 +21,7 @@ exports.generateVietQR = async (req, res) => {
       accountNumber: process.env.VIETQR_ACCOUNT_NUMBER,
       amount: order.totalAmount.toString(),
       memo: `Order #${order._id}`,
-      template: "compact",
+      template: "compact2",
     });
 
     const { code, desc, data: qrData } = apiRes.data;
@@ -100,6 +100,7 @@ exports.logPaymentStatus = async (req, res) => {
 /**
  * On-demand polling endpoint: call VietQR's Check Transaction API
  * and update our record if the user has paid.
+ * This method does not exists.
  */
 exports.verifyPayment = async (req, res) => {
   try {
