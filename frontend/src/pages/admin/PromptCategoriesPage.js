@@ -25,9 +25,14 @@ function PromptCategoriesPage() {
       setLoading(true);
       try {
         const response = await promptCategoryAPI.getAllPromptCategories();
+        console.log("Prompt categories response:", response); // Debug log
         setPromptCategories(response.data.promptCategories || []);
       } catch (error) {
-        console.error("Error fetching prompt categories:", error);
+        console.error(
+          "Error fetching prompt categories:",
+          error,
+          error.response
+        );
         setError("Failed to load prompt categories. Please try again later.");
       } finally {
         setLoading(false);
@@ -43,7 +48,6 @@ function PromptCategoriesPage() {
       ...formData,
       [name]: value,
     });
-    // Clear error when user types
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
@@ -98,19 +102,21 @@ function PromptCategoriesPage() {
       if (currentCategory) {
         // Update existing category
         response = await promptCategoryAPI.updatePromptCategory(
-          currentCategory.id,
+          currentCategory._id,
           formData
         );
+        console.log("Update response:", response); // Debug log
       } else {
         // Create new category
         response = await promptCategoryAPI.createPromptCategory(formData);
+        console.log("Create response:", response); // Debug log
       }
 
       // Update categories list
       if (currentCategory) {
         setPromptCategories(
           promptCategories.map((c) =>
-            c.id === currentCategory.id ? response.data.promptCategory : c
+            c._id === currentCategory._id ? response.data.promptCategory : c
           )
         );
       } else {
@@ -122,7 +128,7 @@ function PromptCategoriesPage() {
 
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Error saving prompt category:", error);
+      console.error("Error saving prompt category:", error, error.response);
       setError(
         error.response?.data?.message || "Failed to save prompt category"
       );
@@ -136,15 +142,18 @@ function PromptCategoriesPage() {
 
     setFormSubmitting(true);
     try {
-      await promptCategoryAPI.deletePromptCategory(currentCategory.id);
+      const response = await promptCategoryAPI.deletePromptCategory(
+        currentCategory._id
+      );
+      console.log("Delete response:", response); // Debug log
 
       // Remove category from list
       setPromptCategories(
-        promptCategories.filter((c) => c.id !== currentCategory.id)
+        promptCategories.filter((c) => c._id !== currentCategory._id)
       );
       setIsDeleteModalOpen(false);
     } catch (error) {
-      console.error("Error deleting prompt category:", error);
+      console.error("Error deleting prompt category:", error, error.response);
       setError(
         error.response?.data?.message || "Failed to delete prompt category"
       );
@@ -192,7 +201,7 @@ function PromptCategoriesPage() {
             <tbody>
               {promptCategories.length > 0 ? (
                 promptCategories.map((category) => (
-                  <tr key={category.id}>
+                  <tr key={category._id}>
                     <td>{category.name}</td>
                     <td className="text-truncate" style={{ maxWidth: "400px" }}>
                       {category.promptText}
