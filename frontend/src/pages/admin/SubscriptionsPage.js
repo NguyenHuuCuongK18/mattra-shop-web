@@ -905,11 +905,11 @@ function SubscriptionsPage() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Duration (days)</Form.Label>
+              <Form.Label>Duration (month)</Form.Label>
               <Form.Control
                 type="number"
                 name="duration"
-                placeholder="30"
+                placeholder="1"
                 value={planFormData.duration}
                 onChange={handlePlanInputChange}
                 min="1"
