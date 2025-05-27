@@ -150,6 +150,7 @@ const CheckoutPage = () => {
       return;
     }
 
+    const loadingToast = toast.loading("Processing your order...");
     setLoading(true);
     try {
       // Create order
@@ -201,10 +202,12 @@ const CheckoutPage = () => {
           })
         );
 
+        toast.dismiss(loadingToast);
         toast.success("Order created! Redirecting to payment...");
         navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
       } catch (paymentError) {
         console.error("Error generating payment QR:", paymentError);
+        toast.dismiss(loadingToast);
         toast.error(
           paymentError.response?.data?.message ||
             "Payment QR generation failed. Please contact support."
@@ -213,6 +216,7 @@ const CheckoutPage = () => {
       }
     } catch (error) {
       console.error("Error creating order:", error);
+      toast.dismiss(loadingToast);
       toast.error(error.response?.data?.message || "Failed to place order");
     } finally {
       setLoading(false);

@@ -23,7 +23,7 @@ exports.generateSubscriptionVietQR = async (req, res) => {
       accountNumber: process.env.VIETQR_ACCOUNT_NUMBER,
       amount: order.price.toString(),
       memo: `Subscription #${order._id}`,
-      template: "compact",
+      template: "compact2",
     });
 
     const { code, data: qrData } = qrRes.data;
