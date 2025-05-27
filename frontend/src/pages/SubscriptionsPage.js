@@ -52,14 +52,18 @@ function SubscriptionsPage() {
       // Step 1: Create subscription order
       const orderData = {
         subscriptionId: plan._id,
-        paymentMethod: "Online Banking", // Match backend expectation
+        paymentMethod: "Online Banking",
         shippingAddress: user.address || "Subscription Service",
       };
 
       const orderResponse = await subscriptionOrderAPI.createSubscriptionOrder(
         orderData
       );
-      const subscriptionOrderId = orderResponse.data.subscriptionOrder._id;
+      console.log("orderResponse:", orderResponse); // Debug log
+      if (!orderResponse.data?.order?._id) {
+        throw new Error("Invalid response structure: order._id not found");
+      }
+      const subscriptionOrderId = orderResponse.data.order._id; // Changed from subscriptionOrder to order
 
       // Step 2: Generate VietQR code for subscription payment
       const paymentResponse = await subscriptionPaymentAPI.generateVietQR({
@@ -88,13 +92,14 @@ function SubscriptionsPage() {
     } catch (error) {
       console.error("Error creating subscription payment:", error);
       toast.error(
-        error.response?.data?.message || "Failed to create subscription order"
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to create subscription order"
       );
     } finally {
       setPaymentLoading(false);
     }
   };
-
   if (loading) {
     return (
       <Container className="py-5 text-center">
