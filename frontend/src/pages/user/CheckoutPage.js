@@ -163,61 +163,67 @@ const CheckoutPage = () => {
         })),
       };
 
-      const orderResponse = await orderAPI.createOrder(orderData);
+      const orderPromise = orderAPI.createOrder(orderData);
+
+      // Wait for order creation
+      const orderResponse = await orderPromise;
       const order = orderResponse.data.order;
       setOrderId(order._id);
 
-      // Apply voucher if selected
+      // Prepare promises for parallel execution
+      const promises = [];
+
+      // Apply voucher if selected (not parallelized as it depends on order._id)
       if (selectedVoucher) {
-        try {
-          await orderAPI.applyVoucher(order._id, selectedVoucher._id);
-        } catch (voucherError) {
-          console.error("Error applying voucher:", voucherError);
-          toast.error(
-            voucherError.response?.data?.message || "Failed to apply voucher"
-          );
-          // Proceed to payment even if voucher fails
-        }
+        promises.push(
+          orderAPI
+            .applyVoucher(order._id, selectedVoucher._id)
+            .catch((voucherError) => {
+              console.error("Error applying voucher:", voucherError);
+              toast.error(
+                voucherError.response?.data?.message ||
+                  "Failed to apply voucher"
+              );
+              return null; // Proceed even if voucher fails
+            })
+        );
       }
 
-      // Clear cart
-      await clearCart();
+      // Generate VietQR (depends on order._id)
+      promises.push(paymentAPI.generateVietQR({ orderId: order._id }));
 
-      // Process online banking payment
-      try {
-        const paymentResponse = await paymentAPI.generateVietQR({
+      // Clear cart (can run independently)
+      promises.push(clearCart());
+
+      // Execute voucher application, payment QR generation, and cart clearing in parallel
+      const [voucherResult, paymentResponse, clearCartResult] =
+        await Promise.all(promises);
+
+      // Process payment response
+      const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
+
+      // Store payment info
+      localStorage.setItem(
+        "currentPayment",
+        JSON.stringify({
+          paymentId,
+          paymentImgUrl,
+          expiresAt,
           orderId: order._id,
-        });
-        const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
+          amount: total,
+        })
+      );
 
-        // Store payment info
-        localStorage.setItem(
-          "currentPayment",
-          JSON.stringify({
-            paymentId,
-            paymentImgUrl,
-            expiresAt,
-            orderId: order._id,
-            amount: total,
-          })
-        );
-
-        toast.dismiss(loadingToast);
-        toast.success("Order created! Redirecting to payment...");
-        navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
-      } catch (paymentError) {
-        console.error("Error generating payment QR:", paymentError);
-        toast.dismiss(loadingToast);
-        toast.error(
-          paymentError.response?.data?.message ||
-            "Payment QR generation failed. Please contact support."
-        );
-        navigate(`/orders/${order._id}`);
-      }
+      toast.dismiss(loadingToast);
+      toast.success("Order created! Redirecting to payment...");
+      navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
     } catch (error) {
-      console.error("Error creating order:", error);
+      console.error("Error processing checkout:", error);
       toast.dismiss(loadingToast);
       toast.error(error.response?.data?.message || "Failed to place order");
+      if (orderId) {
+        navigate(`/orders/${orderId}`);
+      }
     } finally {
       setLoading(false);
     }
