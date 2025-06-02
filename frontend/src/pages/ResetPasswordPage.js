@@ -1,3 +1,4 @@
+// src/pages/ResetPasswordPage.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,7 +21,7 @@ function ResetPasswordPage() {
   const location = useLocation();
 
   useEffect(() => {
-    // Extract token from URL query parameters
+    // Lấy token từ query parameter
     const searchParams = new URLSearchParams(location.search);
     const tokenParam = searchParams.get("token");
     if (tokenParam) {
@@ -32,17 +33,17 @@ function ResetPasswordPage() {
     e.preventDefault();
 
     if (!token) {
-      setError("Invalid or missing reset token");
+      setError("Token đặt lại không hợp lệ hoặc bị thiếu");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Mật khẩu không khớp");
       return;
     }
 
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
 
@@ -56,8 +57,8 @@ function ResetPasswordPage() {
         navigate("/login");
       }, 3000);
     } catch (error) {
-      console.error("Password reset error:", error);
-      setError(error.response?.data?.message || "Failed to reset password");
+      console.error("Lỗi khi đặt lại mật khẩu:", error);
+      setError(error.response?.data?.message || "Đặt lại mật khẩu thất bại");
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ function ResetPasswordPage() {
         <Col md={8} lg={6} xl={5}>
           <Card>
             <Card.Header className="text-center bg-white py-3">
-              <h1 className="fs-4 fw-bold">Reset Password</h1>
+              <h1 className="fs-4 fw-bold">Đặt lại mật khẩu</h1>
             </Card.Header>
             <Card.Body className="p-4">
               {error && <Alert variant="danger">{error}</Alert>}
@@ -77,18 +78,18 @@ function ResetPasswordPage() {
               {success ? (
                 <Alert variant="success">
                   <p className="mb-0">
-                    Your password has been reset successfully! You will be
-                    redirected to the login page.
+                    Mật khẩu đã được đặt lại thành công! Bạn sẽ được chuyển
+                    hướng đến trang đăng nhập.
                   </p>
                 </Alert>
               ) : (
                 <Form onSubmit={handleSubmit}>
                   <p className="text-secondary mb-4">
-                    Enter your new password below.
+                    Nhập mật khẩu mới của bạn bên dưới.
                   </p>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>New Password</Form.Label>
+                    <Form.Label>Mật khẩu mới</Form.Label>
                     <Form.Control
                       type="password"
                       value={newPassword}
@@ -98,7 +99,7 @@ function ResetPasswordPage() {
                   </Form.Group>
 
                   <Form.Group className="mb-4">
-                    <Form.Label>Confirm New Password</Form.Label>
+                    <Form.Label>Xác nhận mật khẩu mới</Form.Label>
                     <Form.Control
                       type="password"
                       value={confirmPassword}
@@ -113,16 +114,16 @@ function ResetPasswordPage() {
                     loading={loading}
                     disabled={loading}
                   >
-                    Reset Password
+                    {loading ? "Đang xử lý..." : "Đặt lại mật khẩu"}
                   </Button>
                 </Form>
               )}
             </Card.Body>
             <Card.Footer className="text-center bg-white py-3">
               <p className="mb-0">
-                Remember your password?{" "}
+                Bạn đã nhớ mật khẩu?{" "}
                 <Link to="/login" className="text-decoration-none">
-                  Back to Login
+                  Quay lại Đăng nhập
                 </Link>
               </p>
             </Card.Footer>

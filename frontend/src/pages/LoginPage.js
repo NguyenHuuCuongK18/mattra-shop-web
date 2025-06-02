@@ -1,3 +1,4 @@
+// src/pages/LoginPage.js
 "use client";
 
 import { useState } from "react";
@@ -23,7 +24,7 @@ function LoginPage() {
     e.preventDefault();
 
     if (!identification || !password) {
-      setError("Please enter both email/username and password");
+      setError("Vui lòng nhập cả email/username và mật khẩu");
       return;
     }
 
@@ -31,14 +32,12 @@ function LoginPage() {
     setError("");
 
     try {
-      // Pass credentials as an object
       const credentials = { identification, password };
-      console.log("Login payload:", credentials); // Debug
       await login(credentials);
       navigate(from, { replace: true });
     } catch (error) {
-      console.error("Login error:", error);
-      setError(error.response?.data?.message || "Failed to login");
+      console.error("Lỗi khi đăng nhập:", error);
+      setError(error.response?.data?.message || "Đăng nhập thất bại");
     } finally {
       setLoading(false);
     }
@@ -50,14 +49,14 @@ function LoginPage() {
         <Col md={8} lg={6} xl={5}>
           <Card>
             <Card.Header className="text-center bg-white py-3">
-              <h1 className="fs-4 fw-bold">Login to Your Account</h1>
+              <h1 className="fs-4 fw-bold">Đăng nhập</h1>
             </Card.Header>
             <Card.Body className="p-4">
               {error && <Alert variant="danger">{error}</Alert>}
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Email or Username</Form.Label>
+                  <Form.Label>Email hoặc Username</Form.Label>
                   <Form.Control
                     type="text"
                     value={identification}
@@ -67,7 +66,7 @@ function LoginPage() {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Password</Form.Label>
+                  <Form.Label>Mật khẩu</Form.Label>
                   <Form.Control
                     type="password"
                     value={password}
@@ -80,10 +79,10 @@ function LoginPage() {
                   <Form.Check
                     type="checkbox"
                     id="remember-me"
-                    label="Remember me"
+                    label="Ghi nhớ đăng nhập"
                   />
                   <Link to="/forgot-password" className="text-decoration-none">
-                    Forgot password?
+                    Quên mật khẩu?
                   </Link>
                 </div>
 
@@ -93,15 +92,15 @@ function LoginPage() {
                   loading={loading}
                   disabled={loading}
                 >
-                  Sign in
+                  {loading ? "Đang xử lý..." : "Đăng nhập"}
                 </Button>
               </Form>
             </Card.Body>
             <Card.Footer className="text-center bg-white py-3">
               <p className="mb-0">
-                Don't have an account?{" "}
+                Chưa có tài khoản?{" "}
                 <Link to="/register" className="text-decoration-none">
-                  Sign up
+                  Đăng ký
                 </Link>
               </p>
             </Card.Footer>

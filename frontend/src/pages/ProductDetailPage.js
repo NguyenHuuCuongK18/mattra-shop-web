@@ -1,3 +1,4 @@
+// src/pages/ProductDetailPage.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -47,7 +48,7 @@ function ProductDetailPage() {
   const { user } = useAuth();
   const [addedToCart, setAddedToCart] = useState(false);
 
-  // Review form state
+  // Form state cho review
   const [reviewForm, setReviewForm] = useState({
     rating: 5,
     comment: "",
@@ -58,23 +59,22 @@ function ProductDetailPage() {
       setLoading(true);
       try {
         const response = await productAPI.getProductById(id);
-        console.log("Product response:", response.data);
-        // Normalize product: rename _id to id
+        // Chuẩn hóa product: đổi _id thành id
         const normalizedProduct = {
           ...response.data.product,
           id: response.data.product._id,
         };
         setProduct(normalizedProduct);
 
-        // Fetch reviews for this product
+        // Lấy thêm phần đánh giá
         await fetchReviews();
-      } catch (error) {
+      } catch (err) {
         console.error(
-          "Error fetching product:",
-          error.response?.data || error.message
+          "Lỗi khi tải thông tin sản phẩm:",
+          err.response?.data || err.message
         );
-        setError("Failed to load product. Please try again later.");
-        toast.error("Failed to load product details");
+        setError("Không thể tải sản phẩm. Vui lòng thử lại sau.");
+        toast.error("Không thể tải chi tiết sản phẩm");
       } finally {
         setLoading(false);
       }
@@ -89,9 +89,9 @@ function ProductDetailPage() {
     try {
       const response = await reviewAPI.getReviewsByProduct(id);
       setReviews(response.data.reviews || []);
-    } catch (error) {
-      console.error("Error fetching reviews:", error);
-      // Don't show error for reviews, just log it
+    } catch (err) {
+      console.error("Lỗi khi tải đánh giá:", err);
+      // Chỉ ghi log, không báo lỗi cho user
     }
   };
 
@@ -106,24 +106,23 @@ function ProductDetailPage() {
     try {
       await addToCart(product.id, quantity);
       setAddedToCart(true);
-      toast.success(`${product.name} added to cart`);
+      toast.success(`${product.name} đã được thêm vào giỏ hàng`);
       setTimeout(() => setAddedToCart(false), 3000);
-    } catch (error) {
+    } catch (err) {
       console.error(
-        "Error adding to cart:",
-        error.response?.data || error.message
+        "Lỗi khi thêm vào giỏ hàng:",
+        err.response?.data || err.message
       );
-      toast.error("Failed to add to cart");
+      toast.error("Thêm vào giỏ hàng thất bại");
     }
   };
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     if (!user) {
-      toast.error("Please login to write a review");
+      toast.error("Vui lòng đăng nhập để viết đánh giá");
       return;
     }
-
     setReviewLoading(true);
     try {
       await reviewAPI.createReview({
@@ -131,12 +130,12 @@ function ProductDetailPage() {
         rating: reviewForm.rating,
         comment: reviewForm.comment,
       });
-      toast.success("Review submitted successfully");
+      toast.success("Gửi đánh giá thành công");
       setReviewForm({ rating: 5, comment: "" });
-      await fetchReviews(); // Refresh reviews
-    } catch (error) {
-      console.error("Error submitting review:", error);
-      toast.error(error.response?.data?.message || "Failed to submit review");
+      await fetchReviews(); // Làm mới danh sách đánh giá
+    } catch (err) {
+      console.error("Lỗi khi gửi đánh giá:", err);
+      toast.error(err.response?.data?.message || "Gửi đánh giá thất bại");
     } finally {
       setReviewLoading(false);
     }
@@ -175,12 +174,12 @@ function ProductDetailPage() {
     return (
       <Container className="py-5 fade-in">
         <Alert variant="danger">
-          <Alert.Heading>Error</Alert.Heading>
+          <Alert.Heading>Lỗi</Alert.Heading>
           <p>{error}</p>
           <hr />
           <div className="d-flex justify-content-end">
             <Link to="/products">
-              <Button variant="outline">Back to Products</Button>
+              <Button variant="outline">Quay về Sản Phẩm</Button>
             </Link>
           </div>
         </Alert>
@@ -193,18 +192,19 @@ function ProductDetailPage() {
       <Container className="py-5 fade-in">
         <div className="text-center py-5">
           <i className="bi bi-exclamation-circle fs-1 text-secondary mb-3"></i>
-          <h2 className="fs-4 fw-semibold">Product not found</h2>
+          <h2 className="fs-4 fw-semibold">Không tìm thấy sản phẩm</h2>
           <p className="text-secondary mb-4">
-            The product you're looking for doesn't exist or has been removed.
+            Sản phẩm bạn tìm không tồn tại hoặc đã bị xóa.
           </p>
           <Link to="/products">
-            <Button>Browse Products</Button>
+            <Button>Xem Sản Phẩm</Button>
           </Link>
         </div>
       </Container>
     );
   }
 
+  // Tính điểm trung bình
   const averageRating =
     reviews.length > 0
       ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
@@ -216,10 +216,10 @@ function ProductDetailPage() {
       <Container className="py-5 fade-in">
         <Breadcrumb className="mb-4">
           <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/" }}>
-            Home
+            Trang Chủ
           </Breadcrumb.Item>
           <Breadcrumb.Item linkAs={Link} linkProps={{ to: "/products" }}>
-            Products
+            Sản Phẩm
           </Breadcrumb.Item>
           <Breadcrumb.Item active>{product.name}</Breadcrumb.Item>
         </Breadcrumb>
@@ -231,9 +231,9 @@ function ProductDetailPage() {
           >
             <i className="bi bi-check-circle-fill me-2"></i>
             <div>
-              <strong>{product.name}</strong> has been added to your cart.{" "}
+              <strong>{product.name}</strong> đã được thêm vào giỏ hàng.{" "}
               <Link to="/cart" className="alert-link">
-                View Cart
+                Xem Giỏ Hàng
               </Link>
             </div>
           </Alert>
@@ -261,12 +261,12 @@ function ProductDetailPage() {
                     className="position-absolute top-0 start-0 m-3 px-3 py-2"
                   >
                     <i className="bi bi-star-fill me-1"></i>
-                    Featured Product
+                    Nổi Bật
                   </Badge>
                 )}
                 {product.stock <= 0 && (
                   <div className="position-absolute top-0 end-0 bg-danger text-white px-3 py-2 m-3 rounded-pill">
-                    Out of Stock
+                    Hết Hàng
                   </div>
                 )}
               </div>
@@ -276,7 +276,7 @@ function ProductDetailPage() {
                 <h1 className="fs-2 fw-bold mb-2">{product.name}</h1>
                 <div className="d-flex align-items-center mb-3">
                   <h2 className="fs-3 fw-bold text-success mb-0 me-3">
-                    ${product.price.toFixed(2)}
+                    {product.price.toLocaleString("vi-VN")} VND
                   </h2>
                   {reviews.length > 0 && (
                     <div className="d-flex align-items-center">
@@ -291,8 +291,7 @@ function ProductDetailPage() {
                         ))}
                       </div>
                       <small className="text-muted">
-                        ({reviews.length} review
-                        {reviews.length !== 1 ? "s" : ""})
+                        ({reviews.length} đánh giá)
                       </small>
                     </div>
                   )}
@@ -316,8 +315,8 @@ function ProductDetailPage() {
                     className="py-2 px-3"
                   >
                     {product.stock > 0
-                      ? `In Stock (${product.stock} available)`
-                      : "Out of Stock"}
+                      ? `Còn Hàng (${product.stock} sản phẩm)`
+                      : "Hết Hàng"}
                   </Badge>
                 </div>
 
@@ -350,7 +349,7 @@ function ProductDetailPage() {
 
                     <Button onClick={handleAddToCart} className="w-100 py-2">
                       <i className="bi bi-cart-plus me-2"></i>
-                      Add to Cart
+                      Thêm vào Giỏ hàng
                     </Button>
                   </div>
                 )}
@@ -358,15 +357,15 @@ function ProductDetailPage() {
                 <div className="mt-4">
                   <div className="d-flex align-items-center mb-2">
                     <i className="bi bi-truck text-success me-2"></i>
-                    <span>Free shipping on orders over $50</span>
+                    <span>Miễn phí giao hàng cho đơn hàng trên 50.000 VND</span>
                   </div>
                   <div className="d-flex align-items-center mb-2">
                     <i className="bi bi-arrow-repeat text-success me-2"></i>
-                    <span>30-day return policy</span>
+                    <span>Chính sách đổi trả trong 30 ngày</span>
                   </div>
                   <div className="d-flex align-items-center">
                     <i className="bi bi-shield-check text-success me-2"></i>
-                    <span>Secure checkout</span>
+                    <span>Thanh toán an toàn</span>
                   </div>
                 </div>
               </div>
@@ -375,17 +374,17 @@ function ProductDetailPage() {
         </div>
 
         <Tabs defaultActiveKey="reviews" className="mb-4">
-          <Tab eventKey="reviews" title={`Reviews (${reviews.length})`}>
+          <Tab eventKey="reviews" title={`Đánh Giá (${reviews.length})`}>
             <div className="bg-white p-4 rounded-bottom shadow-sm">
-              {/* Write Review Form */}
+              {/* Form Viết Đánh Giá */}
               {user ? (
                 <div className="mb-5">
-                  <h4 className="mb-3">Write a Review</h4>
+                  <h4 className="mb-3">Viết Đánh Giá</h4>
                   <Form onSubmit={handleReviewSubmit}>
                     <Row>
                       <Col md={6}>
                         <Form.Group className="mb-3">
-                          <Form.Label>Rating</Form.Label>
+                          <Form.Label>Đánh giá</Form.Label>
                           <div className="d-flex align-items-center">
                             <div className="rating-stars me-3">
                               {[1, 2, 3, 4, 5].map((star) => (
@@ -411,18 +410,18 @@ function ProductDetailPage() {
                               ))}
                             </div>
                             <span className="text-muted">
-                              {reviewForm.rating === 1 && "Poor"}
-                              {reviewForm.rating === 2 && "Fair"}
-                              {reviewForm.rating === 3 && "Good"}
-                              {reviewForm.rating === 4 && "Very Good"}
-                              {reviewForm.rating === 5 && "Excellent"}
+                              {reviewForm.rating === 1 && "Kém"}
+                              {reviewForm.rating === 2 && "Tạm ổn"}
+                              {reviewForm.rating === 3 && "Tốt"}
+                              {reviewForm.rating === 4 && "Rất tốt"}
+                              {reviewForm.rating === 5 && "Xuất sắc"}
                             </span>
                           </div>
                         </Form.Group>
                       </Col>
                     </Row>
                     <Form.Group className="mb-3">
-                      <Form.Label>Comment</Form.Label>
+                      <Form.Label>Bình luận</Form.Label>
                       <Form.Control
                         as="textarea"
                         rows={3}
@@ -433,30 +432,30 @@ function ProductDetailPage() {
                             comment: e.target.value,
                           })
                         }
-                        placeholder="Share your thoughts about this product..."
+                        placeholder="Chia sẻ cảm nhận của bạn về sản phẩm này..."
                         required
                       />
                     </Form.Group>
                     <Button type="submit" disabled={reviewLoading}>
-                      {reviewLoading ? "Submitting..." : "Submit Review"}
+                      {reviewLoading ? "Đang gửi..." : "Gửi Đánh Giá"}
                     </Button>
                   </Form>
                   <hr className="my-4" />
                 </div>
               ) : (
                 <div className="text-center mb-4 p-4 bg-light rounded">
-                  <p className="mb-2">Please log in to write a review</p>
+                  <p className="mb-2">Vui lòng đăng nhập để viết đánh giá</p>
                   <Link to="/login">
-                    <Button variant="outline">Login</Button>
+                    <Button variant="outline">Đăng nhập</Button>
                   </Link>
                 </div>
               )}
 
-              {/* Reviews List */}
+              {/* Danh sách Đánh Giá */}
               {reviews.length > 0 ? (
                 <div>
                   <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h4 className="mb-0">Customer Reviews</h4>
+                    <h4 className="mb-0">Đánh Giá Khách Hàng</h4>
                     {reviews.length > 0 && (
                       <div className="d-flex align-items-center">
                         <div className="text-warning me-2">
@@ -473,8 +472,7 @@ function ProductDetailPage() {
                           {averageRating.toFixed(1)}
                         </span>
                         <span className="text-muted ms-1">
-                          ({reviews.length} review
-                          {reviews.length !== 1 ? "s" : ""})
+                          ({reviews.length} đánh giá)
                         </span>
                       </div>
                     )}
@@ -520,7 +518,7 @@ function ProductDetailPage() {
                                 <h6 className="mb-1 fw-semibold">
                                   {review.userId?.name ||
                                     review.userId?.username ||
-                                    "Anonymous"}
+                                    "Ẩn danh"}
                                 </h6>
                                 <div className="d-flex align-items-center mb-1">
                                   <div className="text-warning me-2">
@@ -536,7 +534,7 @@ function ProductDetailPage() {
                                   <span className="small text-muted">
                                     {new Date(
                                       review.createdAt
-                                    ).toLocaleDateString("en-US", {
+                                    ).toLocaleDateString("vi-VN", {
                                       year: "numeric",
                                       month: "long",
                                       day: "numeric",
@@ -555,9 +553,9 @@ function ProductDetailPage() {
               ) : (
                 <div className="text-center py-5 bg-light rounded">
                   <i className="bi bi-star fs-1 text-secondary mb-3"></i>
-                  <h5 className="fw-semibold">No reviews yet</h5>
+                  <h5 className="fw-semibold">Chưa có đánh giá nào</h5>
                   <p className="text-secondary mb-4">
-                    Be the first to review this product
+                    Hãy là người đầu tiên đánh giá sản phẩm này
                   </p>
                 </div>
               )}

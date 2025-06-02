@@ -25,15 +25,10 @@ function PromptCategoriesPage() {
       setLoading(true);
       try {
         const response = await promptCategoryAPI.getAllPromptCategories();
-        console.log("Prompt categories response:", response); // Debug log
         setPromptCategories(response.data.promptCategories || []);
       } catch (error) {
-        console.error(
-          "Error fetching prompt categories:",
-          error,
-          error.response
-        );
-        setError("Failed to load prompt categories. Please try again later.");
+        console.error("Lỗi khi tải danh mục prompt:", error, error.response);
+        setError("Không thể tải danh mục prompt. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
       }
@@ -58,9 +53,9 @@ function PromptCategoriesPage() {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.name.trim()) errors.name = "Tên bắt buộc";
     if (!formData.promptText.trim())
-      errors.promptText = "Prompt text is required";
+      errors.promptText = "Nội dung prompt bắt buộc";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -100,19 +95,17 @@ function PromptCategoriesPage() {
     try {
       let response;
       if (currentCategory) {
-        // Update existing category
+        // Cập nhật
         response = await promptCategoryAPI.updatePromptCategory(
           currentCategory._id,
           formData
         );
-        console.log("Update response:", response); // Debug log
       } else {
-        // Create new category
+        // Tạo mới
         response = await promptCategoryAPI.createPromptCategory(formData);
-        console.log("Create response:", response); // Debug log
       }
 
-      // Update categories list
+      // Cập nhật danh sách
       if (currentCategory) {
         setPromptCategories(
           promptCategories.map((c) =>
@@ -128,9 +121,9 @@ function PromptCategoriesPage() {
 
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Error saving prompt category:", error, error.response);
+      console.error("Lỗi khi lưu danh mục prompt:", error, error.response);
       setError(
-        error.response?.data?.message || "Failed to save prompt category"
+        error.response?.data?.message || "Không thể lưu danh mục prompt"
       );
     } finally {
       setFormSubmitting(false);
@@ -142,20 +135,17 @@ function PromptCategoriesPage() {
 
     setFormSubmitting(true);
     try {
-      const response = await promptCategoryAPI.deletePromptCategory(
-        currentCategory._id
-      );
-      console.log("Delete response:", response); // Debug log
+      await promptCategoryAPI.deletePromptCategory(currentCategory._id);
 
-      // Remove category from list
+      // Xóa khỏi danh sách
       setPromptCategories(
         promptCategories.filter((c) => c._id !== currentCategory._id)
       );
       setIsDeleteModalOpen(false);
     } catch (error) {
-      console.error("Error deleting prompt category:", error, error.response);
+      console.error("Lỗi khi xóa danh mục prompt:", error, error.response);
       setError(
-        error.response?.data?.message || "Failed to delete prompt category"
+        error.response?.data?.message || "Không thể xóa danh mục prompt"
       );
     } finally {
       setFormSubmitting(false);
@@ -169,7 +159,7 @@ function PromptCategoriesPage() {
         style={{ height: "200px" }}
       >
         <div className="spinner-border text-success" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
     );
@@ -178,8 +168,8 @@ function PromptCategoriesPage() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="fs-4 fw-bold mb-0">Prompt Categories</h1>
-        <Button onClick={handleAddCategory}>Add Prompt Category</Button>
+        <h1 className="fs-4 fw-bold mb-0">Danh mục Prompt</h1>
+        <Button onClick={handleAddCategory}>Thêm danh mục Prompt</Button>
       </div>
 
       {error && (
@@ -193,9 +183,9 @@ function PromptCategoriesPage() {
           <Table hover className="mb-0">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Prompt Text</th>
-                <th className="text-end">Actions</th>
+                <th>Tên</th>
+                <th>Nội dung Prompt</th>
+                <th className="text-end">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -212,14 +202,14 @@ function PromptCategoriesPage() {
                         className="text-success p-0 me-3"
                         onClick={() => handleEditCategory(category)}
                       >
-                        Edit
+                        Chỉnh sửa
                       </Button>
                       <Button
                         variant="link"
                         className="text-danger p-0"
                         onClick={() => handleDeleteCategory(category)}
                       >
-                        Delete
+                        Xóa
                       </Button>
                     </td>
                   </tr>
@@ -227,7 +217,7 @@ function PromptCategoriesPage() {
               ) : (
                 <tr>
                   <td colSpan="3" className="text-center py-4">
-                    No prompt categories found
+                    Không tìm thấy danh mục Prompt
                   </td>
                 </tr>
               )}
@@ -236,7 +226,7 @@ function PromptCategoriesPage() {
         </div>
       </Card>
 
-      {/* Prompt Category Form Modal */}
+      {/* Modal Thêm / Chỉnh sửa Prompt Category */}
       {isModalOpen && (
         <div
           className="modal show d-block"
@@ -248,8 +238,8 @@ function PromptCategoriesPage() {
               <div className="modal-header">
                 <h5 className="modal-title">
                   {currentCategory
-                    ? "Edit Prompt Category"
-                    : "Add Prompt Category"}
+                    ? "Chỉnh sửa danh mục Prompt"
+                    : "Thêm danh mục Prompt"}
                 </h5>
                 <button
                   type="button"
@@ -261,7 +251,7 @@ function PromptCategoriesPage() {
               <div className="modal-body">
                 <Form onSubmit={handleSubmit}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Name</Form.Label>
+                    <Form.Label>Tên</Form.Label>
                     <Form.Control
                       type="text"
                       name="name"
@@ -276,7 +266,7 @@ function PromptCategoriesPage() {
                   </Form.Group>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Prompt Text</Form.Label>
+                    <Form.Label>Nội dung Prompt</Form.Label>
                     <Form.Control
                       as="textarea"
                       rows={4}
@@ -290,8 +280,8 @@ function PromptCategoriesPage() {
                       {formErrors.promptText}
                     </Form.Control.Feedback>
                     <Form.Text className="text-muted">
-                      This is the text that will be sent to the AI when a user
-                      selects this prompt.
+                      Đây là nội dung sẽ gửi đến AI khi người dùng chọn prompt
+                      này.
                     </Form.Text>
                   </Form.Group>
                 </Form>
@@ -302,14 +292,14 @@ function PromptCategoriesPage() {
                   onClick={() => setIsModalOpen(false)}
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   loading={formSubmitting}
                   disabled={formSubmitting}
                 >
-                  {currentCategory ? "Update" : "Create"}
+                  {currentCategory ? "Cập nhật" : "Tạo"}
                 </Button>
               </div>
             </div>
@@ -317,7 +307,7 @@ function PromptCategoriesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Modal Xóa Prompt Category */}
       {isDeleteModalOpen && (
         <div
           className="modal show d-block"
@@ -327,7 +317,7 @@ function PromptCategoriesPage() {
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Delete Prompt Category</h5>
+                <h5 className="modal-title">Xóa danh mục Prompt</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -337,11 +327,11 @@ function PromptCategoriesPage() {
               </div>
               <div className="modal-body">
                 <p>
-                  Are you sure you want to delete the prompt category "
-                  {currentCategory?.name}"?
+                  Bạn có chắc muốn xóa danh mục Prompt "{currentCategory?.name}
+                  "?
                 </p>
                 <p className="text-danger mb-0">
-                  This action cannot be undone.
+                  Hành động không thể hoàn tác.
                 </p>
               </div>
               <div className="modal-footer">
@@ -350,7 +340,7 @@ function PromptCategoriesPage() {
                   onClick={() => setIsDeleteModalOpen(false)}
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   variant="danger"
@@ -358,7 +348,7 @@ function PromptCategoriesPage() {
                   loading={formSubmitting}
                   disabled={formSubmitting}
                 >
-                  Delete
+                  Xóa
                 </Button>
               </div>
             </div>

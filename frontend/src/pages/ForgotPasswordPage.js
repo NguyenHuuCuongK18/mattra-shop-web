@@ -1,3 +1,4 @@
+// src/pages/ForgotPasswordPage.js
 "use client";
 
 import { useState } from "react";
@@ -19,7 +20,7 @@ function ForgotPasswordPage() {
     e.preventDefault();
 
     if (!email) {
-      setError("Please enter your email address");
+      setError("Vui lòng nhập địa chỉ email");
       return;
     }
 
@@ -30,9 +31,9 @@ function ForgotPasswordPage() {
       await requestPasswordReset(email);
       setSuccess(true);
     } catch (error) {
-      console.error("Password reset request error:", error);
+      console.error("Lỗi khi gửi yêu cầu đặt lại mật khẩu:", error);
       setError(
-        error.response?.data?.message || "Failed to send password reset email"
+        error.response?.data?.message || "Gửi email đặt lại mật khẩu thất bại"
       );
     } finally {
       setLoading(false);
@@ -45,7 +46,7 @@ function ForgotPasswordPage() {
         <Col md={8} lg={6} xl={5}>
           <Card>
             <Card.Header className="text-center bg-white py-3">
-              <h1 className="fs-4 fw-bold">Forgot Password</h1>
+              <h1 className="fs-4 fw-bold">Quên Mật Khẩu</h1>
             </Card.Header>
             <Card.Body className="p-4">
               {error && <Alert variant="danger">{error}</Alert>}
@@ -53,19 +54,19 @@ function ForgotPasswordPage() {
               {success ? (
                 <Alert variant="success">
                   <p className="mb-0">
-                    Password reset instructions have been sent to your email.
-                    Please check your inbox.
+                    Hướng dẫn đặt lại mật khẩu đã được gửi tới email của bạn.
+                    Vui lòng kiểm tra hộp thư.
                   </p>
                 </Alert>
               ) : (
                 <Form onSubmit={handleSubmit}>
                   <p className="text-secondary mb-4">
-                    Enter your email address and we'll send you instructions to
-                    reset your password.
+                    Nhập địa chỉ email của bạn và chúng tôi sẽ gửi hướng dẫn để
+                    đặt lại mật khẩu.
                   </p>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Email Address</Form.Label>
+                    <Form.Label>Địa chỉ Email</Form.Label>
                     <Form.Control
                       type="email"
                       value={email}
@@ -80,16 +81,16 @@ function ForgotPasswordPage() {
                     loading={loading}
                     disabled={loading}
                   >
-                    Send Reset Link
+                    {loading ? "Đang gửi..." : "Gửi liên kết đặt lại"}
                   </Button>
                 </Form>
               )}
             </Card.Body>
             <Card.Footer className="text-center bg-white py-3">
               <p className="mb-0">
-                Remember your password?{" "}
+                Bạn đã nhớ mật khẩu?{" "}
                 <Link to="/login" className="text-decoration-none">
-                  Back to Login
+                  Quay lại Đăng nhập
                 </Link>
               </p>
             </Card.Footer>

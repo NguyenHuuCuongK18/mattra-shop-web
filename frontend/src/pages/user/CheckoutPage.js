@@ -10,6 +10,7 @@ import {
   Card,
   ListGroup,
   Spinner,
+  Alert,
 } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
@@ -32,11 +33,11 @@ const CheckoutPage = () => {
   );
   const [discountAmount, setDiscountAmount] = useState(0);
   const [shippingAddress, setShippingAddress] = useState(user?.address || "");
-  const [paymentMethod, setPaymentMethod] = useState("Online Banking");
+  const [paymentMethod, setPaymentMethod] = useState("Ngân hàng trực tuyến");
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
 
-  // Calculate subtotal
+  // Tính subtotal
   const calculateSubtotal = () => {
     if (!cart?.items?.length) return 0;
     return cart.items.reduce(
@@ -47,18 +48,18 @@ const CheckoutPage = () => {
   };
 
   const subtotal = calculateSubtotal();
-  const shippingFee = subtotal > 50 ? 0 : 5;
+  const shippingFee = 10000;
   const total = subtotal + shippingFee - discountAmount;
 
   useEffect(() => {
-    // Redirect if cart is empty
+    // Nếu giỏ trống, chuyển về Cart
     if (!cart?.items?.length) {
-      toast.error("Your cart is empty");
+      toast.error("Giỏ hàng trống");
       navigate("/cart");
       return;
     }
 
-    // Fetch user vouchers
+    // Lấy voucher của user
     const fetchVouchers = async () => {
       if (!user?._id) return;
       setLoadingVouchers(true);
@@ -71,8 +72,8 @@ const CheckoutPage = () => {
         );
         setVouchers(availableVouchers);
       } catch (error) {
-        console.error("Error fetching vouchers:", error);
-        toast.error(error.response?.data?.message || "Failed to load vouchers");
+        console.error("Lỗi khi tải voucher:", error);
+        toast.error(error.response?.data?.message || "Không thể tải voucher");
       } finally {
         setLoadingVouchers(false);
       }
@@ -81,14 +82,14 @@ const CheckoutPage = () => {
     fetchVouchers();
   }, [user, cart, navigate]);
 
-  // Update shipping address when user changes
+  // Cập nhật địa chỉ khi user thay đổi
   useEffect(() => {
     if (user?.address) {
       setShippingAddress(user.address);
     }
   }, [user]);
 
-  // Calculate discount from passed voucher
+  // Tính toán giảm giá dựa trên voucher
   useEffect(() => {
     if (selectedVoucher) {
       const discountPercentage = selectedVoucher.discount_percentage / 100;
@@ -110,7 +111,7 @@ const CheckoutPage = () => {
     setDiscountAmount(0);
 
     if (!couponCode.trim()) {
-      setCouponError("Please enter a voucher code");
+      setCouponError("Vui lòng nhập mã voucher");
       return;
     }
 
@@ -123,12 +124,14 @@ const CheckoutPage = () => {
         !voucher.is_used
       ) {
         setSelectedVoucher(voucher);
-        toast.success(`Voucher "${voucher.code}" applied successfully`);
+        toast.success(`Voucher "${voucher.code}" đã áp dụng thành công`);
       } else {
-        setCouponError("Invalid or expired voucher code");
+        setCouponError("Mã voucher không hợp lệ hoặc đã hết hạn");
       }
     } catch (error) {
-      setCouponError(error.response?.data?.message || "Invalid voucher code");
+      setCouponError(
+        error.response?.data?.message || "Mã voucher không hợp lệ"
+      );
     }
   };
 
@@ -145,15 +148,15 @@ const CheckoutPage = () => {
     e.preventDefault();
 
     if (!shippingAddress.trim()) {
-      toast.error("Please enter a shipping address");
+      toast.error("Vui lòng nhập địa chỉ giao hàng");
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Create the order
+      // 1. Tạo đơn hàng
       const orderData = {
-        paymentMethod: "Online Banking",
+        paymentMethod: "Ngân hàng trực tuyến",
         shippingAddress,
         selectedItems: cart.items.map((item) => ({
           productId: item.productId._id || item.productId.id,
@@ -163,22 +166,22 @@ const CheckoutPage = () => {
       const orderResponse = await orderAPI.createOrder(orderData);
       const order = orderResponse.data.order;
 
-      // 2. Apply voucher (silent failure)
+      // 2. Áp dụng voucher nếu có (nếu lỗi thì im lặng)
       if (selectedVoucher) {
         try {
           await orderAPI.applyVoucher(order._id, selectedVoucher._id);
         } catch (err) {
-          console.error("Voucher apply failed:", err);
+          console.error("Áp dụng voucher thất bại:", err);
         }
       }
 
-      // 3. Generate the VietQR payment
+      // 3. Tạo VietQR để thanh toán
       const paymentResponse = await paymentAPI.generateVietQR({
         orderId: order._id,
       });
       const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
 
-      // 4. Store payment info locally
+      // 4. Lưu thông tin thanh toán vào localStorage
       localStorage.setItem(
         "currentPayment",
         JSON.stringify({
@@ -190,14 +193,13 @@ const CheckoutPage = () => {
         })
       );
 
-      // 5. Clear the cart
+      // 5. Xóa giỏ hàng
       await clearCart();
 
-      // 6. Redirect immediately to payment page
+      // 6. Chuyển hướng ngay đến trang thanh toán
       navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
     } catch (error) {
-      console.error("Error during checkout:", error);
-      // No intermediate error toasts per UX requirement
+      console.error("Lỗi khi thanh toán:", error);
     } finally {
       setLoading(false);
     }
@@ -208,13 +210,13 @@ const CheckoutPage = () => {
       <Container className="py-5">
         <Card className="text-center p-5">
           <Card.Body>
-            <Card.Title>Please Login</Card.Title>
-            <Card.Text>You need to be logged in to checkout.</Card.Text>
+            <Card.Title>Vui lòng đăng nhập</Card.Title>
+            <Card.Text>Bạn cần đăng nhập để thanh toán.</Card.Text>
             <BootstrapButton
               variant="primary"
               onClick={() => navigate("/login")}
             >
-              Go to Login
+              Đăng nhập
             </BootstrapButton>
           </Card.Body>
         </Card>
@@ -224,34 +226,43 @@ const CheckoutPage = () => {
 
   return (
     <Container className="py-5">
-      <h1 className="mb-4">Checkout</h1>
+      <h1 className="mb-4">Thanh toán</h1>
       <Row>
         <Col md={8}>
           <Card className="mb-4">
             <Card.Header>
-              <h5 className="mb-0">Shipping Information</h5>
+              <h5 className="mb-0">Thông tin giao hàng</h5>
             </Card.Header>
             <Card.Body>
+              {/* <-- Thông báo bổ sung --> */}
+              <Alert variant="warning" className="mb-4">
+                <i className="bi bi-exclamation-circle me-2"></i>
+                <strong>
+                  Các sản phẩm đồ uống hiện chỉ hỗ trợ ship ở khu vực Hòa Lạc
+                </strong>
+              </Alert>
+              {/* <-- Kết thúc thông báo --> */}
+
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Shipping Address</Form.Label>
+                  <Form.Label>Địa chỉ giao hàng</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={3}
                     value={shippingAddress}
                     onChange={(e) => setShippingAddress(e.target.value)}
-                    placeholder="Enter your full shipping address"
+                    placeholder="Nhập địa chỉ giao hàng đầy đủ"
                     required
                   />
                 </Form.Group>
 
                 <Form.Group className="mb-4">
-                  <Form.Label>Coupon Code</Form.Label>
+                  <Form.Label>Mã voucher</Form.Label>
                   <Row>
                     <Col>
                       <Form.Control
                         type="text"
-                        placeholder="Enter coupon code"
+                        placeholder="Nhập mã voucher"
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value)}
                         isInvalid={!!couponError}
@@ -265,22 +276,22 @@ const CheckoutPage = () => {
                         onClick={handleApplyCoupon}
                         disabled={!couponCode.trim()}
                       >
-                        Apply
+                        Áp dụng
                       </BootstrapButton>
                     </Col>
                   </Row>
                 </Form.Group>
 
                 <Form.Group className="mb-4">
-                  <Form.Label>Payment Method</Form.Label>
+                  <Form.Label>Phương thức thanh toán</Form.Label>
                   <div>
                     <Form.Check
                       type="radio"
                       id="online"
-                      label="Online Banking"
+                      label="Ngân hàng trực tuyến"
                       name="paymentMethod"
-                      value="Online Banking"
-                      checked={paymentMethod === "Online Banking"}
+                      value="Ngân hàng trực tuyến"
+                      checked={paymentMethod === "Ngân hàng trực tuyến"}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                     />
                   </div>
@@ -300,10 +311,10 @@ const CheckoutPage = () => {
                         role="status"
                         aria-hidden="true"
                       />
-                      <span className="ms-2">Processing...</span>
+                      <span className="ms-2">Đang xử lý...</span>
                     </>
                   ) : (
-                    `Place Order - $${total.toFixed(2)}`
+                    `Đặt hàng - ${total.toLocaleString("vi-VN")} VND`
                   )}
                 </Button>
               </Form>
@@ -311,10 +322,11 @@ const CheckoutPage = () => {
           </Card>
         </Col>
 
+        {/* Bảng tóm tắt */}
         <Col md={4}>
           <Card>
             <Card.Header>
-              <h5 className="mb-0">Order Summary</h5>
+              <h5 className="mb-0">Tóm tắt đơn hàng</h5>
             </Card.Header>
             <ListGroup variant="flush">
               {cart.items.map((item) => (
@@ -324,35 +336,38 @@ const CheckoutPage = () => {
                       {item.productId.name} x {item.quantity}
                     </span>
                     <span>
-                      ${(item.productId.price * item.quantity).toFixed(2)}
+                      {(item.productId.price * item.quantity).toLocaleString(
+                        "vi-VN"
+                      )}{" "}
+                      VND
                     </span>
                   </div>
                 </ListGroup.Item>
               ))}
               <ListGroup.Item>
                 <div className="d-flex justify-content-between">
-                  <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span>Tạm tính</span>
+                  <span>{subtotal.toLocaleString("vi-VN")} VND</span>
                 </div>
               </ListGroup.Item>
               <ListGroup.Item>
                 <div className="d-flex justify-content-between">
-                  <span>Shipping Fee</span>
-                  <span>${shippingFee.toFixed(2)}</span>
+                  <span>Phí vận chuyển</span>
+                  <span>{shippingFee.toLocaleString("vi-VN")} VND</span>
                 </div>
               </ListGroup.Item>
               {discountAmount > 0 && (
                 <ListGroup.Item>
                   <div className="d-flex justify-content-between text-success">
-                    <span>Discount</span>
-                    <span>-${discountAmount.toFixed(2)}</span>
+                    <span>Giảm giá</span>
+                    <span>-{discountAmount.toLocaleString("vi-VN")} VND</span>
                   </div>
                 </ListGroup.Item>
               )}
               <ListGroup.Item className="fw-bold">
                 <div className="d-flex justify-content-between">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>Tổng cộng</span>
+                  <span>{total.toLocaleString("vi-VN")} VND</span>
                 </div>
               </ListGroup.Item>
             </ListGroup>

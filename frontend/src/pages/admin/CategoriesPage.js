@@ -1,3 +1,4 @@
+// src/pages/CategoriesPage.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -27,8 +28,8 @@ function CategoriesPage() {
         const response = await categoryAPI.getAllCategories();
         setCategories(response.data.categories || []);
       } catch (error) {
-        console.error("Error fetching categories:", error);
-        setError("Failed to load categories. Please try again later.");
+        console.error("Lỗi khi tải danh mục:", error);
+        setError("Không thể tải danh mục. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
       }
@@ -43,7 +44,7 @@ function CategoriesPage() {
       ...formData,
       [name]: value,
     });
-    // Clear error when user types
+    // Xóa lỗi khi người dùng nhập lại
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
@@ -54,7 +55,7 @@ function CategoriesPage() {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.name.trim()) errors.name = "Name is required";
+    if (!formData.name.trim()) errors.name = "Tên danh mục là bắt buộc";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -94,17 +95,17 @@ function CategoriesPage() {
     try {
       let response;
       if (currentCategory) {
-        // Update existing category
+        // Cập nhật danh mục
         response = await categoryAPI.updateCategory(
           currentCategory._id,
           formData
         );
       } else {
-        // Create new category
+        // Tạo mới danh mục
         response = await categoryAPI.createCategory(formData);
       }
 
-      // Update categories list
+      // Cập nhật danh sách
       if (currentCategory) {
         setCategories(
           categories.map((c) =>
@@ -117,8 +118,8 @@ function CategoriesPage() {
 
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Error saving category:", error);
-      setError(error.response?.data?.message || "Failed to save category");
+      console.error("Lỗi khi lưu danh mục:", error);
+      setError(error.response?.data?.message || "Không thể lưu danh mục");
     } finally {
       setFormSubmitting(false);
     }
@@ -131,12 +132,12 @@ function CategoriesPage() {
     try {
       await categoryAPI.deleteCategory(currentCategory._id);
 
-      // Remove category from list
+      // Xóa khỏi danh sách
       setCategories(categories.filter((c) => c._id !== currentCategory._id));
       setIsDeleteModalOpen(false);
     } catch (error) {
-      console.error("Error deleting category:", error);
-      setError(error.response?.data?.message || "Failed to delete category");
+      console.error("Lỗi khi xóa danh mục:", error);
+      setError(error.response?.data?.message || "Không thể xóa danh mục");
     } finally {
       setFormSubmitting(false);
     }
@@ -149,7 +150,7 @@ function CategoriesPage() {
         style={{ height: "200px" }}
       >
         <div className="spinner-border text-success" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
     );
@@ -158,8 +159,8 @@ function CategoriesPage() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="fs-4 fw-bold mb-0">Categories</h1>
-        <Button onClick={handleAddCategory}>Add Category</Button>
+        <h1 className="fs-4 fw-bold mb-0">Danh mục</h1>
+        <Button onClick={handleAddCategory}>Thêm danh mục</Button>
       </div>
 
       {error && (
@@ -173,10 +174,10 @@ function CategoriesPage() {
           <Table hover className="mb-0">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Products</th>
-                <th className="text-end">Actions</th>
+                <th>Tên</th>
+                <th>Mô tả</th>
+                <th>Số sản phẩm</th>
+                <th className="text-end">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -192,14 +193,14 @@ function CategoriesPage() {
                         className="text-success p-0 me-3"
                         onClick={() => handleEditCategory(category)}
                       >
-                        Edit
+                        Sửa
                       </Button>
                       <Button
                         variant="link"
                         className="text-danger p-0"
                         onClick={() => handleDeleteCategory(category)}
                       >
-                        Delete
+                        Xóa
                       </Button>
                     </td>
                   </tr>
@@ -207,7 +208,7 @@ function CategoriesPage() {
               ) : (
                 <tr>
                   <td colSpan="4" className="text-center py-4">
-                    No categories found
+                    Không tìm thấy danh mục
                   </td>
                 </tr>
               )}
@@ -216,7 +217,7 @@ function CategoriesPage() {
         </div>
       </Card>
 
-      {/* Category Form Modal */}
+      {/* Modal thêm/sửa danh mục */}
       {isModalOpen && (
         <div
           className="modal show d-block"
@@ -227,7 +228,7 @@ function CategoriesPage() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {currentCategory ? "Edit Category" : "Add Category"}
+                  {currentCategory ? "Chỉnh sửa danh mục" : "Thêm danh mục"}
                 </h5>
                 <button
                   type="button"
@@ -239,7 +240,7 @@ function CategoriesPage() {
               <div className="modal-body">
                 <Form onSubmit={handleSubmit}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Name</Form.Label>
+                    <Form.Label>Tên danh mục</Form.Label>
                     <Form.Control
                       type="text"
                       name="name"
@@ -254,7 +255,7 @@ function CategoriesPage() {
                   </Form.Group>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Description</Form.Label>
+                    <Form.Label>Mô tả</Form.Label>
                     <Form.Control
                       as="textarea"
                       rows={3}
@@ -271,14 +272,14 @@ function CategoriesPage() {
                   onClick={() => setIsModalOpen(false)}
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   loading={formSubmitting}
                   disabled={formSubmitting}
                 >
-                  {currentCategory ? "Update" : "Create"}
+                  {currentCategory ? "Cập nhật" : "Tạo"}
                 </Button>
               </div>
             </div>
@@ -286,7 +287,7 @@ function CategoriesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Modal xác nhận xóa */}
       {isDeleteModalOpen && (
         <div
           className="modal show d-block"
@@ -296,7 +297,7 @@ function CategoriesPage() {
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Delete Category</h5>
+                <h5 className="modal-title">Xóa danh mục</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -306,11 +307,11 @@ function CategoriesPage() {
               </div>
               <div className="modal-body">
                 <p>
-                  Are you sure you want to delete the category "
-                  {currentCategory?.name}"?
+                  Bạn có chắc chắn muốn xóa danh mục "{currentCategory?.name}"
+                  không?
                 </p>
                 <p className="text-danger mb-0">
-                  This action cannot be undone.
+                  Hành động này không thể hoàn tác.
                 </p>
               </div>
               <div className="modal-footer">
@@ -319,7 +320,7 @@ function CategoriesPage() {
                   onClick={() => setIsDeleteModalOpen(false)}
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   variant="danger"
@@ -327,7 +328,7 @@ function CategoriesPage() {
                   loading={formSubmitting}
                   disabled={formSubmitting}
                 >
-                  Delete
+                  Xóa
                 </Button>
               </div>
             </div>

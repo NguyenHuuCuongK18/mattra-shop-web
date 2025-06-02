@@ -10,6 +10,7 @@ import {
   Button,
   ListGroup,
   Spinner,
+  Alert,
 } from "react-bootstrap";
 import { useParams, useNavigate } from "react-router-dom";
 import { orderAPI } from "../../utils/api";
@@ -30,23 +31,21 @@ const OrderDetailPage = () => {
 
       setLoading(true);
       try {
-        // Get all user orders
         const response = await orderAPI.getUserOrders();
         const orders = response.data.orders || [];
 
-        // Find the specific order
-        const foundOrder = orders.find((order) => order.id === id);
+        const foundOrder = orders.find((o) => o.id === id);
 
         if (foundOrder) {
           setOrder(foundOrder);
         } else {
-          setError("Order not found");
-          toast.error("Order not found");
+          setError("Không tìm thấy đơn hàng");
+          toast.error("Không tìm thấy đơn hàng");
         }
       } catch (err) {
-        console.error("Error fetching order:", err);
-        setError("Failed to load order details");
-        toast.error("Failed to load order details");
+        console.error("Lỗi khi tải chi tiết đơn hàng:", err);
+        setError("Không thể tải chi tiết đơn hàng");
+        toast.error("Không thể tải chi tiết đơn hàng");
       } finally {
         setLoading(false);
       }
@@ -56,77 +55,76 @@ const OrderDetailPage = () => {
   }, [id, user]);
 
   const handleCancelOrder = async () => {
-    if (!window.confirm("Are you sure you want to cancel this order?")) {
+    if (!window.confirm("Bạn có chắc chắn muốn hủy đơn này?")) {
       return;
     }
 
     try {
       await orderAPI.cancelOrder(id);
-
-      // Update the order status in the UI
       setOrder({ ...order, status: "cancelled" });
-
-      toast.success("Order cancelled successfully");
+      toast.success("Đã hủy đơn thành công");
     } catch (err) {
-      console.error("Error cancelling order:", err);
-      const errorMessage =
-        err.response?.data?.message || "Failed to cancel order";
+      console.error("Lỗi khi hủy đơn:", err);
+      const errorMessage = err.response?.data?.message || "Không thể hủy đơn";
       toast.error(errorMessage);
     }
   };
 
   const handleConfirmDelivery = async () => {
-    if (!window.confirm("Confirm that you have received this order?")) {
+    if (!window.confirm("Xác nhận rằng bạn đã nhận được đơn này?")) {
       return;
     }
 
     try {
       await orderAPI.confirmDelivery(id);
-
-      // Update the order status in the UI
       setOrder({ ...order, status: "delivered" });
-
-      toast.success("Delivery confirmed successfully");
+      toast.success("Xác nhận đã nhận thành công");
     } catch (err) {
-      console.error("Error confirming delivery:", err);
+      console.error("Lỗi khi xác nhận nhận hàng:", err);
       const errorMessage =
-        err.response?.data?.message || "Failed to confirm delivery";
+        err.response?.data?.message || "Không thể xác nhận nhận hàng";
       toast.error(errorMessage);
     }
   };
 
   const getStatusBadge = (status) => {
-    let variant;
+    let variant, label;
     switch (status) {
       case "unverified":
         variant = "warning";
+        label = "Chưa xác nhận";
         break;
       case "pending":
         variant = "info";
+        label = "Đang chờ";
         break;
       case "shipping":
         variant = "primary";
+        label = "Đang giao";
         break;
       case "delivered":
         variant = "success";
+        label = "Đã giao";
         break;
       case "cancelled":
         variant = "danger";
+        label = "Đã hủy";
         break;
       default:
         variant = "secondary";
+        label = status;
     }
-    return <Badge bg={variant}>{status}</Badge>;
+    return <Badge bg={variant}>{label}</Badge>;
   };
 
   if (!user) {
     return (
       <Container className="py-5">
         <div className="text-center">
-          <h2>Please Login</h2>
-          <p>You need to be logged in to view order details.</p>
+          <h2>Vui lòng đăng nhập</h2>
+          <p>Bạn cần đăng nhập để xem chi tiết đơn hàng.</p>
           <Button variant="primary" onClick={() => navigate("/login")}>
-            Go to Login
+            Đăng nhập
           </Button>
         </div>
       </Container>
@@ -137,7 +135,7 @@ const OrderDetailPage = () => {
     return (
       <Container className="py-5 text-center">
         <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </Spinner>
       </Container>
     );
@@ -147,10 +145,10 @@ const OrderDetailPage = () => {
     return (
       <Container className="py-5">
         <div className="alert alert-danger" role="alert">
-          {error || "Order not found"}
+          {error || "Không tìm thấy đơn hàng"}
         </div>
         <Button variant="primary" onClick={() => navigate("/orders")}>
-          Back to Orders
+          Quay lại Đơn hàng
         </Button>
       </Container>
     );
@@ -163,38 +161,63 @@ const OrderDetailPage = () => {
         className="mb-4"
         onClick={() => navigate("/orders")}
       >
-        &larr; Back to Orders
+        &larr; Quay lại Đơn hàng
       </Button>
 
       <Card className="mb-4">
         <Card.Header className="d-flex justify-content-between align-items-center">
-          <h4 className="mb-0">Order #{order.id.substring(0, 8)}...</h4>
+          <h4 className="mb-0">Đơn hàng #{order.id.substring(0, 8)}...</h4>
           {getStatusBadge(order.status)}
         </Card.Header>
 
         <Card.Body>
           <Row className="mb-4">
             <Col md={6}>
-              <h5>Order Information</h5>
+              <h5>Thông tin đơn hàng</h5>
               <p>
-                <strong>Date:</strong>{" "}
-                {new Date(order.createdAt).toLocaleString()}
+                <strong>Ngày:</strong>{" "}
+                {new Date(order.createdAt).toLocaleString("vi-VN", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </p>
               <p>
-                <strong>Payment Method:</strong> {order.paymentMethod}
+                <strong>Phương thức thanh toán:</strong> {order.paymentMethod}
               </p>
               <p>
-                <strong>Status:</strong> {order.status}
+                <strong>Trạng thái:</strong>{" "}
+                {order.status === "unverified"
+                  ? "Chưa xác nhận"
+                  : order.status === "pending"
+                  ? "Đang chờ"
+                  : order.status === "shipping"
+                  ? "Đang giao"
+                  : order.status === "delivered"
+                  ? "Đã giao"
+                  : order.status === "cancelled"
+                  ? "Đã hủy"
+                  : order.status}
               </p>
             </Col>
 
             <Col md={6}>
-              <h5>Shipping Address</h5>
+              <h5>Địa chỉ giao hàng</h5>
+              {/* <-- Thông báo bổ sung --> */}
+              <Alert variant="warning" className="mb-3">
+                <i className="bi bi-exclamation-circle me-2"></i>
+                <strong>
+                  Các sản phẩm đồ uống hiện chỉ hỗ trợ ship ở khu vực Hòa Lạc
+                </strong>
+              </Alert>
+              {/* <-- Kết thúc thông báo --> */}
               <p>{order.shippingAddress}</p>
             </Col>
           </Row>
 
-          <h5>Order Items</h5>
+          <h5>Sản phẩm đã đặt</h5>
           <ListGroup className="mb-4">
             {order.items.map((item, index) => (
               <ListGroup.Item key={index}>
@@ -216,11 +239,14 @@ const OrderDetailPage = () => {
                     <div>
                       <h6 className="mb-0">{item.productId.name}</h6>
                       <small className="text-muted">
-                        ${item.price.toFixed(2)} x {item.quantity}
+                        {item.price.toLocaleString("vi-VN")} VND x{" "}
+                        {item.quantity}
                       </small>
                     </div>
                   </div>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+                  <span>
+                    {(item.price * item.quantity).toLocaleString("vi-VN")} VND
+                  </span>
                 </div>
               </ListGroup.Item>
             ))}
@@ -230,13 +256,13 @@ const OrderDetailPage = () => {
             <Col md={6}>
               {order.status === "unverified" && (
                 <Button variant="danger" onClick={handleCancelOrder}>
-                  Cancel Order
+                  Hủy đơn
                 </Button>
               )}
 
               {order.status === "shipping" && (
                 <Button variant="success" onClick={handleConfirmDelivery}>
-                  Confirm Delivery
+                  Xác nhận đã nhận
                 </Button>
               )}
             </Col>
@@ -244,22 +270,24 @@ const OrderDetailPage = () => {
             <Col md={6}>
               <Card className="bg-light">
                 <Card.Body>
-                  <h5>Order Summary</h5>
+                  <h5>Tóm tắt đơn hàng</h5>
                   <div className="d-flex justify-content-between mb-2">
-                    <span>Subtotal:</span>
-                    <span>${order.totalAmount.toFixed(2)}</span>
+                    <span>Tạm tính:</span>
+                    <span>{order.totalAmount.toLocaleString("vi-VN")} VND</span>
                   </div>
 
                   {order.discountApplied > 0 && (
                     <div className="d-flex justify-content-between mb-2 text-success">
-                      <span>Discount:</span>
-                      <span>-${order.discountApplied.toFixed(2)}</span>
+                      <span>Giảm giá:</span>
+                      <span>
+                        -{order.discountApplied.toLocaleString("vi-VN")} VND
+                      </span>
                     </div>
                   )}
 
                   <div className="d-flex justify-content-between fw-bold">
-                    <span>Total:</span>
-                    <span>${order.totalAmount.toFixed(2)}</span>
+                    <span>Tổng cộng:</span>
+                    <span>{order.totalAmount.toLocaleString("vi-VN")} VND</span>
                   </div>
                 </Card.Body>
               </Card>

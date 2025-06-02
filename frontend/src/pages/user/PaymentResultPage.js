@@ -8,17 +8,17 @@ const PaymentResultPage = () => {
   const [searchParams] = useSearchParams();
   const paymentId = searchParams.get("paymentId");
   const orderId = searchParams.get("orderId");
+  // Tạm thời trạng thái luôn là pending
   const paymentStatus = "pending";
 
   const getStatusColor = () => "warning";
-
   const getStatusIcon = () => "bi-clock-fill";
 
   const getStatusMessage = () => (
     <>
-      Payment pending verification.
+      Thanh toán đang chờ xác nhận.
       <br />
-      Our team will verify your payment and send a confirmation email soon.
+      Chúng tôi sẽ xác nhận và gửi email cho bạn sớm nhất.
     </>
   );
 
@@ -40,7 +40,7 @@ const PaymentResultPage = () => {
                 <div className="bg-light p-3 rounded mb-3">
                   <div className="row text-start">
                     <div className="col-6">
-                      <strong>Payment ID:</strong>
+                      <strong>Mã thanh toán:</strong>
                     </div>
                     <div className="col-6">
                       <code>{paymentId}</code>
@@ -48,7 +48,7 @@ const PaymentResultPage = () => {
                   </div>
                   <div className="row text-start">
                     <div className="col-6">
-                      <strong>Order ID:</strong>
+                      <strong>Mã đơn:</strong>
                     </div>
                     <div className="col-6">
                       <code>{orderId}</code>
@@ -56,11 +56,11 @@ const PaymentResultPage = () => {
                   </div>
                   <div className="row text-start">
                     <div className="col-6">
-                      <strong>Status:</strong>
+                      <strong>Trạng thái:</strong>
                     </div>
                     <div className="col-6">
                       <span className={`badge bg-${getStatusColor()}`}>
-                        Pending
+                        Đang chờ
                       </span>
                     </div>
                   </div>
@@ -70,28 +70,18 @@ const PaymentResultPage = () => {
               <Alert variant="info" className="mb-4">
                 <Alert.Heading className="h6">
                   <i className="bi bi-info-circle me-2"></i>
-                  Payment Processing
+                  Đang xử lý thanh toán
                 </Alert.Heading>
                 <p className="mb-0">
-                  Your payment has been submitted and is awaiting verification
-                  by our team. You will receive an email confirmation once the
-                  payment is verified.
+                  Thanh toán của bạn đã được gửi và đang chờ đội ngũ chúng tôi
+                  xác minh. Bạn sẽ nhận được email xác nhận khi thanh toán được
+                  xác thực.
                 </p>
               </Alert>
 
               <div className="d-grid gap-2">
-                {/* <Button
-                  as={Link}
-                  to={`/orders/${orderId}`}
-                  variant="outline-secondary"
-                >
-                  View Order Details
-                </Button>
-                <Button as={Link} to="/orders" variant="outline-success">
-                  View All Orders
-                </Button> */}
                 <Button as={Link} to="/" variant="primary">
-                  Back to Home
+                  Quay lại trang chủ
                 </Button>
               </div>
             </Card.Body>

@@ -1,3 +1,4 @@
+// src/pages/HomePage.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -39,46 +40,90 @@ function HomePage() {
 
   return (
     <div>
-      {/* Hero Section */}
-      <div className="position-relative bg-dark text-white">
-        <div className="position-absolute w-100 h-100" style={{ zIndex: 0 }}>
-          <img
-            src="https://images.unsplash.com/photo-1534278931827-8a259344abe7?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80"
-            alt="Tea"
-            className="w-100 h-100 object-fit-cover"
-            style={{ opacity: 0.4 }}
-          />
-        </div>
-        <Container className="position-relative py-5" style={{ zIndex: 1 }}>
-          <Row className="py-5">
-            <Col lg={8} className="py-5">
-              <h1 className="display-4 fw-bold mb-4">Mạt Trà</h1>
-              <p className="lead mb-4">
-                Discover the finest selection of premium teas from around the
-                world. From traditional blends to unique flavors, we have
-                something for every tea enthusiast.
-              </p>
-              <div className="d-flex gap-3">
-                <Link to="/products">
-                  <Button size="lg">Shop Now</Button>
-                </Link>
-                <Link to="/subscriptions">
-                  <Button variant="outline" size="lg" className="bg-white">
-                    Learn More
-                  </Button>
-                </Link>
-              </div>
-            </Col>
-          </Row>
-        </Container>
+      {/* =========================
+          Hero Section — TWO COLUMNS
+          ========================= */}
+      <div className="position-relative">
+        <Row className="w-100 m-0 p-0 vh-100 bg-dark text-white">
+          {/* LEFT COLUMN: Logo + Brand Story */}
+          <Col
+            md={6}
+            className="d-flex flex-column justify-content-center align-items-start px-5"
+            style={{
+              zIndex: 1,
+              background:
+                "rgba(0, 0, 0, 0.6)" /* slight overlay so text is readable */,
+            }}
+          >
+            {/* Logo */}
+            <div className="mb-4">
+              <img
+                src="/logo.png"
+                alt="Mạt Trà Logo"
+                style={{ width: "60px", height: "60px" }}
+              />
+            </div>
+
+            {/* Main Heading */}
+            <h1 className="display-4 fw-bold mb-4">
+              MẠT TRÀ VÀ NHỮNG ĐIỀU KHÁC BIỆT
+            </h1>
+
+            {/* Subheading */}
+            <h3 className="fw-semibold mb-3">
+              CÂU CHUYỆN THƯƠNG HIỆU: Câu Chuyện Thương Hiệu Mạt Trà
+            </h3>
+
+            {/* Paragraphs */}
+            <p className="mb-3">
+              Trong nhịp sống hiện đại, giới trẻ ngày càng quan tâm đến sức khỏe
+              và cân bằng dinh dưỡng, nhưng cũng không muốn bỏ lỡ nguồn năng
+              lượng và sự tỉnh táo để luôn bắt kịp cuộc sống sôi động. Hiểu được
+              điều đó, Mạt Trà ra đời như một sự thay thế hoàn hảo và lành mạnh
+              hơn so với cà phê truyền thống.
+            </p>
+            <p className="mb-3">
+              Tại Mạt Trà, chúng tôi tin rằng năng lượng khỏe mạnh đến từ những
+              lựa chọn tự nhiên và cân bằng. Được tuyển chọn kỹ lưỡng từ những
+              lá trà xanh Nhật Bản cao cấp, mỗi ly matcha của Mạt Trà không chỉ
+              giúp bạn tỉnh táo mà còn bổ sung chất chống oxy hóa, hỗ trợ quá
+              trình giảm cân và giữ dáng hiệu quả.
+            </p>
+            <p>
+              Mạt Trà tự hào là người bạn đồng hành lý tưởng cho các bạn trẻ
+              năng động, sáng tạo và luôn hướng đến phong cách sống lành mạnh.
+              Hãy để Mạt Trà là nguồn cảm hứng mỗi ngày, giúp bạn đạt được phiên
+              bản tốt nhất của chính mình.
+            </p>
+          </Col>
+
+          {/* RIGHT COLUMN: Hero Image */}
+          <Col md={6} className="p-0 position-relative">
+            <img
+              src="/HomePageImage.jpg"
+              alt="Ly Matcha"
+              className="w-100 h-100 object-fit-cover"
+              style={{ objectFit: "cover" }}
+            />
+            {/* Optional: If you want a translucent dark overlay over the image, uncomment below */}
+            {/*
+            <div
+              className="position-absolute top-0 bottom-0 start-0 end-0"
+              style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
+            />
+            */}
+          </Col>
+        </Row>
       </div>
 
-      {/* Featured Products */}
+      {/* ===================================
+          Featured Products (with VND format)
+          =================================== */}
       <Container className="py-5">
         <div className="text-center mb-5">
-          <h2 className="fs-1 fw-bold">Featured Products</h2>
+          <h2 className="fs-1 fw-bold">Sản Phẩm Nổi Bật</h2>
           <p className="lead text-secondary">
-            Check out our handpicked premium tea selections
+            Khám phá những lựa chọn matcha thượng hạng do chúng tôi tuyển chọn.
           </p>
         </div>
 
@@ -123,11 +168,11 @@ function HomePage() {
                         className="position-absolute top-0 start-0 m-2"
                       >
                         <i className="bi bi-star-fill me-1"></i>
-                        Featured
+                        Nổi Bật
                       </Badge>
                       {product.stock <= 0 && (
                         <div className="position-absolute top-0 end-0 bg-danger text-white px-2 py-1 m-2 rounded">
-                          Out of Stock
+                          Hết Hàng
                         </div>
                       )}
                     </div>
@@ -137,7 +182,7 @@ function HomePage() {
                       </BootstrapCard.Title>
                       <div className="d-flex justify-content-between align-items-center mb-2">
                         <span className="h5 text-success fw-bold mb-0">
-                          ${product.price.toFixed(2)}
+                          {product.price.toLocaleString("vi-VN")} VND
                         </span>
                         {product.categories?.name && (
                           <Badge bg="light" text="dark" className="px-2 py-1">
@@ -150,7 +195,7 @@ function HomePage() {
                           ? product.description.length > 80
                             ? `${product.description.substring(0, 80)}...`
                             : product.description
-                          : "Premium quality tea"}
+                          : "Chất lượng matcha thượng hạng"}
                       </BootstrapCard.Text>
                       <div className="mt-auto">
                         <div className="d-flex justify-content-between align-items-center mb-2">
@@ -158,19 +203,19 @@ function HomePage() {
                             {product.stock > 0 ? (
                               <span className="text-success">
                                 <i className="bi bi-check-circle me-1"></i>
-                                In Stock
+                                Còn Hàng
                               </span>
                             ) : (
                               <span className="text-danger">
                                 <i className="bi bi-x-circle me-1"></i>
-                                Out of Stock
+                                Hết Hàng
                               </span>
                             )}
                           </small>
                         </div>
                         <Link to={`/products/${product.id}`} className="w-100">
                           <Button variant="outline" className="w-100">
-                            View Details
+                            Xem Chi Tiết
                           </Button>
                         </Link>
                       </div>
@@ -182,7 +227,7 @@ function HomePage() {
             <div className="text-center mt-5">
               <Link to="/products">
                 <Button variant="outline" size="lg">
-                  View All Products
+                  Xem Tất Cả Sản Phẩm
                 </Button>
               </Link>
             </div>
@@ -190,26 +235,28 @@ function HomePage() {
         ) : (
           <div className="text-center py-5 bg-light rounded">
             <i className="bi bi-star display-1 text-muted"></i>
-            <h3 className="mt-3">No Featured Products</h3>
+            <h3 className="mt-3">Chưa có sản phẩm nổi bật</h3>
             <p className="text-muted mb-4">
-              Featured products will appear here once they are added by
-              administrators
+              Sản phẩm nổi bật sẽ xuất hiện ở đây khi được thêm bởi quản trị
+              viên
             </p>
             <Link to="/products">
-              <Button variant="outline">Browse All Products</Button>
+              <Button variant="outline">Xem Tất Cả Sản Phẩm</Button>
             </Link>
           </div>
         )}
       </Container>
 
-      {/* Features Section */}
+      {/* ============================
+          Why Choose Mạt Trà? Section
+          ============================ */}
       <div className="bg-light py-5">
         <Container>
           <div className="text-center mb-5">
-            <h2 className="fs-1 fw-bold">Why Choose Mạt Trà?</h2>
+            <h2 className="fs-1 fw-bold">Tại Sao Chọn Mạt Trà?</h2>
             <p className="lead text-secondary">
-              We are committed to providing the highest quality tea products and
-              exceptional customer service.
+              Chúng tôi cam kết mang đến những sản phẩm matcha chất lượng nhất
+              và dịch vụ tận tâm.
             </p>
           </div>
           <Row>
@@ -221,10 +268,12 @@ function HomePage() {
                 >
                   <i className="bi bi-check-circle fs-1 text-success"></i>
                 </div>
-                <h3 className="fs-4 fw-semibold mb-3">Premium Quality</h3>
+                <h3 className="fs-4 fw-semibold mb-3">
+                  Chất Lượng Thượng Hạng
+                </h3>
                 <p className="text-secondary mb-0">
-                  We source our teas directly from trusted farmers and suppliers
-                  to ensure the highest quality.
+                  Chúng tôi lấy matcha trực tiếp từ những trang trại uy tín để
+                  đảm bảo chất lượng tối ưu.
                 </p>
               </div>
             </Col>
@@ -236,10 +285,9 @@ function HomePage() {
                 >
                   <i className="bi bi-truck fs-1 text-success"></i>
                 </div>
-                <h3 className="fs-4 fw-semibold mb-3">Fast Delivery</h3>
+                <h3 className="fs-4 fw-semibold mb-3">Giao Hàng Nhanh Chóng</h3>
                 <p className="text-secondary mb-0">
-                  We offer quick and reliable shipping to ensure your tea
-                  arrives fresh and on time.
+                  Giao hàng nhanh, đảm bảo matcha đến tay bạn luôn tươi ngon.
                 </p>
               </div>
             </Col>
@@ -251,10 +299,10 @@ function HomePage() {
                 >
                   <i className="bi bi-headset fs-1 text-success"></i>
                 </div>
-                <h3 className="fs-4 fw-semibold mb-3">Expert Advice</h3>
+                <h3 className="fs-4 fw-semibold mb-3">Tư Vấn Chuyên Gia</h3>
                 <p className="text-secondary mb-0">
-                  Our tea experts are available to help you find the perfect tea
-                  for your taste preferences.
+                  Đội ngũ chuyên gia luôn sẵn sàng giúp bạn tìm ra loại matcha
+                  phù hợp nhất.
                 </p>
               </div>
             </Col>
@@ -262,12 +310,14 @@ function HomePage() {
         </Container>
       </div>
 
-      {/* Testimonials */}
+      {/* ===================
+          Testimonials
+          =================== */}
       <Container className="py-5">
         <div className="text-center mb-5">
-          <h2 className="fs-1 fw-bold">What Our Customers Say</h2>
+          <h2 className="fs-1 fw-bold">Khách Hàng Nói Gì</h2>
           <p className="lead text-secondary">
-            Hear from our satisfied tea enthusiasts
+            Nghe những phản hồi chân thực từ cộng đồng yêu matcha
           </p>
         </div>
 
@@ -275,8 +325,8 @@ function HomePage() {
           <Carousel.Item>
             <div className="text-center px-md-5 py-3">
               <p className="fs-5 fst-italic mb-4">
-                "The quality of teas from Mạt Trà is exceptional. I've been a
-                customer for years and have never been disappointed."
+                "Chất lượng matcha ở Mạt Trà thật tuyệt vời. Tôi đã là khách
+                hàng suốt một năm qua và chưa bao giờ thất vọng."
               </p>
               <div className="d-flex justify-content-center align-items-center">
                 <div
@@ -287,7 +337,7 @@ function HomePage() {
                 </div>
                 <div className="text-start">
                   <h5 className="mb-0">John Doe</h5>
-                  <p className="text-secondary mb-0">Tea Enthusiast</p>
+                  <p className="text-secondary mb-0">Matcha Enthusiast</p>
                 </div>
               </div>
             </div>
@@ -295,19 +345,19 @@ function HomePage() {
           <Carousel.Item>
             <div className="text-center px-md-5 py-3">
               <p className="fs-5 fst-italic mb-4">
-                "I love the variety of teas available. The customer service is
-                also top-notch!"
+                "Tôi rất thích hương vị đa dạng của matcha tại đây. Dịch vụ
+                khách hàng cũng rất chu đáo!"
               </p>
               <div className="d-flex justify-content-center align-items-center">
                 <div
                   className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
                   style={{ width: "50px", height: "50px" }}
                 >
-                  <span className="text-white fw-bold">JS</span>
+                  <span className="text-white fw-bold">VS</span>
                 </div>
                 <div className="text-start">
-                  <h5 className="mb-0">Jane Smith</h5>
-                  <p className="text-secondary mb-0">Regular Customer</p>
+                  <h5 className="mb-0">Vân Sơn</h5>
+                  <p className="text-secondary mb-0">Khách Hàng Thân Thiết</p>
                 </div>
               </div>
             </div>
@@ -315,15 +365,17 @@ function HomePage() {
         </Carousel>
       </Container>
 
-      {/* Subscription CTA */}
+      {/* ================================
+          Subscription CTA (unchanged)
+          ================================ */}
       <div className="bg-success text-white py-5">
         <Container>
           <Row className="align-items-center">
             <Col lg={8} className="mb-4 mb-lg-0">
               <h2 className="fs-1 fw-bold">
-                Ready to dive into the world of premium tea?
+                Sẵn sàng bước vào thế giới matcha thượng hạng?
               </h2>
-              <p className="lead">Subscribe to our tea club today.</p>
+              <p className="lead">Đăng ký nhận ưu đãi hôm nay.</p>
             </Col>
             <Col lg={4} className="text-lg-end">
               <Link to="/subscriptions">
@@ -332,12 +384,12 @@ function HomePage() {
                   size="lg"
                   className="me-2 mb-2 mb-md-0"
                 >
-                  Get Started
+                  Bắt Đầu
                 </Button>
               </Link>
               <Link to="/products">
                 <Button variant="outline" size="lg" className="bg-white">
-                  Learn More
+                  Tìm Hiểu Thêm
                 </Button>
               </Link>
             </Col>

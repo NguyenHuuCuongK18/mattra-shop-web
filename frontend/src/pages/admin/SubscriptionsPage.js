@@ -9,6 +9,8 @@ import {
   Tabs,
   Tab,
   Modal,
+  Row,
+  Col,
 } from "react-bootstrap";
 import {
   subscriptionAPI,
@@ -67,9 +69,9 @@ function SubscriptionsPage() {
         setSubscribers(usersResponse.data.users || []);
         setSubscriptionOrders(ordersResponse.data.orders || []);
       } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to load data. Please try again later.");
-        toast.error("Failed to load data");
+        console.error("Lỗi khi tải dữ liệu:", error);
+        setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
+        toast.error("Không thể tải dữ liệu");
       } finally {
         setLoading(false);
       }
@@ -115,11 +117,11 @@ function SubscriptionsPage() {
         duration: "",
         description: "",
       });
-      toast.success("Subscription plan created successfully");
+      toast.success("Tạo gói đăng ký thành công");
     } catch (error) {
-      console.error("Error creating subscription plan:", error);
+      console.error("Lỗi khi tạo gói đăng ký:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to create subscription plan";
+        error.response?.data?.message || "Không thể tạo gói đăng ký";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -130,16 +132,16 @@ function SubscriptionsPage() {
   const handleUpdatePlan = async (e) => {
     e.preventDefault();
     if (!currentPlan) {
-      setError("No subscription plan selected.");
-      toast.error("No subscription plan selected.");
+      setError("Chưa chọn gói đăng ký.");
+      toast.error("Chưa chọn gói đăng ký.");
       setFormSubmitting(false);
       return;
     }
 
     const planId = currentPlan._id || currentPlan.id;
     if (!planId) {
-      setError("Invalid subscription plan ID.");
-      toast.error("Invalid subscription plan ID.");
+      setError("ID gói đăng ký không hợp lệ.");
+      toast.error("ID gói đăng ký không hợp lệ.");
       setFormSubmitting(false);
       return;
     }
@@ -164,11 +166,11 @@ function SubscriptionsPage() {
         )
       );
       setShowPlanModal(false);
-      toast.success("Subscription plan updated successfully");
+      toast.success("Cập nhật gói đăng ký thành công");
     } catch (error) {
-      console.error("Error updating subscription plan:", error);
+      console.error("Lỗi khi cập nhật gói đăng ký:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to update subscription plan";
+        error.response?.data?.message || "Không thể cập nhật gói đăng ký";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -177,21 +179,18 @@ function SubscriptionsPage() {
   };
 
   const handleDeletePlan = async (planId) => {
-    if (
-      !window.confirm("Are you sure you want to delete this subscription plan?")
-    )
-      return;
+    if (!window.confirm("Bạn có chắc muốn xóa gói đăng ký này?")) return;
 
     try {
       await subscriptionAPI.deleteSubscription(planId);
       setSubscriptionPlans(
         subscriptionPlans.filter((plan) => (plan._id || plan.id) !== planId)
       );
-      toast.success("Subscription plan deleted successfully");
+      toast.success("Xóa gói đăng ký thành công");
     } catch (error) {
-      console.error("Error deleting subscription plan:", error);
+      console.error("Lỗi khi xóa gói đăng ký:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to delete subscription plan";
+        error.response?.data?.message || "Không thể xóa gói đăng ký";
       setError(errorMsg);
       toast.error(errorMsg);
     }
@@ -205,7 +204,7 @@ function SubscriptionsPage() {
       const { userId, subscriptionId, status, startDate } =
         userSubscriptionFormData;
       if (!userId || !subscriptionId) {
-        throw new Error("User and subscription plan must be selected.");
+        throw new Error("Phải chọn Người dùng và Gói đăng ký.");
       }
 
       const response = await authAPI.updateSubscriptionStatus(userId, {
@@ -244,13 +243,13 @@ function SubscriptionsPage() {
         status: "active",
         startDate: new Date().toISOString().split("T")[0],
       });
-      toast.success("User subscription updated successfully");
+      toast.success("Cập nhật đăng ký cho người dùng thành công");
     } catch (error) {
-      console.error("Error assigning subscription:", error);
+      console.error("Lỗi khi phân gói đăng ký:", error);
       const errorMsg =
         error.response?.data?.message ||
         error.message ||
-        "Failed to assign subscription";
+        "Không thể phân gói đăng ký";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -264,14 +263,14 @@ function SubscriptionsPage() {
         (sub) => (sub._id || sub.id) === userId
       );
       if (!subscriber || !subscriber.subscription) {
-        throw new Error("Subscriber or subscription not found.");
+        throw new Error("Người đăng ký hoặc gói không tồn tại.");
       }
 
       const subscriptionId =
         subscriber.subscription.subscriptionId?._id ||
         subscriber.subscription.subscriptionId;
       if (!subscriptionId) {
-        throw new Error("Invalid subscription ID.");
+        throw new Error("ID gói đăng ký không hợp lệ.");
       }
 
       const response = await authAPI.updateSubscriptionStatus(userId, {
@@ -291,13 +290,17 @@ function SubscriptionsPage() {
         )
       );
 
-      toast.success(`Subscription status updated to ${status}`);
+      toast.success(
+        `Cập nhật trạng thái đăng ký thành “${
+          status === "active" ? "Đang hoạt động" : "Không hoạt động"
+        }”`
+      );
     } catch (error) {
-      console.error("Error updating subscription status:", error);
+      console.error("Lỗi khi cập nhật trạng thái đăng ký:", error);
       const errorMsg =
         error.response?.data?.message ||
         error.message ||
-        "Failed to update subscription status";
+        "Không thể cập nhật trạng thái đăng ký";
       setError(errorMsg);
       toast.error(errorMsg);
     }
@@ -314,23 +317,22 @@ function SubscriptionsPage() {
           (order._id || order.id) === orderId ? response.data.order : order
         )
       );
-      toast.success(`Order status updated to ${status}`);
+      toast.success(
+        status === "active"
+          ? "Kích hoạt đơn hàng thành công"
+          : "Đã kích hoạt đơn hàng"
+      );
     } catch (error) {
-      console.error("Error updating order status:", error);
+      console.error("Lỗi khi cập nhật trạng thái đơn hàng:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to update order status";
+        error.response?.data?.message || "Không thể cập nhật trạng thái đơn";
       setError(errorMsg);
       toast.error(errorMsg);
     }
   };
 
   const handleCancelOrder = async (orderId) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to cancel this subscription order?"
-      )
-    )
-      return;
+    if (!window.confirm("Bạn có chắc muốn hủy đơn hàng đăng ký này?")) return;
 
     try {
       const response = await subscriptionOrderAPI.cancelSubscriptionOrder(
@@ -341,11 +343,10 @@ function SubscriptionsPage() {
           (order._id || order.id) === orderId ? response.data.order : order
         )
       );
-      toast.success("Subscription order cancelled successfully");
+      toast.success("Hủy đơn hàng đăng ký thành công");
     } catch (error) {
-      console.error("Error cancelling order:", error);
-      const errorMsg =
-        error.response?.data?.message || "Failed to cancel order";
+      console.error("Lỗi khi hủy đơn:", error);
+      const errorMsg = error.response?.data?.message || "Không thể hủy đơn";
       setError(errorMsg);
       toast.error(errorMsg);
     }
@@ -405,7 +406,7 @@ function SubscriptionsPage() {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -451,7 +452,7 @@ function SubscriptionsPage() {
         style={{ height: "200px" }}
       >
         <div className="spinner-border text-success" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
     );
@@ -459,7 +460,7 @@ function SubscriptionsPage() {
 
   return (
     <div>
-      <h1 className="fs-4 fw-bold mb-4">Subscriptions</h1>
+      <h1 className="fs-4 fw-bold mb-4">Gói đăng ký</h1>
 
       {error && (
         <Alert
@@ -477,11 +478,11 @@ function SubscriptionsPage() {
         onSelect={(k) => setActiveTab(k)}
         className="mb-4"
       >
-        <Tab eventKey="plans" title="Subscription Plans">
+        <Tab eventKey="plans" title="Gói đăng ký">
           <div className="d-flex justify-content-end mb-3">
             <Button onClick={handleAddPlan}>
               <i className="bi bi-plus-circle me-2"></i>
-              Add New Plan
+              Thêm gói mới
             </Button>
           </div>
 
@@ -496,14 +497,14 @@ function SubscriptionsPage() {
                     <Card.Body>
                       <div className="mb-3">
                         <h3 className="mb-0">
-                          ${plan.price.toFixed(2)}
+                          {plan.price.toLocaleString("vi-VN")} VND
                           <span className="fs-6 text-muted">
-                            /{plan.duration} month
+                            /{plan.duration} tháng
                           </span>
                         </h3>
                       </div>
                       <p className="text-muted">
-                        {plan.description || "No description available"}
+                        {plan.description || "Không có mô tả"}
                       </p>
                     </Card.Body>
                     <Card.Footer className="bg-white border-0 d-flex justify-content-between">
@@ -511,13 +512,13 @@ function SubscriptionsPage() {
                         variant="outline"
                         onClick={() => handleViewPlan(plan)}
                       >
-                        Edit
+                        Chỉnh sửa
                       </Button>
                       <Button
                         variant="danger"
                         onClick={() => handleDeletePlan(plan._id || plan.id)}
                       >
-                        Delete
+                        Xóa
                       </Button>
                     </Card.Footer>
                   </Card>
@@ -526,13 +527,13 @@ function SubscriptionsPage() {
             ) : (
               <div className="col-12">
                 <div className="text-center py-5 bg-light rounded">
-                  <p className="mb-0">No subscription plans found</p>
+                  <p className="mb-0">Không tìm thấy gói đăng ký</p>
                 </div>
               </div>
             )}
           </div>
         </Tab>
-        <Tab eventKey="subscribers" title="Subscribers">
+        <Tab eventKey="subscribers" title="Người đăng ký">
           <div className="mb-4">
             <div className="row g-3">
               <div className="col-md-4">
@@ -541,7 +542,7 @@ function SubscriptionsPage() {
                     <i className="bi bi-search"></i>
                   </InputGroup.Text>
                   <Form.Control
-                    placeholder="Search by name or email"
+                    placeholder="Tìm theo tên hoặc email"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -552,10 +553,10 @@ function SubscriptionsPage() {
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
                 >
-                  <option value="">All Roles</option>
-                  <option value="subscriber">Subscribers</option>
-                  <option value="user">Non-Subscribers</option>
-                  <option value="admin">Admins</option>
+                  <option value="">Tất cả vai trò</option>
+                  <option value="subscriber">Người đăng ký</option>
+                  <option value="user">Chưa đăng ký</option>
+                  <option value="admin">Quản trị viên</option>
                 </Form.Select>
               </div>
               <div className="col-md-3">
@@ -563,15 +564,15 @@ function SubscriptionsPage() {
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
-                  <option value="">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="inactive">Không hoạt động</option>
                 </Form.Select>
               </div>
               <div className="col-md-2">
                 <Button className="w-100" onClick={handleAddSubscriber}>
                   <i className="bi bi-plus-circle me-2"></i>
-                  Assign
+                  Phân gói
                 </Button>
               </div>
             </div>
@@ -582,14 +583,14 @@ function SubscriptionsPage() {
               <Table hover className="mb-0">
                 <thead>
                   <tr>
-                    <th>User</th>
+                    <th>Người dùng</th>
                     <th>Email</th>
-                    <th>Role</th>
-                    <th>Subscription</th>
-                    <th>Start Date</th>
-                    <th>End Date</th>
-                    <th>Status</th>
-                    <th className="text-end">Actions</th>
+                    <th>Vai trò</th>
+                    <th>Gói</th>
+                    <th>Ngày bắt đầu</th>
+                    <th>Ngày kết thúc</th>
+                    <th>Trạng thái</th>
+                    <th className="text-end">Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -608,7 +609,7 @@ function SubscriptionsPage() {
                                   (p) =>
                                     (p._id || p.id) ===
                                     subscriber.subscription.subscriptionId
-                                )?.name || "Unknown"
+                                )?.name || "Không rõ"
                             : "N/A"}
                         </td>
                         <td>
@@ -623,7 +624,9 @@ function SubscriptionsPage() {
                                 : "secondary"
                             }
                           >
-                            {subscriber.subscription?.status || "N/A"}
+                            {subscriber.subscription?.status === "active"
+                              ? "Đang hoạt động"
+                              : "Không hoạt động"}
                           </Badge>
                         </td>
                         <td className="text-end">
@@ -632,7 +635,7 @@ function SubscriptionsPage() {
                             className="text-success p-0 me-2"
                             onClick={() => handleViewSubscriber(subscriber)}
                           >
-                            Edit
+                            Chỉnh sửa
                           </Button>
                           {subscriber.subscription?.status === "active" ? (
                             <Button
@@ -645,7 +648,7 @@ function SubscriptionsPage() {
                                 )
                               }
                             >
-                              Deactivate
+                              Hủy kích hoạt
                             </Button>
                           ) : (
                             <Button
@@ -658,7 +661,7 @@ function SubscriptionsPage() {
                                 )
                               }
                             >
-                              Activate
+                              Kích hoạt
                             </Button>
                           )}
                         </td>
@@ -667,7 +670,7 @@ function SubscriptionsPage() {
                   ) : (
                     <tr>
                       <td colSpan="8" className="text-center py-4">
-                        No subscribers found
+                        Không tìm thấy người đăng ký
                       </td>
                     </tr>
                   )}
@@ -676,7 +679,7 @@ function SubscriptionsPage() {
             </div>
           </Card>
         </Tab>
-        <Tab eventKey="orders" title="Subscription Orders">
+        <Tab eventKey="orders" title="Đơn hàng đăng ký">
           <div className="mb-4">
             <div className="row g-3">
               <div className="col-md-6">
@@ -685,7 +688,7 @@ function SubscriptionsPage() {
                     <i className="bi bi-search"></i>
                   </InputGroup.Text>
                   <Form.Control
-                    placeholder="Search by user or subscription"
+                    placeholder="Tìm theo người dùng hoặc gói"
                     value={orderSearchQuery}
                     onChange={(e) => setOrderSearchQuery(e.target.value)}
                   />
@@ -696,11 +699,11 @@ function SubscriptionsPage() {
                   value={orderStatusFilter}
                   onChange={(e) => setOrderStatusFilter(e.target.value)}
                 >
-                  <option value="">All Statuses</option>
-                  <option value="unverified">Unverified</option>
-                  <option value="pending">Pending</option>
-                  <option value="active">Active</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="unverified">Chưa xác nhận</option>
+                  <option value="pending">Đang chờ</option>
+                  <option value="active">Đang hoạt động</option>
+                  <option value="cancelled">Đã hủy</option>
                 </Form.Select>
               </div>
             </div>
@@ -711,14 +714,14 @@ function SubscriptionsPage() {
               <Table hover className="mb-0">
                 <thead>
                   <tr>
-                    <th>Order ID</th>
-                    <th>User</th>
-                    <th>Subscription</th>
-                    <th>Price</th>
-                    <th>Payment Method</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th className="text-end">Actions</th>
+                    <th>Mã đơn</th>
+                    <th>Người dùng</th>
+                    <th>Gói đăng ký</th>
+                    <th>Giá</th>
+                    <th>Phương thức</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày tạo</th>
+                    <th className="text-end">Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -735,7 +738,7 @@ function SubscriptionsPage() {
                             <div className="fw-medium">
                               {order.userId?.name ||
                                 order.userId?.username ||
-                                "Unknown User"}
+                                "Không rõ"}
                             </div>
                             <small className="text-muted">
                               {order.userId?.email}
@@ -745,16 +748,16 @@ function SubscriptionsPage() {
                         <td>
                           <div>
                             <div className="fw-medium">
-                              {order.subscriptionId?.name || "Unknown Plan"}
+                              {order.subscriptionId?.name || "Không rõ"}
                             </div>
                             <small className="text-muted">
-                              {order.subscriptionId?.duration} month
+                              {order.subscriptionId?.duration} tháng
                             </small>
                           </div>
                         </td>
                         <td>
                           <span className="fw-medium">
-                            ${order.price?.toFixed(2)}
+                            {order.price?.toLocaleString("vi-VN")} VND
                           </span>
                         </td>
                         <td>
@@ -766,7 +769,9 @@ function SubscriptionsPage() {
                             }
                             className="text-dark"
                           >
-                            {order.paymentMethod}
+                            {order.paymentMethod === "Online Banking"
+                              ? "Ngân hàng trực tuyến"
+                              : "Khác"}
                           </Badge>
                         </td>
                         <td>
@@ -781,7 +786,13 @@ function SubscriptionsPage() {
                                 : "danger"
                             }
                           >
-                            {order.status}
+                            {order.status === "active"
+                              ? "Đang hoạt động"
+                              : order.status === "pending"
+                              ? "Đang chờ"
+                              : order.status === "unverified"
+                              ? "Chưa xác nhận"
+                              : "Đã hủy"}
                           </Badge>
                         </td>
                         <td>{formatDate(order.createdAt)}</td>
@@ -799,7 +810,7 @@ function SubscriptionsPage() {
                                     )
                                   }
                                 >
-                                  Approve
+                                  Phê duyệt
                                 </Button>
                                 <Button
                                   variant="outline-danger"
@@ -808,7 +819,7 @@ function SubscriptionsPage() {
                                     handleCancelOrder(order._id || order.id)
                                   }
                                 >
-                                  Cancel
+                                  Hủy
                                 </Button>
                               </>
                             )}
@@ -824,7 +835,7 @@ function SubscriptionsPage() {
                                     )
                                   }
                                 >
-                                  Activate
+                                  Kích hoạt
                                 </Button>
                                 <Button
                                   variant="outline-danger"
@@ -833,7 +844,7 @@ function SubscriptionsPage() {
                                     handleCancelOrder(order._id || order.id)
                                   }
                                 >
-                                  Cancel
+                                  Hủy
                                 </Button>
                               </>
                             )}
@@ -845,7 +856,7 @@ function SubscriptionsPage() {
                                   handleCancelOrder(order._id || order.id)
                                 }
                               >
-                                Cancel
+                                Hủy
                               </Button>
                             )}
                           </div>
@@ -855,7 +866,7 @@ function SubscriptionsPage() {
                   ) : (
                     <tr>
                       <td colSpan="8" className="text-center py-4">
-                        No subscription orders found
+                        Không tìm thấy đơn hàng đăng ký
                       </td>
                     </tr>
                   )}
@@ -866,21 +877,21 @@ function SubscriptionsPage() {
         </Tab>
       </Tabs>
 
-      {/* Subscription Plan Modal */}
+      {/* Modal Thêm / Chỉnh sửa Gói đăng ký */}
       <Modal show={showPlanModal} onHide={() => setShowPlanModal(false)}>
         <Modal.Header closeButton>
           <Modal.Title>
-            {currentPlan ? "Edit Plan" : "Add New Plan"}
+            {currentPlan ? "Chỉnh sửa gói" : "Thêm gói mới"}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={currentPlan ? handleUpdatePlan : handleCreatePlan}>
             <Form.Group className="mb-3">
-              <Form.Label>Plan Name</Form.Label>
+              <Form.Label>Tên gói</Form.Label>
               <Form.Control
                 type="text"
                 name="name"
-                placeholder="Enter plan name"
+                placeholder="Nhập tên gói"
                 value={planFormData.name}
                 onChange={handlePlanInputChange}
                 required
@@ -888,24 +899,23 @@ function SubscriptionsPage() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Price</Form.Label>
+              <Form.Label>Giá (VND)</Form.Label>
               <InputGroup>
-                <InputGroup.Text>$</InputGroup.Text>
+                <InputGroup.Text>₫</InputGroup.Text>
                 <Form.Control
                   type="number"
                   name="price"
-                  placeholder="0.00"
+                  placeholder="0"
                   value={planFormData.price}
                   onChange={handlePlanInputChange}
                   min="0"
-                  step="0.01"
                   required
                 />
               </InputGroup>
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Duration (month)</Form.Label>
+              <Form.Label>Thời gian (tháng)</Form.Label>
               <Form.Control
                 type="number"
                 name="duration"
@@ -918,7 +928,7 @@ function SubscriptionsPage() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
+              <Form.Label>Mô tả</Form.Label>
               <Form.Control
                 as="textarea"
                 name="description"
@@ -930,18 +940,15 @@ function SubscriptionsPage() {
             <div className="d-grid gap-2">
               <Button type="submit" disabled={formSubmitting}>
                 {formSubmitting ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    Processing...
-                  </>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
                 ) : currentPlan ? (
-                  "Update Plan"
+                  "Cập nhật gói"
                 ) : (
-                  "Create Plan"
+                  "Tạo gói"
                 )}
               </Button>
             </div>
@@ -949,20 +956,20 @@ function SubscriptionsPage() {
         </Modal.Body>
       </Modal>
 
-      {/* Add/Edit Subscriber Modal */}
+      {/* Modal Thêm / Chỉnh sửa Người đăng ký */}
       <Modal
         show={showSubscriberModal}
         onHide={() => setShowSubscriberModal(false)}
       >
         <Modal.Header closeButton>
           <Modal.Title>
-            {currentSubscriber ? "Edit Subscription" : "Assign Subscription"}
+            {currentSubscriber ? "Chỉnh sửa đăng ký" : "Phân gói đăng ký"}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form onSubmit={handleAssignSubscription}>
             <Form.Group className="mb-3">
-              <Form.Label>User</Form.Label>
+              <Form.Label>Người dùng</Form.Label>
               <Form.Select
                 name="userId"
                 value={userSubscriptionFormData.userId}
@@ -970,7 +977,7 @@ function SubscriptionsPage() {
                 required
                 disabled={!!currentSubscriber}
               >
-                <option value="">Select User</option>
+                <option value="">Chọn Người dùng</option>
                 {users.map((user) => (
                   <option key={user._id || user.id} value={user._id || user.id}>
                     {user.name || user.username} ({user.email})
@@ -980,36 +987,37 @@ function SubscriptionsPage() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Subscription Plan</Form.Label>
+              <Form.Label>Gói đăng ký</Form.Label>
               <Form.Select
                 name="subscriptionId"
                 value={userSubscriptionFormData.subscriptionId}
                 onChange={handleUserSubscriptionInputChange}
                 required
               >
-                <option value="">Select Plan</option>
+                <option value="">Chọn gói</option>
                 {subscriptionPlans.map((plan) => (
                   <option key={plan._id || plan.id} value={plan._id || plan.id}>
-                    {plan.name} (${plan.price}/{plan.duration} month)
+                    {plan.name} ({plan.price.toLocaleString("vi-VN")} VND/
+                    {plan.duration} tháng)
                   </option>
                 ))}
               </Form.Select>
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Status</Form.Label>
+              <Form.Label>Trạng thái</Form.Label>
               <Form.Select
                 name="status"
                 value={userSubscriptionFormData.status}
                 onChange={handleUserSubscriptionInputChange}
               >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="active">Đang hoạt động</option>
+                <option value="inactive">Không hoạt động</option>
               </Form.Select>
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>Start Date</Form.Label>
+              <Form.Label>Ngày bắt đầu</Form.Label>
               <Form.Control
                 type="date"
                 name="startDate"
@@ -1021,18 +1029,15 @@ function SubscriptionsPage() {
             <div className="d-grid gap-2">
               <Button type="submit" disabled={formSubmitting}>
                 {formSubmitting ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    Processing...
-                  </>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
                 ) : currentSubscriber ? (
-                  "Update Subscription"
+                  "Cập nhật đăng ký"
                 ) : (
-                  "Assign Subscription"
+                  "Phân gói đăng ký"
                 )}
               </Button>
             </div>

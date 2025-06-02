@@ -68,11 +68,11 @@ function ProfilePage() {
     const file = e.target.files[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        setAvatarError("Please select an image file");
+        setAvatarError("Vui lòng chọn file ảnh");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        setAvatarError("File size must be less than 5MB");
+        setAvatarError("Kích thước file phải nhỏ hơn 5MB");
         return;
       }
       setAvatarFile(file);
@@ -92,17 +92,17 @@ function ProfilePage() {
 
     try {
       await updateProfile(profileData);
-      setProfileSuccess("Profile updated successfully!");
+      setProfileSuccess("Cập nhật thông tin thành công!");
 
       if (avatarFile) {
         await uploadAvatar(avatarFile);
-        setAvatarSuccess("Avatar updated successfully!");
+        setAvatarSuccess("Đã cập nhật ảnh đại diện!");
         setAvatarFile(null);
       }
     } catch (error) {
-      console.error("Profile update error:", error);
+      console.error("Lỗi cập nhật hồ sơ:", error);
       const errorMessage =
-        error.response?.data?.message || "Failed to update profile or avatar";
+        error.response?.data?.message || "Không thể cập nhật hồ sơ";
       setProfileError(errorMessage);
     } finally {
       setProfileLoading(false);
@@ -116,13 +116,13 @@ function ProfilePage() {
     setPasswordSuccess("");
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError("Passwords do not match");
+      setPasswordError("Mật khẩu mới không khớp");
       setPasswordLoading(false);
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      setPasswordError("Password must be at least 6 characters long");
+      setPasswordError("Mật khẩu phải có ít nhất 6 ký tự");
       setPasswordLoading(false);
       return;
     }
@@ -133,7 +133,7 @@ function ProfilePage() {
         newPassword: passwordData.newPassword,
       });
       setPasswordSuccess(
-        "Password changed successfully! You will be logged out."
+        "Đã thay đổi mật khẩu thành công! Bạn sẽ được đăng xuất."
       );
       setPasswordData({
         currentPassword: "",
@@ -141,9 +141,9 @@ function ProfilePage() {
         confirmPassword: "",
       });
     } catch (error) {
-      console.error("Change password error:", error);
+      console.error("Lỗi thay đổi mật khẩu:", error);
       setPasswordError(
-        error.response?.data?.message || "Failed to change password"
+        error.response?.data?.message || "Không thể thay đổi mật khẩu"
       );
     } finally {
       setPasswordLoading(false);
@@ -155,7 +155,6 @@ function ProfilePage() {
   }, [user?.avatar]);
 
   useEffect(() => {
-    console.log("User subscription:", user?.subscription);
     const fetchVouchers = async () => {
       setVoucherLoading(true);
       setVoucherError("");
@@ -163,9 +162,7 @@ function ProfilePage() {
         const response = await voucherAPI.getUserVouchers();
         setVouchers(response.data.vouchers);
       } catch (err) {
-        setVoucherError(
-          err.response?.data?.message || "Failed to load vouchers"
-        );
+        setVoucherError(err.response?.data?.message || "Không thể tải voucher");
       } finally {
         setVoucherLoading(false);
       }
@@ -175,13 +172,14 @@ function ProfilePage() {
 
   return (
     <Container className="py-5 fade-in">
+      {/* Header profile */}
       <div className="profile-header bg-light rounded-4 p-4 mb-4 shadow-sm">
         <div className="d-flex flex-column flex-md-row align-items-center gap-4">
           <div className="profile-avatar-container">
             {avatarPreview ? (
               <img
                 src={avatarPreview || "/placeholder.svg"}
-                alt="Profile"
+                alt="Ảnh đại diện"
                 className="profile-avatar rounded-circle border border-3 border-white shadow"
               />
             ) : (
@@ -203,7 +201,7 @@ function ProfilePage() {
               {user?.subscription?.status === "active" && (
                 <span className="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill">
                   <i className="bi bi-star me-1"></i>
-                  Premium Member
+                  Thành viên Premium
                 </span>
               )}
             </div>
@@ -211,13 +209,15 @@ function ProfilePage() {
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
         <Tabs defaultActiveKey="profile" className="profile-tabs">
+          {/* Tab 1: Thông tin cá nhân */}
           <Tab
             eventKey="profile"
             title={
               <>
-                <i className="bi bi-person me-2"></i>Profile Information
+                <i className="bi bi-person me-2"></i>Thông tin cá nhân
               </>
             }
           >
@@ -232,13 +232,14 @@ function ProfilePage() {
                 )}
 
                 <Row>
+                  {/* Thay đổi avatar */}
                   <Col lg={4} className="mb-4">
                     <div className="text-center">
                       <div className="mb-3 avatar-upload-container mx-auto">
                         {avatarPreview ? (
                           <img
                             src={avatarPreview || "/placeholder.svg"}
-                            alt="Avatar Preview"
+                            alt="Xem trước avatar"
                             className="avatar-preview rounded-circle border border-3 border-white shadow"
                           />
                         ) : (
@@ -259,7 +260,7 @@ function ProfilePage() {
                       </div>
                       <Form.Group controlId="avatar-upload">
                         <Form.Label className="fw-bold">
-                          Profile Picture
+                          Ảnh đại diện
                         </Form.Label>
                         <Form.Control
                           type="file"
@@ -268,7 +269,7 @@ function ProfilePage() {
                           className="form-control-modern"
                         />
                         <Form.Text className="text-muted">
-                          Upload an image (max 5MB, JPG/PNG)
+                          Tải lên ảnh (max 5MB, định dạng JPG/PNG)
                         </Form.Text>
                         {avatarError && (
                           <p className="text-danger mt-2 small">
@@ -278,11 +279,15 @@ function ProfilePage() {
                       </Form.Group>
                     </div>
                   </Col>
+
+                  {/* Thay đổi thông tin cá nhân */}
                   <Col lg={8}>
                     <Row>
                       <Col md={6} className="mb-3">
                         <div className="form-group-modern">
-                          <label className="form-label fw-bold">Username</label>
+                          <label className="form-label fw-bold">
+                            Tên đăng nhập
+                          </label>
                           <div className="input-group-modern">
                             <span className="input-group-text-modern">
                               <i className="bi bi-person"></i>
@@ -295,7 +300,7 @@ function ProfilePage() {
                             />
                           </div>
                           <div className="form-text">
-                            Username cannot be changed
+                            Tên đăng nhập không thể thay đổi
                           </div>
                         </div>
                       </Col>
@@ -314,7 +319,7 @@ function ProfilePage() {
                             />
                           </div>
                           <div className="form-text">
-                            Email cannot be changed
+                            Email không thể thay đổi
                           </div>
                         </div>
                       </Col>
@@ -324,7 +329,7 @@ function ProfilePage() {
                       <Col md={6} className="mb-3">
                         <div className="form-group-modern">
                           <label className="form-label fw-bold">
-                            Full Name
+                            Họ và tên
                           </label>
                           <div className="input-group-modern">
                             <span className="input-group-text-modern">
@@ -344,7 +349,7 @@ function ProfilePage() {
                       </Col>
                       <Col md={6} className="mb-3">
                         <div className="form-group-modern">
-                          <label className="form-label fw-bold">Address</label>
+                          <label className="form-label fw-bold">Địa chỉ</label>
                           <div className="input-group-modern">
                             <span className="input-group-text-modern">
                               <i className="bi bi-geo-alt"></i>
@@ -370,7 +375,7 @@ function ProfilePage() {
                         className="btn-modern"
                       >
                         <i className="bi bi-check-circle me-2"></i>
-                        Update Profile
+                        Cập nhật hồ sơ
                       </Button>
                     </div>
                   </Col>
@@ -378,11 +383,13 @@ function ProfilePage() {
               </form>
             </div>
           </Tab>
+
+          {/* Tab 2: Thay đổi mật khẩu */}
           <Tab
             eventKey="password"
             title={
               <>
-                <i className="bi bi-shield-lock me-2"></i>Change Password
+                <i className="bi bi-shield-lock me-2"></i>Thay đổi mật khẩu
               </>
             }
           >
@@ -400,18 +407,16 @@ function ProfilePage() {
                     <div className="password-change-container bg-light p-4 rounded-4 mb-4">
                       <h4 className="mb-3 fw-bold">
                         <i className="bi bi-shield-lock me-2"></i>
-                        Password Security
+                        Bảo mật mật khẩu
                       </h4>
                       <p className="text-secondary mb-4">
-                        Ensure your account is using a strong password that is
-                        updated regularly. Your password should be at least 6
-                        characters and include a mix of letters, numbers, and
-                        special characters.
+                        Đảm bảo mật khẩu an toàn, ít nhất 6 ký tự bao gồm chữ,
+                        số và ký tự đặc biệt.
                       </p>
 
                       <div className="form-group-modern mb-4">
                         <label className="form-label fw-bold">
-                          Current Password
+                          Mật khẩu hiện tại
                         </label>
                         <div className="input-group-modern">
                           <span className="input-group-text-modern">
@@ -433,7 +438,7 @@ function ProfilePage() {
                         <Col md={6} className="mb-3">
                           <div className="form-group-modern">
                             <label className="form-label fw-bold">
-                              New Password
+                              Mật khẩu mới
                             </label>
                             <div className="input-group-modern">
                               <span className="input-group-text-modern">
@@ -454,7 +459,7 @@ function ProfilePage() {
                         <Col md={6} className="mb-3">
                           <div className="form-group-modern">
                             <label className="form-label fw-bold">
-                              Confirm New Password
+                              Xác nhận mật khẩu mới
                             </label>
                             <div className="input-group-modern">
                               <span className="input-group-text-modern">
@@ -482,7 +487,7 @@ function ProfilePage() {
                           className="btn-modern"
                         >
                           <i className="bi bi-shield-check me-2"></i>
-                          Change Password
+                          Thay đổi mật khẩu
                         </Button>
                       </div>
                     </div>
@@ -491,12 +496,14 @@ function ProfilePage() {
               </form>
             </div>
           </Tab>
+
+          {/* Tab 3: Đăng ký (nếu có) */}
           {user?.subscription && (
             <Tab
               eventKey="subscription"
               title={
                 <>
-                  <i className="bi bi-star me-2"></i>Subscription
+                  <i className="bi bi-star me-2"></i>Đăng ký
                 </>
               }
             >
@@ -512,8 +519,8 @@ function ProfilePage() {
                     ></div>
                     <h3 className="fs-4 fw-bold mb-0">
                       {user.subscription.status === "active"
-                        ? "Active Subscription"
-                        : "Inactive Subscription"}
+                        ? "Đăng ký đang hoạt động"
+                        : "Đăng ký không hoạt động"}
                     </h3>
                   </div>
 
@@ -521,21 +528,29 @@ function ProfilePage() {
                     <Row className="subscription-details">
                       <Col md={6} className="mb-3 mb-md-0">
                         <div className="subscription-info-card">
-                          <p className="text-white-50 mb-1">Start Date</p>
+                          <p className="text-white-50 mb-1">Ngày bắt đầu</p>
                           <p className="fw-bold fs-5 mb-0">
                             {new Date(
                               user.subscription.startDate
-                            ).toLocaleDateString()}
+                            ).toLocaleDateString("vi-VN", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
                           </p>
                         </div>
                       </Col>
                       <Col md={6}>
                         <div className="subscription-info-card">
-                          <p className="text-white-50 mb-1">End Date</p>
+                          <p className="text-white-50 mb-1">Ngày kết thúc</p>
                           <p className="fw-bold fs-5 mb-0">
                             {new Date(
                               user.subscription.endDate
-                            ).toLocaleDateString()}
+                            ).toLocaleDateString("vi-VN", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
                           </p>
                         </div>
                       </Col>
@@ -546,7 +561,7 @@ function ProfilePage() {
                 <div className="subscription-details-card bg-white p-4 rounded-4 shadow-sm">
                   <h3 className="fs-4 fw-bold mb-4">
                     <i className="bi bi-info-circle me-2"></i>
-                    Subscription Details
+                    Chi tiết đăng ký
                   </h3>
                   <div className="table-responsive">
                     <table className="table table-borderless">
@@ -554,7 +569,7 @@ function ProfilePage() {
                         <tr>
                           <td className="text-secondary fw-medium">
                             <i className="bi bi-hash me-2"></i>
-                            Subscription ID
+                            Mã đăng ký
                           </td>
                           <td className="fw-bold">
                             {user.subscription.subscriptionId?._id || "N/A"}
@@ -563,7 +578,7 @@ function ProfilePage() {
                         <tr>
                           <td className="text-secondary fw-medium">
                             <i className="bi bi-layers me-2"></i>
-                            Plan
+                            Gói
                           </td>
                           <td className="fw-bold">
                             {user.subscription.subscriptionId?.name ||
@@ -577,12 +592,12 @@ function ProfilePage() {
                   <div className="d-flex flex-wrap gap-2 justify-content-end mt-4">
                     <Button variant="outline-success" className="btn-modern">
                       <i className="bi bi-gear me-2"></i>
-                      Manage Subscription
+                      Quản lý đăng ký
                     </Button>
                     {user.subscription.status === "active" && (
                       <Button variant="outline-danger" className="btn-modern">
                         <i className="bi bi-x-circle me-2"></i>
-                        Cancel Subscription
+                        Hủy đăng ký
                       </Button>
                     )}
                   </div>
@@ -590,11 +605,13 @@ function ProfilePage() {
               </div>
             </Tab>
           )}
+
+          {/* Tab 4: Voucher */}
           <Tab
             eventKey="vouchers"
             title={
               <>
-                <i className="bi bi-tag me-2"></i>Vouchers
+                <i className="bi bi-tag me-2"></i>Voucher
               </>
             }
           >
@@ -605,7 +622,7 @@ function ProfilePage() {
                   <Spinner animation="border" />
                 </div>
               ) : vouchers.length === 0 ? (
-                <p className="text-center">You have no vouchers.</p>
+                <p className="text-center">Bạn không có voucher nào.</p>
               ) : (
                 <ListGroup variant="flush">
                   {vouchers.map(({ voucherId, status }) => {
@@ -613,13 +630,13 @@ function ProfilePage() {
                     const now = new Date();
                     let label, badgeVariant;
                     if (status === "used") {
-                      label = "Used";
+                      label = "Đã sử dụng";
                       badgeVariant = "secondary";
                     } else if (expiryDate <= now) {
-                      label = "Expired";
+                      label = "Đã hết hạn";
                       badgeVariant = "danger";
                     } else {
-                      label = "Available";
+                      label = "Còn hiệu lực";
                       badgeVariant = "success";
                     }
                     return (
@@ -630,12 +647,22 @@ function ProfilePage() {
                         <div>
                           <h5 className="mb-1">{voucherId.code}</h5>
                           <small>
-                            Discount: {voucherId.discount_percentage}% (max $
-                            {voucherId.max_discount})
+                            Giảm giá: {voucherId.discount_percentage}% (tối đa{" "}
+                            {voucherId.max_discount.toLocaleString("vi-VN")
+                              ? `${voucherId.max_discount.toLocaleString(
+                                  "vi-VN"
+                                )} VND`
+                              : "0 VND"}
+                            )
                           </small>
                           <br />
                           <small>
-                            Expires: {expiryDate.toLocaleDateString()}
+                            Hết hạn:{" "}
+                            {expiryDate.toLocaleDateString("vi-VN", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
                           </small>
                         </div>
                         <span
@@ -653,20 +680,21 @@ function ProfilePage() {
         </Tabs>
       </div>
 
+      {/* Cài đặt tài khoản */}
       <div className="bg-white rounded-4 shadow-sm p-4">
         <h2 className="fs-4 fw-bold mb-4">
           <i className="bi bi-gear me-2"></i>
-          Account Settings
+          Cài đặt tài khoản
         </h2>
         <div className="d-flex flex-column gap-4">
           <div className="setting-card d-flex justify-content-between align-items-center">
             <div>
               <p className="mb-0 fw-bold">
                 <i className="bi bi-envelope me-2 text-success"></i>
-                Email Notifications
+                Email thông báo
               </p>
               <p className="mb-0 small text-muted">
-                Receive emails about your account activity and orders
+                Nhận email về hoạt động tài khoản và đơn hàng
               </p>
             </div>
             <div className="form-check form-switch">
@@ -683,10 +711,10 @@ function ProfilePage() {
             <div>
               <p className="mb-0 fw-bold">
                 <i className="bi bi-megaphone me-2 text-success"></i>
-                Marketing Communications
+                Nhận thông tin khuyến mãi
               </p>
               <p className="mb-0 small text-muted">
-                Receive emails about promotions and new products
+                Nhận email về khuyến mãi và sản phẩm mới
               </p>
             </div>
             <div className="form-check form-switch">
@@ -702,15 +730,15 @@ function ProfilePage() {
             <div>
               <p className="mb-0 fw-bold text-danger">
                 <i className="bi bi-trash me-2"></i>
-                Delete Account
+                Xóa tài khoản
               </p>
               <p className="mb-0 small text-muted">
-                Permanently delete your account and all data
+                Xóa vĩnh viễn tài khoản và tất cả dữ liệu
               </p>
             </div>
             <Button variant="outline-danger" className="btn-modern">
               <i className="bi bi-trash me-2"></i>
-              Delete Account
+              Xóa tài khoản
             </Button>
           </div>
         </div>

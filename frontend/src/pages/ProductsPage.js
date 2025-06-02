@@ -1,3 +1,4 @@
+// src/pages/ProductsPage.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -36,10 +37,7 @@ const ProductsPage = () => {
           categoryAPI.getAllCategories(),
         ]);
 
-        console.log("Products response:", productsResponse.data);
-        console.log("Categories response:", categoriesResponse.data);
-
-        // Normalize products: rename _id to id
+        // Chuẩn hóa products: đổi _id thành id
         const normalizedProducts = productsResponse.data.products.map((p) => ({
           ...p,
           id: p._id,
@@ -48,13 +46,11 @@ const ProductsPage = () => {
         setCategories(categoriesResponse.data.categories || []);
       } catch (err) {
         console.error(
-          "Error fetching data:",
+          "Lỗi khi tải dữ liệu:",
           err.response?.data || err.message
         );
-        setError(
-          "Failed to load products or categories. Please try again later."
-        );
-        toast.error("Failed to load products");
+        setError("Không thể tải sản phẩm hoặc danh mục. Vui lòng thử lại sau.");
+        toast.error("Không thể tải sản phẩm");
       } finally {
         setLoading(false);
       }
@@ -66,10 +62,13 @@ const ProductsPage = () => {
   const handleAddToCart = async (productId) => {
     try {
       await addToCart(productId, 1);
-      toast.success("Added to cart");
+      toast.success("Đã thêm vào giỏ hàng");
     } catch (err) {
-      console.error("Error adding to cart:", err.response?.data || err.message);
-      toast.error("Failed to add to cart");
+      console.error(
+        "Lỗi khi thêm vào giỏ hàng:",
+        err.response?.data || err.message
+      );
+      toast.error("Thêm vào giỏ hàng thất bại");
     }
   };
 
@@ -91,7 +90,7 @@ const ProductsPage = () => {
       <Container className="py-5">
         <div className="text-center">
           <Spinner animation="border" variant="success" />
-          <p className="mt-2 text-muted">Loading products...</p>
+          <p className="mt-2 text-muted">Đang tải sản phẩm...</p>
         </div>
       </Container>
     );
@@ -109,8 +108,9 @@ const ProductsPage = () => {
 
   return (
     <Container className="py-5">
+      {/* Tiêu đề & nút chuyển đổi grid/list */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="h2 fw-bold">Our Products</h1>
+        <h1 className="h2 fw-bold">Sản Phẩm</h1>
         <div className="d-flex gap-2">
           <Button
             variant={viewMode === "grid" ? "success" : "outline-success"}
@@ -129,6 +129,7 @@ const ProductsPage = () => {
         </div>
       </div>
 
+      {/* Thanh tìm kiếm & chọn danh mục */}
       <Row className="mb-4">
         <Col md={6}>
           <InputGroup>
@@ -137,7 +138,7 @@ const ProductsPage = () => {
             </InputGroup.Text>
             <Form.Control
               type="text"
-              placeholder="Search products..."
+              placeholder="Tìm kiếm sản phẩm..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="border-start-0 bg-light"
@@ -158,7 +159,7 @@ const ProductsPage = () => {
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="bg-light"
           >
-            <option value="">All Categories</option>
+            <option value="">Tất Cả Danh Mục</option>
             {categories.map((category) => (
               <option
                 key={category._id || category.id}
@@ -171,41 +172,41 @@ const ProductsPage = () => {
         </Col>
       </Row>
 
-      {searchTerm || selectedCategory ? (
+      {/* Hiển thị số lượng sản phẩm và nút xóa bộ lọc */}
+      {(searchTerm || selectedCategory) && (
         <div className="mb-3">
           <small className="text-muted">
-            Showing {filteredProducts.length} products
+            Hiển thị {filteredProducts.length} sản phẩm
             {selectedCategory &&
-              ` in ${
+              ` trong danh mục "${
                 categories.find((c) => (c._id || c.id) === selectedCategory)
                   ?.name
-              }`}
-            {searchTerm && ` matching "${searchTerm}"`}
+              }"`}
+            {searchTerm && ` khớp với "${searchTerm}"`}
           </small>
-          {(searchTerm || selectedCategory) && (
-            <Button
-              variant="link"
-              size="sm"
-              className="ms-2 p-0"
-              onClick={() => {
-                setSearchTerm("");
-                setSelectedCategory("");
-              }}
-            >
-              Clear filters
-            </Button>
-          )}
+          <Button
+            variant="link"
+            size="sm"
+            className="ms-2 p-0"
+            onClick={() => {
+              setSearchTerm("");
+              setSelectedCategory("");
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
         </div>
-      ) : null}
+      )}
 
+      {/* Nếu không có sản phẩm thỏa điều kiện */}
       {filteredProducts.length === 0 ? (
         <div className="text-center py-5 bg-light rounded">
           <i className="bi bi-search display-1 text-muted"></i>
-          <h3 className="mt-3">No products found</h3>
+          <h3 className="mt-3">Không tìm thấy sản phẩm</h3>
           <p className="text-muted">
             {searchTerm || selectedCategory
-              ? "Try adjusting your search or filter criteria"
-              : "No products available at the moment"}
+              ? "Hãy thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc"
+              : "Không có sản phẩm nào vào lúc này"}
           </p>
           {(searchTerm || selectedCategory) && (
             <Button
@@ -215,11 +216,12 @@ const ProductsPage = () => {
                 setSelectedCategory("");
               }}
             >
-              Clear filters
+              Xóa bộ lọc
             </Button>
           )}
         </div>
       ) : viewMode === "grid" ? (
+        // ======== GRID VIEW ========
         <Row xs={1} md={2} lg={3} xl={4} className="g-4">
           {filteredProducts.map((product) => (
             <Col key={product.id}>
@@ -243,12 +245,12 @@ const ProductsPage = () => {
                       className="position-absolute top-0 start-0 m-2"
                     >
                       <i className="bi bi-star-fill me-1"></i>
-                      Featured
+                      Nổi Bật
                     </Badge>
                   )}
                   {product.stock <= 0 && (
                     <div className="position-absolute top-0 end-0 bg-danger text-white px-2 py-1 m-2 rounded">
-                      Out of Stock
+                      Hết Hàng
                     </div>
                   )}
                 </div>
@@ -256,7 +258,7 @@ const ProductsPage = () => {
                   <Card.Title className="h5 mb-2">{product.name}</Card.Title>
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span className="h5 text-success fw-bold mb-0">
-                      ${product.price.toFixed(2)}
+                      {product.price.toLocaleString("vi-VN")} VND
                     </span>
                     {product.categories?.name && (
                       <Badge bg="light" text="dark" className="px-2 py-1">
@@ -269,7 +271,7 @@ const ProductsPage = () => {
                       ? product.description.length > 100
                         ? `${product.description.substring(0, 100)}...`
                         : product.description
-                      : "No description available"}
+                      : "Không có mô tả"}
                   </Card.Text>
                   <div className="mt-auto">
                     <div className="d-flex justify-content-between align-items-center mb-2">
@@ -277,12 +279,12 @@ const ProductsPage = () => {
                         {product.stock > 0 ? (
                           <span className="text-success">
                             <i className="bi bi-check-circle me-1"></i>
-                            {product.stock} in stock
+                            {product.stock} sản phẩm có sẵn
                           </span>
                         ) : (
                           <span className="text-danger">
                             <i className="bi bi-x-circle me-1"></i>
-                            Out of stock
+                            Hết hàng
                           </span>
                         )}
                       </small>
@@ -294,7 +296,7 @@ const ProductsPage = () => {
                         variant="outline-success"
                         size="sm"
                       >
-                        View Details
+                        Xem Chi Tiết
                       </Button>
                       <Button
                         variant="success"
@@ -305,10 +307,10 @@ const ProductsPage = () => {
                         {product.stock > 0 ? (
                           <>
                             <i className="bi bi-cart-plus me-1"></i>
-                            Add to Cart
+                            Thêm vào Giỏ hàng
                           </>
                         ) : (
-                          "Out of Stock"
+                          "Hết hàng"
                         )}
                       </Button>
                     </div>
@@ -319,6 +321,7 @@ const ProductsPage = () => {
           ))}
         </Row>
       ) : (
+        // ======== LIST VIEW ========
         <div className="d-flex flex-column gap-3">
           {filteredProducts.map((product) => (
             <Card key={product.id} className="shadow-sm border-0">
@@ -344,7 +347,7 @@ const ProductsPage = () => {
                         {product.isFeatured && (
                           <Badge bg="warning">
                             <i className="bi bi-star-fill me-1"></i>
-                            Featured
+                            Nổi Bật
                           </Badge>
                         )}
                         {product.categories?.name && (
@@ -356,24 +359,24 @@ const ProductsPage = () => {
                     </div>
                     <div className="mb-2">
                       <span className="h4 text-success fw-bold">
-                        ${product.price.toFixed(2)}
+                        {product.price.toLocaleString("vi-VN")} VND
                       </span>
                       <small className="text-muted ms-2">
                         {product.stock > 0 ? (
                           <span className="text-success">
                             <i className="bi bi-check-circle me-1"></i>
-                            {product.stock} in stock
+                            {product.stock} sản phẩm có sẵn
                           </span>
                         ) : (
                           <span className="text-danger">
                             <i className="bi bi-x-circle me-1"></i>
-                            Out of stock
+                            Hết hàng
                           </span>
                         )}
                       </small>
                     </div>
                     <Card.Text className="text-muted mb-3 flex-grow-1">
-                      {product.description || "No description available"}
+                      {product.description || "Không có mô tả"}
                     </Card.Text>
                     <div className="d-flex gap-2">
                       <Button
@@ -381,7 +384,7 @@ const ProductsPage = () => {
                         to={`/products/${product.id}`}
                         variant="outline-success"
                       >
-                        View Details
+                        Xem Chi Tiết
                       </Button>
                       <Button
                         variant="success"
@@ -391,10 +394,10 @@ const ProductsPage = () => {
                         {product.stock > 0 ? (
                           <>
                             <i className="bi bi-cart-plus me-1"></i>
-                            Add to Cart
+                            Thêm vào Giỏ hàng
                           </>
                         ) : (
-                          "Out of Stock"
+                          "Hết hàng"
                         )}
                       </Button>
                     </div>
