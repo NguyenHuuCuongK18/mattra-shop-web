@@ -60,7 +60,7 @@ function CartPage() {
     setSelectedVoucher(null);
 
     if (!couponCode) {
-      setCouponError("Please enter a voucher code");
+      setCouponError("Vui lòng nhập mã voucher");
       return;
     }
 
@@ -72,12 +72,14 @@ function CartPage() {
       setSelectedVoucher({ _id, code, discount_percentage, max_discount });
       setVoucherApplied(true);
       setCouponSuccess(
-        `Voucher "${code}" applied: ${discount_percentage}% off${
-          max_discount ? ` (max $${max_discount})` : ""
+        `Voucher "${code}" đã áp dụng: Giảm ${discount_percentage}%${
+          max_discount
+            ? ` (tối đa ${max_discount.toLocaleString("vi-VN")} VND)`
+            : ""
         }`
       );
     } catch (err) {
-      setCouponError(err.response?.data?.message || "Invalid voucher code");
+      setCouponError(err.response?.data?.message || "Mã voucher không hợp lệ");
       setDiscountPercentage(0);
       setMaxDiscount(0);
     }
@@ -86,10 +88,10 @@ function CartPage() {
   if (loading) {
     return (
       <Container className="py-5 fade-in">
-        <h1 className="fs-2 fw-bold mb-4">Your Cart</h1>
+        <h1 className="fs-2 fw-bold mb-4">Giỏ hàng của bạn</h1>
         <div className="d-flex justify-content-center py-5">
           <div className="spinner-border text-success" role="status">
-            <span className="visually-hidden">Loading...</span>
+            <span className="visually-hidden">Đang tải...</span>
           </div>
         </div>
       </Container>
@@ -99,15 +101,15 @@ function CartPage() {
   if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
     return (
       <Container className="py-5 fade-in">
-        <h1 className="fs-2 fw-bold mb-4">Your Cart</h1>
+        <h1 className="fs-2 fw-bold mb-4">Giỏ hàng của bạn</h1>
         <div className="bg-white rounded-4 shadow-sm text-center py-5">
           <i className="bi bi-cart-x fs-1 text-secondary mb-3"></i>
-          <h3 className="fs-4 fw-semibold">Your cart is empty</h3>
+          <h3 className="fs-4 fw-semibold">Giỏ hàng trống</h3>
           <p className="text-secondary mb-4">
-            Start shopping to add items to your cart.
+            Hãy bắt đầu mua sắm để thêm sản phẩm vào giỏ hàng.
           </p>
           <Link to="/products">
-            <Button>Browse Products</Button>
+            <Button>Xem sản phẩm</Button>
           </Link>
         </div>
       </Container>
@@ -120,14 +122,15 @@ function CartPage() {
 
   return (
     <Container className="py-5 fade-in">
-      <h1 className="fs-2 fw-bold mb-4">Your Cart</h1>
+      <h1 className="fs-2 fw-bold mb-4">Giỏ hàng của bạn</h1>
 
       <Row>
+        {/* Danh sách sản phẩm trong giỏ */}
         <Col lg={8} className="mb-4 mb-lg-0">
           <div className="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
             <div className="p-4 border-bottom">
               <h2 className="fs-5 fw-semibold mb-0">
-                Shopping Cart ({cart.items.length} items)
+                Giỏ hàng ({cart.items.length} sản phẩm)
               </h2>
             </div>
             <div className="p-0">
@@ -171,7 +174,7 @@ function CartPage() {
                               </h3>
                             </Link>
                             <p className="text-success mb-2">
-                              ${productPrice.toFixed(2)}
+                              {productPrice.toLocaleString("vi-VN")} VND
                             </p>
                             {productCategory && (
                               <div className="mb-2">
@@ -209,7 +212,10 @@ function CartPage() {
                             )}
                           </Form.Control>
                           <div className="fw-semibold">
-                            ${(productPrice * item.quantity).toFixed(2)}
+                            {(productPrice * item.quantity).toLocaleString(
+                              "vi-VN"
+                            )}
+                            {" VND"}
                           </div>
                         </div>
                       </div>
@@ -220,56 +226,68 @@ function CartPage() {
             </div>
             <div className="p-4 d-flex justify-content-between">
               <Button variant="outline" onClick={handleClearCart}>
-                Clear Cart
+                Xóa giỏ hàng
               </Button>
               <Link to="/products">
-                <Button variant="outline">Continue Shopping</Button>
+                <Button variant="outline">Tiếp tục mua sắm</Button>
               </Link>
             </div>
           </div>
         </Col>
 
+        {/* Thanh tính */}
         <Col lg={4}>
           <div className="bg-white rounded-4 shadow-sm overflow-hidden mb-4">
             <div className="p-4 border-bottom">
-              <h2 className="fs-5 fw-semibold mb-0">Order Summary</h2>
+              <h2 className="fs-5 fw-semibold mb-0">Tóm tắt đơn hàng</h2>
             </div>
             <div className="p-4">
               <div className="mb-3 d-flex justify-content-between">
-                <span className="text-secondary">Subtotal</span>
-                <span className="fw-semibold">${total.toFixed(2)}</span>
+                <span className="text-secondary">Tạm tính</span>
+                <span className="fw-semibold">
+                  {total.toLocaleString("vi-VN")} VND
+                </span>
               </div>
               <div className="mb-3 d-flex justify-content-between">
-                <span className="text-secondary">Shipping</span>
-                <span>{total > 50 ? "Free" : "$5.00"}</span>
+                <span className="text-secondary">Phí vận chuyển</span>
+                <span>
+                  {total > 10000
+                    ? "Miễn phí"
+                    : `${(10000).toLocaleString("vi-VN")} VND`}
+                </span>
               </div>
               {voucherApplied && (
                 <div className="mb-3 d-flex justify-content-between text-success">
-                  <span>Discount ({discountPercentage}%)</span>
-                  <span>-${discountAmount.toFixed(2)}</span>
+                  <span>Giảm giá ({discountPercentage}%)</span>
+                  <span>-{discountAmount.toLocaleString("vi-VN")} VND</span>
                 </div>
               )}
               <hr />
               <div className="d-flex justify-content-between fw-bold fs-5 mb-3">
-                <span>Total</span>
+                <span>Tổng cộng</span>
                 <span>
-                  ${(total + (total > 50 ? 0 : 5) - discountAmount).toFixed(2)}
+                  {(
+                    total +
+                    (total > 10000 ? 0 : 10000) -
+                    discountAmount
+                  ).toLocaleString("vi-VN")}{" "}
+                  VND
                 </span>
               </div>
 
               <form onSubmit={handleApplyCoupon} className="mb-4">
                 <div className="mb-2">
-                  <label className="form-label small">Voucher Code</label>
+                  <label className="form-label small">Mã voucher</label>
                   <div className="d-flex">
                     <input
                       type="text"
                       className="form-control"
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value)}
-                      placeholder="Enter voucher code"
+                      placeholder="Nhập mã voucher"
                     />
                     <Button type="submit" className="ms-2">
-                      Apply
+                      Áp dụng
                     </Button>
                   </div>
                   {couponError && (
@@ -284,29 +302,29 @@ function CartPage() {
               </form>
 
               <Button className="w-100 py-2" onClick={handleCheckout}>
-                Proceed to Checkout
+                Tiến hành thanh toán
               </Button>
 
               <div className="mt-3">
                 <div className="d-flex align-items-center mb-2 small">
                   <i className="bi bi-shield-lock text-success me-2"></i>
-                  <span>Secure checkout</span>
+                  <span>Thanh toán an toàn</span>
                 </div>
                 <div className="d-flex align-items-center mb-2 small">
                   <i className="bi bi-truck text-success me-2"></i>
-                  <span>Free shipping on orders over $50</span>
+                  <span>Phí vận chuyển chỉ 10.000 VND</span>
                 </div>
-                <div className="d-flex align-items-center small">
+                {/* <div className="d-flex align-items-center small">
                   <i className="bi bi-arrow-return-left text-success me-2"></i>
-                  <span>30-day return policy</span>
-                </div>
+                  <span>Chính sách hoàn trả trong 30 ngày</span>
+                </div> */}
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-4 shadow-sm overflow-hidden">
+          {/* <div className="bg-white rounded-4 shadow-sm overflow-hidden">
             <div className="p-4 border-bottom">
-              <h2 className="fs-5 fw-semibold mb-0">We Accept</h2>
+              <h2 className="fs-5 fw-semibold mb-0">Chúng tôi chấp nhận</h2>
             </div>
             <div className="p-4">
               <div className="d-flex gap-2 flex-wrap">
@@ -324,7 +342,7 @@ function CartPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </Col>
       </Row>
     </Container>

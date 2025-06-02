@@ -1,3 +1,4 @@
+// src/pages/SubscriptionsPage.js
 "use client";
 
 import Alert from "../components/ui/Alert";
@@ -10,7 +11,7 @@ import {
   subscriptionAPI,
   subscriptionOrderAPI,
   subscriptionPaymentAPI,
-} from "../utils/api"; // Use subscription-specific APIs
+} from "../utils/api";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
@@ -27,9 +28,9 @@ function SubscriptionsPage() {
       try {
         const response = await subscriptionAPI.getAllSubscriptions();
         setSubscriptionPlans(response.data.subscriptions || []);
-      } catch (error) {
-        console.error("Error fetching subscription plans:", error);
-        toast.error("Failed to load subscription plans");
+      } catch (err) {
+        console.error("Lỗi khi tải gói đăng ký:", err);
+        toast.error("Không thể tải gói đăng ký");
       } finally {
         setLoading(false);
       }
@@ -40,7 +41,7 @@ function SubscriptionsPage() {
 
   const handleSubscribe = async (plan) => {
     if (!user) {
-      toast.error("Please login to subscribe");
+      toast.error("Vui lòng đăng nhập để đăng ký");
       navigate("/login");
       return;
     }
@@ -49,30 +50,31 @@ function SubscriptionsPage() {
     setPaymentLoading(true);
 
     try {
-      // Step 1: Create subscription order
+      // Bước 1: Tạo đơn đăng ký
       const orderData = {
         subscriptionId: plan._id,
         paymentMethod: "Online Banking",
-        shippingAddress: user.address || "Subscription Service",
+        shippingAddress: user.address || "Dịch vụ đăng ký",
       };
 
       const orderResponse = await subscriptionOrderAPI.createSubscriptionOrder(
         orderData
       );
-      console.log("orderResponse:", orderResponse); // Debug log
-      if (!orderResponse.data?.order?._id) {
-        throw new Error("Invalid response structure: order._id not found");
-      }
-      const subscriptionOrderId = orderResponse.data.order._id; // Changed from subscriptionOrder to order
+      console.log("orderResponse:", orderResponse);
 
-      // Step 2: Generate VietQR code for subscription payment
+      if (!orderResponse.data?.order?._id) {
+        throw new Error("Không tìm thấy order._id trong phản hồi");
+      }
+      const subscriptionOrderId = orderResponse.data.order._id;
+
+      // Bước 2: Tạo VietQR cho thanh toán
       const paymentResponse = await subscriptionPaymentAPI.generateVietQR({
         subscriptionOrderId,
       });
 
       const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
 
-      // Step 3: Store payment info in localStorage
+      // Bước 3: Lưu thông tin thanh toán vào localStorage
       localStorage.setItem(
         "currentPayment",
         JSON.stringify({
@@ -85,26 +87,25 @@ function SubscriptionsPage() {
         })
       );
 
-      // Step 4: Navigate to payment page
+      // Bước 4: Chuyển hướng đến trang thanh toán
       navigate(
         `/payment?paymentId=${paymentId}&orderId=${subscriptionOrderId}`
       );
-    } catch (error) {
-      console.error("Error creating subscription payment:", error);
+    } catch (err) {
+      console.error("Lỗi khi tạo đơn đăng ký:", err);
       toast.error(
-        error.response?.data?.message ||
-          error.message ||
-          "Failed to create subscription order"
+        err.response?.data?.message || err.message || "Tạo đơn đăng ký thất bại"
       );
     } finally {
       setPaymentLoading(false);
     }
   };
+
   if (loading) {
     return (
       <Container className="py-5 text-center">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2">Loading subscription plans...</p>
+        <p className="mt-2">Đang tải gói đăng ký...</p>
       </Container>
     );
   }
@@ -112,10 +113,10 @@ function SubscriptionsPage() {
   return (
     <Container className="py-5">
       <div className="text-center mb-5">
-        <h1 className="display-5 fw-bold">Tea Subscription Plans</h1>
+        <h1 className="display-5 fw-bold">Gói Đăng Ký Trà</h1>
         <p className="lead text-secondary">
-          Join our tea club and receive a curated selection of premium teas
-          delivered to your door every month.
+          Tham gia câu lạc bộ trà và nhận các loại trà thượng hạng được tuyển
+          chọn, giao tận nơi mỗi tháng.
         </p>
       </div>
 
@@ -123,23 +124,32 @@ function SubscriptionsPage() {
         <Alert variant="success" className="mb-4">
           <div className="alert-heading h6 mb-2">
             <i className="bi bi-check-circle me-2"></i>
-            Active Subscription
+            Đăng ký đang hoạt động
           </div>
           <p className="mb-0">
-            You currently have an active subscription (
-            {user.subscription.subscriptionId?.name}).
+            Bạn hiện có gói đăng ký ({user.subscription.subscriptionId?.name}).
             {user.subscription.endDate && (
               <>
                 {" "}
-                It will expire on{" "}
-                {new Date(user.subscription.endDate).toLocaleDateString()}.
+                Nó sẽ hết hạn vào{" "}
+                {new Date(user.subscription.endDate).toLocaleDateString(
+                  "vi-VN",
+                  {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  }
+                )}
+                .
               </>
             )}
           </p>
         </Alert>
       ) : (
         <Alert variant="info" className="mb-4">
-          <p className="mb-0">No active subscription. Explore plans below.</p>
+          <p className="mb-0">
+            Chưa có gói đăng ký. Khám phá các gói bên dưới.
+          </p>
         </Alert>
       )}
 
@@ -151,7 +161,7 @@ function SubscriptionsPage() {
                 {index === 1 && (
                   <div className="position-absolute top-0 start-50 translate-middle">
                     <Badge bg="success" className="py-2 px-3">
-                      Most Popular
+                      Phổ biến nhất
                     </Badge>
                   </div>
                 )}
@@ -165,15 +175,15 @@ function SubscriptionsPage() {
                 <Card.Body className="d-flex flex-column">
                   <div className="text-center mb-4">
                     <span className="display-5 fw-bold">
-                      ${plan.price.toFixed(2)}
+                      {plan.price.toLocaleString("vi-VN")} VND
                     </span>
                     <span className="text-secondary">
-                      /{plan.duration} month{plan.duration > 1 ? "s" : ""}
-                    </span>{" "}
+                      /{plan.duration} tháng
+                    </span>
                   </div>
                   <div className="mb-4 flex-grow-1">
                     <p className="text-muted">
-                      {plan.description || "Premium tea subscription service"}
+                      {plan.description || "Dịch vụ đăng ký trà thượng hạng"}
                     </p>
                     {plan.perks && plan.perks.length > 0 && (
                       <ul className="list-unstyled">
@@ -204,12 +214,12 @@ function SubscriptionsPage() {
                           role="status"
                           aria-hidden="true"
                         />
-                        <span className="ms-2">Processing...</span>
+                        <span className="ms-2">Đang xử lý...</span>
                       </>
                     ) : user?.subscription?.status === "active" ? (
-                      "View Plans"
+                      "Xem các gói"
                     ) : (
-                      "Subscribe Now"
+                      "Đăng ký ngay"
                     )}
                   </Button>
                 </Card.Body>
@@ -220,9 +230,9 @@ function SubscriptionsPage() {
           <Col className="text-center">
             <div className="py-5">
               <i className="bi bi-box-seam display-1 text-muted"></i>
-              <h3 className="mt-3">No Subscription Plans Available</h3>
+              <h3 className="mt-3">Chưa có gói đăng ký nào</h3>
               <p className="text-muted">
-                Please check back later for available plans.
+                Vui lòng quay lại sau để xem các gói sẵn có.
               </p>
             </div>
           </Col>
@@ -230,7 +240,7 @@ function SubscriptionsPage() {
       </Row>
 
       <div className="bg-light rounded p-4 mt-5">
-        <h3 className="fs-4 fw-semibold mb-3">How It Works</h3>
+        <h3 className="fs-4 fw-semibold mb-3">Cách Thức Hoạt Động</h3>
         <Row>
           <Col md={4} className="mb-3 mb-md-0">
             <div className="d-flex">
@@ -241,9 +251,9 @@ function SubscriptionsPage() {
                 1
               </div>
               <div>
-                <h4 className="fs-5 fw-semibold">Choose a Plan</h4>
+                <h4 className="fs-5 fw-semibold">Chọn Gói</h4>
                 <p className="text-secondary mb-0">
-                  Select the subscription that fits your tea drinking habits.
+                  Chọn gói phù hợp với thói quen uống trà của bạn.
                 </p>
               </div>
             </div>
@@ -257,9 +267,10 @@ function SubscriptionsPage() {
                 2
               </div>
               <div>
-                <h4 className="fs-5 fw-semibold">Make Payment</h4>
+                <h4 className="fs-5 fw-semibold">Thực Hiện Thanh Toán</h4>
                 <p className="text-secondary mb-0">
-                  Complete your payment using our secure VietQR system.
+                  Hoàn tất thanh toán bằng hệ thống VietQR an toàn của chúng
+                  tôi.
                 </p>
               </div>
             </div>
@@ -273,9 +284,9 @@ function SubscriptionsPage() {
                 3
               </div>
               <div>
-                <h4 className="fs-5 fw-semibold">Enjoy Premium Tea</h4>
+                <h4 className="fs-5 fw-semibold">Tận Hưởng Trà Thượng Hạng</h4>
                 <p className="text-secondary mb-0">
-                  Receive exclusive benefits and premium tea selections.
+                  Nhận các quyền lợi độc quyền và lựa chọn trà thượng hạng.
                 </p>
               </div>
             </div>

@@ -17,7 +17,7 @@ import { toast } from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// Inline CSS for Markdown styling
+// CSS nội tuyến cho Markdown
 const markdownStyles = `
   .markdown-body ul {
     list-style-type: disc;
@@ -54,8 +54,8 @@ const ChatPage = () => {
         const response = await promptCategoryAPI.getAllPromptCategories();
         setPromptCategories(response.data.promptCategories || []);
       } catch (error) {
-        console.error("Error fetching prompt categories:", error);
-        toast.error("Failed to load prompt categories");
+        console.error("Lỗi khi tải danh mục prompt:", error);
+        toast.error("Không thể tải danh mục prompt");
       } finally {
         setLoadingCategories(false);
       }
@@ -76,11 +76,11 @@ const ChatPage = () => {
     e.preventDefault();
 
     if (!prompt.trim()) {
-      toast.error("Please enter a prompt");
+      toast.error("Vui lòng nhập nội dung");
       return;
     }
 
-    // Add user message to chat
+    // Thêm tin nhắn của user
     const userMessage = {
       id: Date.now(),
       content: prompt,
@@ -91,24 +91,21 @@ const ChatPage = () => {
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setLoading(true);
 
-    // Clear input after sending
     setPrompt("");
 
     try {
       let response;
 
       if (selectedCategory) {
-        // Use combined endpoint if a category is selected
         response = await geminiAIApi.generateCombinedResponse(
           prompt,
           selectedCategory
         );
       } else {
-        // Use default endpoint if no category is selected
         response = await geminiAIApi.generateDefaultResponse(prompt);
       }
 
-      // Add AI response to chat
+      // Thêm tin nhắn AI
       const aiMessage = {
         id: Date.now() + 1,
         content: response.data.response,
@@ -118,13 +115,12 @@ const ChatPage = () => {
 
       setMessages((prevMessages) => [...prevMessages, aiMessage]);
     } catch (error) {
-      console.error("Error generating response:", error);
-      toast.error("Failed to generate response");
+      console.error("Lỗi khi tạo câu trả lời AI:", error);
+      toast.error("Không thể tạo câu trả lời");
 
-      // Add error message to chat
       const errorMessage = {
         id: Date.now() + 1,
-        content: "Sorry, I couldn't generate a response. Please try again.",
+        content: "Xin lỗi, tôi không thể tạo câu trả lời. Vui lòng thử lại.",
         sender: "system",
         timestamp: new Date().toISOString(),
       };
@@ -157,13 +153,13 @@ const ChatPage = () => {
               className="bi bi-lock-fill text-muted mb-3"
               style={{ fontSize: "3rem" }}
             ></i>
-            <Card.Title className="mb-3 fs-2">Please Login</Card.Title>
+            <Card.Title className="mb-3 fs-2">Vui lòng đăng nhập</Card.Title>
             <Card.Text className="text-muted mb-4">
-              You need to be logged in to access the chat feature.
+              Bạn cần đăng nhập để sử dụng tính năng chat.
             </Card.Text>
             <Button variant="success" href="/login" size="lg" className="px-4">
               <i className="bi bi-box-arrow-in-right me-2"></i>
-              Login Now
+              Đăng nhập ngay
             </Button>
           </Card.Body>
         </Card>
@@ -181,15 +177,15 @@ const ChatPage = () => {
               <div className="d-flex align-items-center">
                 <i className="bi bi-robot fs-3 me-3"></i>
                 <div>
-                  <h5 className="mb-0 fw-bold">Mạt Trà AI Assistant</h5>
+                  <h5 className="mb-0 fw-bold">Mật Trà AI Assistant</h5>
                   <p className="mb-0 small opacity-75">
-                    Ask me anything about tea and wellness
+                    Hỏi tôi bất cứ điều gì về trà và sức khỏe
                   </p>
                 </div>
               </div>
             </Card.Header>
 
-            {/* Chat Messages Area */}
+            {/* Khu vực hiển thị tin nhắn */}
             <div
               className="chat-messages p-3 markdown-body"
               style={{
@@ -205,7 +201,7 @@ const ChatPage = () => {
                     style={{ fontSize: "3rem" }}
                   ></i>
                   <p className="text-muted mt-3">
-                    Start a conversation with Mạt Trà AI
+                    Bắt đầu cuộc trò chuyện với Mật Trà AI
                   </p>
                 </div>
               ) : (
@@ -289,11 +285,11 @@ const ChatPage = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Category Selection */}
+            {/* Chọn danh mục (nếu có) và form nhập */}
             <Card.Body className="border-top bg-white p-3">
               <Form.Group className="mb-3">
                 <Form.Label className="d-flex justify-content-between align-items-center">
-                  <span>Select a Category (Optional)</span>
+                  <span>Chọn danh mục (tùy chọn)</span>
                   {loadingCategories && (
                     <Spinner animation="border" size="sm" />
                   )}
@@ -307,7 +303,7 @@ const ChatPage = () => {
                     onClick={() => setSelectedCategory("")}
                     className="rounded-pill"
                   >
-                    No Category
+                    Không chọn
                   </Button>
                   {promptCategories.map((category) => (
                     <Button
@@ -336,14 +332,14 @@ const ChatPage = () => {
                 </div>
               </Form.Group>
 
-              {/* Input Form */}
+              {/* Form nhập prompt */}
               <Form onSubmit={handleSubmit}>
                 <div className="input-group">
                   <Form.Control
                     as="textarea"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Ask anything about tea..."
+                    placeholder="Hỏi về trà..."
                     required
                     className="rounded-start"
                     style={{ resize: "none", height: "60px" }}

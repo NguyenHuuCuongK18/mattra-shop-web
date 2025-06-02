@@ -33,9 +33,9 @@ const OrdersPage = () => {
         const response = await orderAPI.getMyOrders();
         setOrders(response.data.orders || []);
       } catch (err) {
-        console.error("Error fetching orders:", err);
-        setError("Failed to load orders");
-        toast.error("Failed to load orders");
+        console.error("Lỗi khi tải đơn hàng:", err);
+        setError("Không thể tải đơn hàng");
+        toast.error("Không thể tải đơn hàng");
       } finally {
         setLoading(false);
       }
@@ -43,19 +43,19 @@ const OrdersPage = () => {
     fetchOrders();
   }, [user]);
 
-  // Open the confirmation modal
+  // Mở modal xác nhận hủy đơn
   const openCancelModal = (orderId) => {
     setCancelOrderId(orderId);
     setShowCancelModal(true);
   };
 
-  // Close modal without cancelling
+  // Đóng modal mà không hủy
   const closeCancelModal = () => {
     setShowCancelModal(false);
     setCancelOrderId(null);
   };
 
-  // Actually cancel the order
+  // Thực hiện hủy đơn
   const confirmCancelOrder = async () => {
     try {
       await orderAPI.cancelOrder(cancelOrderId);
@@ -66,11 +66,10 @@ const OrdersPage = () => {
             : order
         )
       );
-      toast.success("Order cancelled successfully");
+      toast.success("Đã hủy đơn thành công");
     } catch (err) {
-      console.error("Error cancelling order:", err);
-      const errorMessage =
-        err.response?.data?.message || "Failed to cancel order";
+      console.error("Lỗi khi hủy đơn:", err);
+      const errorMessage = err.response?.data?.message || "Không thể hủy đơn";
       toast.error(errorMessage);
     } finally {
       closeCancelModal();
@@ -78,7 +77,7 @@ const OrdersPage = () => {
   };
 
   const handleConfirmDelivery = async (orderId) => {
-    if (!window.confirm("Confirm that you have received this order?")) {
+    if (!window.confirm("Xác nhận rằng bạn đã nhận được đơn này?")) {
       return;
     }
     try {
@@ -88,47 +87,53 @@ const OrdersPage = () => {
           order._id === orderId ? { ...order, status: "delivered" } : order
         )
       );
-      toast.success("Delivery confirmed successfully");
+      toast.success("Xác nhận nhận hàng thành công");
     } catch (err) {
-      console.error("Error confirming delivery:", err);
+      console.error("Lỗi khi xác nhận nhận hàng:", err);
       const errorMessage =
-        err.response?.data?.message || "Failed to confirm delivery";
+        err.response?.data?.message || "Không thể xác nhận nhận hàng";
       toast.error(errorMessage);
     }
   };
 
   const getStatusBadge = (status) => {
-    let variant;
+    let variant, label;
     switch (status) {
       case "unverified":
         variant = "warning";
+        label = "Chưa xác nhận";
         break;
       case "pending":
         variant = "info";
+        label = "Đang chờ";
         break;
       case "shipping":
         variant = "primary";
+        label = "Đang giao";
         break;
       case "delivered":
         variant = "success";
+        label = "Đã giao";
         break;
       case "cancelled":
         variant = "danger";
+        label = "Đã hủy";
         break;
       default:
         variant = "secondary";
+        label = status;
     }
-    return <Badge bg={variant}>{status}</Badge>;
+    return <Badge bg={variant}>{label}</Badge>;
   };
 
   if (!user) {
     return (
       <Container className="py-5">
         <div className="text-center">
-          <h2>Please Login</h2>
-          <p>You need to be logged in to view your orders.</p>
+          <h2>Vui lòng đăng nhập</h2>
+          <p>Bạn cần đăng nhập để xem đơn hàng.</p>
           <Button variant="primary" onClick={() => navigate("/login")}>
-            Go to Login
+            Đăng nhập
           </Button>
         </div>
       </Container>
@@ -139,7 +144,7 @@ const OrdersPage = () => {
     return (
       <Container className="py-5 text-center">
         <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </Spinner>
       </Container>
     );
@@ -158,12 +163,12 @@ const OrdersPage = () => {
   if (orders.length === 0) {
     return (
       <Container className="py-5">
-        <h1 className="mb-4">My Orders</h1>
+        <h1 className="mb-4">Đơn hàng của tôi</h1>
         <div className="text-center py-5">
-          <h3>No orders found</h3>
-          <p>You haven't placed any orders yet.</p>
+          <h3>Chưa có đơn hàng</h3>
+          <p>Bạn chưa đặt đơn hàng nào.</p>
           <Button variant="primary" as={Link} to="/products">
-            Browse Products
+            Xem sản phẩm
           </Button>
         </div>
       </Container>
@@ -173,15 +178,15 @@ const OrdersPage = () => {
   return (
     <>
       <Container className="py-5">
-        <h1 className="mb-4">My Orders</h1>
+        <h1 className="mb-4">Đơn hàng của tôi</h1>
         <Table responsive striped hover>
           <thead>
             <tr>
-              <th>Order ID</th>
-              <th>Date</th>
-              <th>Total</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>Mã đơn</th>
+              <th>Ngày</th>
+              <th>Tổng</th>
+              <th>Trạng thái</th>
+              <th>Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -195,8 +200,14 @@ const OrdersPage = () => {
                     {order._id.substring(0, 8)}...
                   </Link>
                 </td>
-                <td>{new Date(order.createdAt).toLocaleDateString()}</td>
-                <td>${order.totalAmount.toFixed(2)}</td>
+                <td>
+                  {new Date(order.createdAt).toLocaleDateString("vi-VN", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                  })}
+                </td>
+                <td>{order.totalAmount.toLocaleString("vi-VN")} VND</td>
                 <td>{getStatusBadge(order.status)}</td>
                 <td>
                   <div className="d-flex gap-2">
@@ -206,7 +217,7 @@ const OrdersPage = () => {
                       as={Link}
                       to={`/orders/${order._id}`}
                     >
-                      View
+                      Xem
                     </Button>
 
                     {order.status === "unverified" && (
@@ -215,7 +226,7 @@ const OrdersPage = () => {
                         size="sm"
                         onClick={() => openCancelModal(order._id)}
                       >
-                        Cancel
+                        Hủy đơn
                       </Button>
                     )}
 
@@ -225,7 +236,7 @@ const OrdersPage = () => {
                         size="sm"
                         onClick={() => handleConfirmDelivery(order._id)}
                       >
-                        Confirm Delivery
+                        Xác nhận đã nhận
                       </Button>
                     )}
                   </div>
@@ -236,18 +247,18 @@ const OrdersPage = () => {
         </Table>
       </Container>
 
-      {/* Cancel Confirmation Modal */}
+      {/* Modal xác nhận hủy đơn */}
       <Modal show={showCancelModal} onHide={closeCancelModal} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Confirm Cancellation</Modal.Title>
+          <Modal.Title>Xác nhận hủy đơn</Modal.Title>
         </Modal.Header>
-        <Modal.Body>Are you sure you want to cancel this order?</Modal.Body>
+        <Modal.Body>Bạn có chắc chắn muốn hủy đơn này?</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={closeCancelModal}>
-            Close
+            Đóng
           </Button>
           <Button variant="danger" onClick={confirmCancelOrder}>
-            Cancel Order
+            Hủy đơn
           </Button>
         </Modal.Footer>
       </Modal>

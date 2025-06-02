@@ -18,7 +18,6 @@ const PaymentPage = () => {
   // Load payment data
   useEffect(() => {
     const loadPaymentData = () => {
-      // Try to get from localStorage first
       const storedPayment = localStorage.getItem("currentPayment");
       if (storedPayment) {
         try {
@@ -29,13 +28,13 @@ const PaymentPage = () => {
             return;
           }
         } catch (error) {
-          console.error("Error parsing stored payment data:", error);
+          console.error("Lỗi khi parse dữ liệu thanh toán:", error);
         }
       }
 
-      // If no stored data or mismatch, redirect back
+      // Nếu không có dữ liệu hoặc mismatch, chuyển hướng về trang chủ
       if (!paymentId || !orderId) {
-        toast.error("Invalid payment session");
+        toast.error("Phiên thanh toán không hợp lệ");
         navigate("/");
         return;
       }
@@ -51,7 +50,7 @@ const PaymentPage = () => {
       <Container className="py-5">
         <div className="text-center">
           <Spinner animation="border" variant="primary" />
-          <h3 className="mt-3">Loading Payment...</h3>
+          <h3 className="mt-3">Đang tải thông tin thanh toán...</h3>
         </div>
       </Container>
     );
@@ -62,10 +61,10 @@ const PaymentPage = () => {
       <Container className="py-5">
         <Card className="text-center">
           <Card.Body>
-            <h3>Payment Session Not Found</h3>
-            <p>Unable to load payment information.</p>
+            <h3>Không tìm thấy phiên thanh toán</h3>
+            <p>Không thể tải thông tin thanh toán.</p>
             <Button as={Link} to="/" variant="primary">
-              Back to Home
+              Quay lại trang chủ
             </Button>
           </Card.Body>
         </Card>
@@ -81,68 +80,72 @@ const PaymentPage = () => {
             <Card.Header className="bg-primary text-white text-center">
               <h4 className="mb-0">
                 <i className="bi bi-qr-code me-2"></i>
-                Complete Your Payment
+                Hoàn tất thanh toán
               </h4>
             </Card.Header>
             <Card.Body className="p-4">
-              {/* QR Code */}
+              {/* Mã QR */}
               <div className="text-center mb-4">
                 <div className="bg-light p-3 rounded d-inline-block">
                   <img
                     src={paymentData.paymentImgUrl || "/placeholder.svg"}
-                    alt="Payment QR Code"
+                    alt="Mã QR thanh toán"
                     className="img-fluid"
                     style={{ maxWidth: "250px", height: "auto" }}
                   />
                 </div>
               </div>
 
-              {/* Payment Instructions */}
+              {/* Hướng dẫn thanh toán */}
               <Alert variant="info" className="mb-4">
                 <Alert.Heading className="h6">
                   <i className="bi bi-info-circle me-2"></i>
-                  Payment Instructions
+                  Hướng dẫn thanh toán
                 </Alert.Heading>
                 <p>
-                  Please complete your payment by scanning the QR code below.
-                  Once you've made the payment, our team will verify it and send
-                  you a confirmation email.
+                  Vui lòng hoàn tất thanh toán bằng cách quét mã QR ở trên. Sau
+                  khi bạn thanh toán, chúng tôi sẽ xác nhận và gửi email cho
+                  bạn.
                 </p>
                 <ol className="mb-0 small">
-                  <li>Open your banking app</li>
-                  <li>Scan the QR code above</li>
+                  <li>Mở ứng dụng ngân hàng trên điện thoại</li>
+                  <li>Quét mã QR ở trên</li>
                   <li>
-                    Confirm the payment amount:{" "}
-                    <strong>${paymentData.amount?.toFixed(2)}</strong>
+                    Xác nhận số tiền:{" "}
+                    <strong>
+                      {paymentData.amount.toLocaleString("vi-VN")} VND
+                    </strong>
                   </li>
-                  <li>Complete the transaction</li>
-                  <li>Click "Proceed" to continue</li>
+                  <li>Hoàn tất giao dịch</li>
+                  <li>Nhấn “Tiếp tục” để hoàn thành quy trình</li>
                 </ol>
               </Alert>
 
-              {/* Payment Details */}
+              {/* Thông tin thanh toán */}
               <div className="bg-light p-3 rounded mb-4">
                 <div className="row text-sm">
                   <div className="col-6">
-                    <strong>Order ID:</strong>
+                    <strong>Mã đơn:</strong>
                   </div>
                   <div className="col-6">
                     <code>{orderId}</code>
                   </div>
                   <div className="col-6">
-                    <strong>Payment ID:</strong>
+                    <strong>Mã thanh toán:</strong>
                   </div>
                   <div className="col-6">
                     <code>{paymentId}</code>
                   </div>
                   <div className="col-6">
-                    <strong>Amount:</strong>
+                    <strong>Số tiền:</strong>
                   </div>
-                  <div className="col-6">${paymentData.amount?.toFixed(2)}</div>
+                  <div className="col-6">
+                    {paymentData.amount.toLocaleString("vi-VN")} VND
+                  </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Nút hành động */}
               <div className="d-grid gap-2">
                 <Button
                   as={Link}
@@ -151,19 +154,10 @@ const PaymentPage = () => {
                   size="lg"
                 >
                   <i className="bi bi-arrow-right-circle me-2"></i>
-                  Proceed
+                  Tiếp tục
                 </Button>
-                {/* 
-                <Button
-                  as={Link}
-                  to={`/orders/${orderId}`}
-                  variant="outline-secondary"
-                >
-                  View Order Details
-                </Button> */}
-
                 <Button as={Link} to="/" variant="outline-primary">
-                  Back to Home
+                  Quay lại trang chủ
                 </Button>
               </div>
             </Card.Body>

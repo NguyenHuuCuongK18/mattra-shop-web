@@ -1,3 +1,4 @@
+// src/pages/DashboardPage.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,7 +24,7 @@ import {
 } from "chart.js";
 import { Line, Bar, Doughnut } from "react-chartjs-2";
 
-// Register ChartJS components
+// Đăng ký ChartJS
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -44,10 +45,9 @@ function DashboardPage() {
     totalRevenue: 0,
     totalSubscribers: 0,
     recentOrders: [],
-    topProducts: [],
-    monthlyRevenue: [],
-    ordersByStatus: {},
     productsByCategory: {},
+    monthlyRevenue: { months: [], revenue: [] },
+    ordersByStatus: {},
   });
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +55,7 @@ function DashboardPage() {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // Fetch all required data
+        // Lấy dữ liệu
         const [
           usersResponse,
           productsResponse,
@@ -73,53 +73,32 @@ function DashboardPage() {
         const orders = ordersResponse.data.orders || [];
         const subscribers = subscriptionsResponse.data.users || [];
 
-        // Calculate total revenue
+        // Tính tổng doanh thu
         const totalRevenue = orders.reduce((sum, order) => {
           return sum + (order.totalAmount || 0);
         }, 0);
 
-        // Get recent orders (last 10)
+        // Lấy 10 đơn hàng mới nhất
         const recentOrders = orders
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
           .slice(0, 10);
 
-        // Calculate orders by status
+        // Đếm đơn theo trạng thái
         const ordersByStatus = orders.reduce((acc, order) => {
           const status = order.status || "unknown";
           acc[status] = (acc[status] || 0) + 1;
           return acc;
         }, {});
 
-        // Calculate products by category
+        // Đếm sản phẩm theo danh mục
         const productsByCategory = products.reduce((acc, product) => {
-          const categoryName = product.categories?.name || "Uncategorized";
+          const categoryName = product.categories?.name || "Không phân loại";
           acc[categoryName] = (acc[categoryName] || 0) + 1;
           return acc;
         }, {});
 
-        // Calculate monthly revenue (last 6 months)
+        // Tính doanh thu hàng tháng (6 tháng gần nhất)
         const monthlyRevenue = calculateMonthlyRevenue(orders);
-
-        // Get top products (by order frequency - simplified calculation)
-        const productOrderCount = orders.reduce((acc, order) => {
-          if (order.items) {
-            order.items.forEach((item) => {
-              const productId = item.productId?._id || item.productId;
-              if (productId) {
-                acc[productId] = (acc[productId] || 0) + item.quantity;
-              }
-            });
-          }
-          return acc;
-        }, {});
-
-        const topProducts = products
-          .map((product) => ({
-            ...product,
-            salesCount: productOrderCount[product._id] || 0,
-          }))
-          .sort((a, b) => b.salesCount - a.salesCount)
-          .slice(0, 5);
 
         setStats({
           totalUsers: users.length,
@@ -128,13 +107,12 @@ function DashboardPage() {
           totalRevenue,
           totalSubscribers: subscribers.length,
           recentOrders,
-          topProducts,
+          productsByCategory,
           monthlyRevenue,
           ordersByStatus,
-          productsByCategory,
         });
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        console.error("Lỗi khi tải dữ liệu dashboard:", error);
       } finally {
         setLoading(false);
       }
@@ -150,7 +128,7 @@ function DashboardPage() {
 
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = date.toLocaleDateString("en-US", { month: "short" });
+      const monthName = date.toLocaleDateString("vi-VN", { month: "short" });
       months.push(monthName);
 
       const monthRevenue = orders
@@ -169,12 +147,12 @@ function DashboardPage() {
     return { months, revenue };
   };
 
-  // Prepare chart data
+  // Dữ liệu cho biểu đồ doanh thu
   const salesData = {
     labels: stats.monthlyRevenue.months || [],
     datasets: [
       {
-        label: "Revenue ($)",
+        label: "Doanh thu (VND)",
         data: stats.monthlyRevenue.revenue || [],
         borderColor: "rgb(34, 197, 94)",
         backgroundColor: "rgba(34, 197, 94, 0.5)",
@@ -183,34 +161,20 @@ function DashboardPage() {
     ],
   };
 
+  // Dữ liệu cho biểu đồ đơn hàng
   const ordersData = {
     labels: stats.monthlyRevenue.months || [],
     datasets: [
       {
-        label: "Orders",
+        label: "Số đơn",
         data:
-          stats.monthlyRevenue.months?.map((month) => {
+          stats.monthlyRevenue.months?.map((month, index) => {
             const now = new Date();
-            const monthIndex = [
-              "Jan",
-              "Feb",
-              "Mar",
-              "Apr",
-              "May",
-              "Jun",
-              "Jul",
-              "Aug",
-              "Sep",
-              "Oct",
-              "Nov",
-              "Dec",
-            ].indexOf(month);
             const targetDate = new Date(
               now.getFullYear(),
-              now.getMonth() - (5 - stats.monthlyRevenue.months.indexOf(month)),
+              now.getMonth() - (5 - index),
               1
             );
-
             return stats.recentOrders.filter((order) => {
               const orderDate = new Date(order.createdAt);
               return (
@@ -224,11 +188,12 @@ function DashboardPage() {
     ],
   };
 
+  // Dữ liệu cho biểu đồ phân loại sản phẩm
   const categoryData = {
     labels: Object.keys(stats.productsByCategory),
     datasets: [
       {
-        label: "Products by Category",
+        label: "Sản phẩm theo danh mục",
         data: Object.values(stats.productsByCategory),
         backgroundColor: [
           "rgba(34, 197, 94, 0.5)",
@@ -253,7 +218,7 @@ function DashboardPage() {
     return (
       <div className="d-flex justify-content-center align-items-center h-100">
         <div className="spinner-border text-success" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
     );
@@ -261,9 +226,9 @@ function DashboardPage() {
 
   return (
     <div>
-      <h1 className="fs-4 fw-bold mb-4">Dashboard</h1>
+      <h1 className="fs-4 fw-bold mb-4">Bảng điều khiển</h1>
 
-      {/* Stats Cards */}
+      {/* Cards thống kê */}
       <div className="row g-4">
         <div className="col-md-6 col-lg-3">
           <Card className="h-100">
@@ -272,7 +237,7 @@ function DashboardPage() {
                 <i className="bi bi-people fs-4 text-primary"></i>
               </div>
               <div>
-                <h6 className="text-muted mb-1 small">Total Users</h6>
+                <h6 className="text-muted mb-1 small">Tổng người dùng</h6>
                 <h3 className="mb-0 fs-4">{stats.totalUsers}</h3>
               </div>
             </Card.Body>
@@ -281,7 +246,7 @@ function DashboardPage() {
                 to="/admin/users"
                 className="text-decoration-none text-primary small"
               >
-                View all
+                Xem tất cả
               </Link>
             </Card.Footer>
           </Card>
@@ -294,7 +259,7 @@ function DashboardPage() {
                 <i className="bi bi-box-seam fs-4 text-success"></i>
               </div>
               <div>
-                <h6 className="text-muted mb-1 small">Total Products</h6>
+                <h6 className="text-muted mb-1 small">Tổng sản phẩm</h6>
                 <h3 className="mb-0 fs-4">{stats.totalProducts}</h3>
               </div>
             </Card.Body>
@@ -303,7 +268,7 @@ function DashboardPage() {
                 to="/admin/products"
                 className="text-decoration-none text-primary small"
               >
-                View all
+                Xem tất cả
               </Link>
             </Card.Footer>
           </Card>
@@ -316,7 +281,7 @@ function DashboardPage() {
                 <i className="bi bi-cart-check fs-4 text-info"></i>
               </div>
               <div>
-                <h6 className="text-muted mb-1 small">Total Orders</h6>
+                <h6 className="text-muted mb-1 small">Tổng đơn hàng</h6>
                 <h3 className="mb-0 fs-4">{stats.totalOrders}</h3>
               </div>
             </Card.Body>
@@ -325,7 +290,7 @@ function DashboardPage() {
                 to="/admin/orders"
                 className="text-decoration-none text-primary small"
               >
-                View all
+                Xem tất cả
               </Link>
             </Card.Footer>
           </Card>
@@ -338,8 +303,10 @@ function DashboardPage() {
                 <i className="bi bi-currency-dollar fs-4 text-success"></i>
               </div>
               <div>
-                <h6 className="text-muted mb-1 small">Total Revenue</h6>
-                <h3 className="mb-0 fs-4">${stats.totalRevenue.toFixed(2)}</h3>
+                <h6 className="text-muted mb-1 small">Tổng doanh thu</h6>
+                <h3 className="mb-0 fs-4">
+                  {stats.totalRevenue.toLocaleString("vi-VN")} VND
+                </h3>
               </div>
             </Card.Body>
             <Card.Footer className="bg-light border-0">
@@ -347,14 +314,14 @@ function DashboardPage() {
                 to="/admin/orders"
                 className="text-decoration-none text-primary small"
               >
-                View details
+                Xem chi tiết
               </Link>
             </Card.Footer>
           </Card>
         </div>
       </div>
 
-      {/* Additional Stats Row */}
+      {/* Thống kê phụ */}
       <div className="row g-4 mt-2">
         <div className="col-md-6 col-lg-3">
           <Card className="h-100">
@@ -363,7 +330,7 @@ function DashboardPage() {
                 <i className="bi bi-star fs-4 text-warning"></i>
               </div>
               <div>
-                <h6 className="text-muted mb-1 small">Subscribers</h6>
+                <h6 className="text-muted mb-1 small">Đăng ký</h6>
                 <h3 className="mb-0 fs-4">{stats.totalSubscribers}</h3>
               </div>
             </Card.Body>
@@ -372,7 +339,7 @@ function DashboardPage() {
                 to="/admin/subscriptions"
                 className="text-decoration-none text-primary small"
               >
-                View all
+                Xem tất cả
               </Link>
             </Card.Footer>
           </Card>
@@ -385,14 +352,14 @@ function DashboardPage() {
                 <i className="bi bi-exclamation-triangle fs-4 text-danger"></i>
               </div>
               <div>
-                <h6 className="text-muted mb-1 small">Pending Orders</h6>
+                <h6 className="text-muted mb-1 small">Đơn chờ xử lý</h6>
                 <h3 className="mb-0 fs-4">
                   {stats.ordersByStatus.pending || 0}
                 </h3>
               </div>
             </Card.Body>
             <Card.Footer className="bg-light border-0">
-              <span className="text-muted small">Requires attention</span>
+              <span className="text-muted small">Cần xử lý</span>
             </Card.Footer>
           </Card>
         </div>
@@ -404,14 +371,14 @@ function DashboardPage() {
                 <i className="bi bi-truck fs-4 text-info"></i>
               </div>
               <div>
-                <h6 className="text-muted mb-1 small">Shipping Orders</h6>
+                <h6 className="text-muted mb-1 small">Đang giao</h6>
                 <h3 className="mb-0 fs-4">
                   {stats.ordersByStatus.shipping || 0}
                 </h3>
               </div>
             </Card.Body>
             <Card.Footer className="bg-light border-0">
-              <span className="text-muted small">In transit</span>
+              <span className="text-muted small">Đang vận chuyển</span>
             </Card.Footer>
           </Card>
         </div>
@@ -423,25 +390,25 @@ function DashboardPage() {
                 <i className="bi bi-check-circle fs-4 text-success"></i>
               </div>
               <div>
-                <h6 className="text-muted mb-1 small">Delivered Orders</h6>
+                <h6 className="text-muted mb-1 small">Đã giao</h6>
                 <h3 className="mb-0 fs-4">
                   {stats.ordersByStatus.delivered || 0}
                 </h3>
               </div>
             </Card.Body>
             <Card.Footer className="bg-light border-0">
-              <span className="text-muted small">Completed</span>
+              <span className="text-muted small">Hoàn thành</span>
             </Card.Footer>
           </Card>
         </div>
       </div>
 
-      {/* Charts */}
+      {/* Biểu đồ */}
       <div className="row g-4 mt-2">
         <div className="col-lg-6">
           <Card>
             <Card.Header className="bg-white">
-              <h5 className="mb-0 fs-5">Revenue Overview (Last 6 Months)</h5>
+              <h5 className="mb-0 fs-5">Doanh thu 6 tháng gần nhất</h5>
             </Card.Header>
             <Card.Body>
               <div style={{ height: "300px" }}>
@@ -454,7 +421,8 @@ function DashboardPage() {
                       y: {
                         beginAtZero: true,
                         ticks: {
-                          callback: (value) => "$" + value,
+                          callback: (value) =>
+                            value.toLocaleString("vi-VN") + " VND",
                         },
                       },
                     },
@@ -468,7 +436,7 @@ function DashboardPage() {
         <div className="col-lg-6">
           <Card>
             <Card.Header className="bg-white">
-              <h5 className="mb-0 fs-5">Orders Overview (Last 6 Months)</h5>
+              <h5 className="mb-0 fs-5">Đơn hàng 6 tháng gần nhất</h5>
             </Card.Header>
             <Card.Body>
               <div style={{ height: "300px" }}>
@@ -494,7 +462,7 @@ function DashboardPage() {
         <div className="col-lg-4">
           <Card className="h-100">
             <Card.Header className="bg-white">
-              <h5 className="mb-0 fs-5">Products by Category</h5>
+              <h5 className="mb-0 fs-5">Sản phẩm theo danh mục</h5>
             </Card.Header>
             <Card.Body>
               <div style={{ height: "250px" }}>
@@ -508,7 +476,7 @@ function DashboardPage() {
                   />
                 ) : (
                   <div className="d-flex align-items-center justify-content-center h-100">
-                    <span className="text-muted">No data available</span>
+                    <span className="text-muted">Không có dữ liệu</span>
                   </div>
                 )}
               </div>
@@ -519,17 +487,17 @@ function DashboardPage() {
         <div className="col-lg-8">
           <Card className="h-100">
             <Card.Header className="bg-white">
-              <h5 className="mb-0 fs-5">Recent Orders</h5>
+              <h5 className="mb-0 fs-5">Đơn hàng mới nhất</h5>
             </Card.Header>
             <div className="table-responsive">
               <table className="table table-hover mb-0">
                 <thead className="table-light">
                   <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
+                    <th>Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Số tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -549,7 +517,10 @@ function DashboardPage() {
                             order.userId?.username ||
                             "N/A"}
                         </td>
-                        <td>${(order.totalAmount || 0).toFixed(2)}</td>
+                        <td>
+                          {(order.totalAmount || 0).toLocaleString("vi-VN") +
+                            " VND"}
+                        </td>
                         <td>
                           <span
                             className={`badge ${
@@ -567,12 +538,14 @@ function DashboardPage() {
                             {order.status
                               ? order.status.charAt(0).toUpperCase() +
                                 order.status.slice(1)
-                              : "Unknown"}
+                              : "Không xác định"}
                           </span>
                         </td>
                         <td>
                           {order.createdAt
-                            ? new Date(order.createdAt).toLocaleDateString()
+                            ? new Date(order.createdAt).toLocaleDateString(
+                                "vi-VN"
+                              )
                             : "N/A"}
                         </td>
                       </tr>
@@ -580,7 +553,7 @@ function DashboardPage() {
                   ) : (
                     <tr>
                       <td colSpan="5" className="text-center py-3">
-                        No recent orders
+                        Không có đơn hàng mới
                       </td>
                     </tr>
                   )}
@@ -592,7 +565,7 @@ function DashboardPage() {
                 to="/admin/orders"
                 className="text-decoration-none text-primary small"
               >
-                View all orders
+                Xem tất cả đơn hàng
               </Link>
             </Card.Footer>
           </Card>

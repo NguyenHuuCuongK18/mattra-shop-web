@@ -1,3 +1,4 @@
+// src/pages/VouchersPage.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -43,9 +44,11 @@ function VouchersPage() {
         setVouchers(vouchersResponse.data.vouchers || []);
         setUsers(usersResponse.data.users || []);
       } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to load vouchers or users. Please try again later.");
-        toast.error("Failed to load vouchers or users");
+        console.error("Lỗi khi tải dữ liệu:", error);
+        setError(
+          "Không thể tải phiếu giảm giá hoặc người dùng. Vui lòng thử lại sau."
+        );
+        toast.error("Không thể tải dữ liệu");
       } finally {
         setLoading(false);
       }
@@ -60,7 +63,7 @@ function VouchersPage() {
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     });
-    // Clear error when user types
+    // Xóa lỗi khi người dùng nhập lại
     if (formErrors[name]) {
       setFormErrors({
         ...formErrors,
@@ -79,24 +82,24 @@ function VouchersPage() {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.code?.trim()) errors.code = "Code is required";
+    if (!formData.code?.trim()) errors.code = "Mã phiếu là bắt buộc";
     if (!formData.discount_percentage)
-      errors.discount_percentage = "Discount percentage is required";
+      errors.discount_percentage = "Phần trăm giảm giá là bắt buộc";
     else if (
       isNaN(formData.discount_percentage) ||
       Number(formData.discount_percentage) <= 0 ||
       Number(formData.discount_percentage) > 100
     )
       errors.discount_percentage =
-        "Discount percentage must be between 1 and 100";
+        "Phần trăm giảm giá phải nằm trong khoảng 1 đến 100";
     if (
       formData.max_discount &&
       (isNaN(formData.max_discount) || Number(formData.max_discount) < 0)
     )
-      errors.max_discount = "Max discount must be non-negative";
-    if (!formData.expiry_date) errors.expiry_date = "Expiry date is required";
+      errors.max_discount = "Giảm tối đa phải là số không âm";
+    if (!formData.expiry_date) errors.expiry_date = "Ngày hết hạn là bắt buộc";
     else if (new Date(formData.expiry_date) <= new Date())
-      errors.expiry_date = "Expiry date must be in the future";
+      errors.expiry_date = "Ngày hết hạn phải là ngày tương lai";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -104,7 +107,7 @@ function VouchersPage() {
 
   const handleAddVoucher = () => {
     setCurrentVoucher(null);
-    // Set default expiry date to 30 days from now
+    // Mặc định ngày hết hạn là 30 ngày sau
     const defaultExpiryDate = new Date();
     defaultExpiryDate.setDate(defaultExpiryDate.getDate() + 30);
     const formattedDate = defaultExpiryDate.toISOString().split("T")[0];
@@ -178,19 +181,19 @@ function VouchersPage() {
 
       let response;
       if (currentVoucher) {
-        // Update existing voucher
+        // Cập nhật phiếu giảm giá
         response = await voucherAPI.updateVoucher(
           currentVoucher._id,
           voucherData
         );
-        toast.success("Voucher updated successfully");
+        toast.success("Cập nhật phiếu thành công");
       } else {
-        // Create new voucher
+        // Tạo mới phiếu giảm giá
         response = await voucherAPI.createVoucher(voucherData);
-        toast.success("Voucher created successfully");
+        toast.success("Tạo phiếu thành công");
       }
 
-      // Update vouchers list
+      // Cập nhật danh sách
       if (currentVoucher) {
         setVouchers(
           vouchers.map((v) =>
@@ -203,9 +206,9 @@ function VouchersPage() {
 
       setIsModalOpen(false);
     } catch (error) {
-      console.error("Error saving voucher:", error);
+      console.error("Lỗi khi lưu phiếu:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to save voucher";
+        error.response?.data?.message || "Không thể lưu phiếu giảm giá";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -220,14 +223,14 @@ function VouchersPage() {
     try {
       await voucherAPI.deleteVoucher(currentVoucher._id);
 
-      // Remove voucher from list
+      // Xóa khỏi danh sách
       setVouchers(vouchers.filter((v) => v._id !== currentVoucher._id));
       setIsDeleteModalOpen(false);
-      toast.success("Voucher deleted successfully");
+      toast.success("Xóa phiếu thành công");
     } catch (error) {
-      console.error("Error deleting voucher:", error);
+      console.error("Lỗi khi xóa phiếu:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to delete voucher";
+        error.response?.data?.message || "Không thể xóa phiếu giảm giá";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -238,7 +241,7 @@ function VouchersPage() {
   const handleAssignConfirm = async (e) => {
     e.preventDefault();
     if (!assignFormData.userId || !assignFormData.voucherId) {
-      toast.error("Please select a user");
+      toast.error("Vui lòng chọn người dùng");
       return;
     }
 
@@ -249,12 +252,12 @@ function VouchersPage() {
         assignFormData.userId
       );
 
-      toast.success("Voucher assigned successfully");
+      toast.success("Phân công phiếu thành công");
       setIsAssignModalOpen(false);
     } catch (error) {
-      console.error("Error assigning voucher:", error);
+      console.error("Lỗi khi phân công phiếu:", error);
       const errorMsg =
-        error.response?.data?.message || "Failed to assign voucher";
+        error.response?.data?.message || "Không thể phân công phiếu";
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -280,7 +283,7 @@ function VouchersPage() {
         style={{ height: "200px" }}
       >
         <div className="spinner-border text-success" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
     );
@@ -289,8 +292,8 @@ function VouchersPage() {
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="fs-4 fw-bold mb-0">Vouchers</h1>
-        <Button onClick={handleAddVoucher}>Add Voucher</Button>
+        <h1 className="fs-4 fw-bold mb-0">Phiếu giảm giá</h1>
+        <Button onClick={handleAddVoucher}>Thêm phiếu</Button>
       </div>
 
       {error && (
@@ -310,7 +313,7 @@ function VouchersPage() {
             <i className="bi bi-search"></i>
           </InputGroup.Text>
           <Form.Control
-            placeholder="Search by code or description"
+            placeholder="Tìm kiếm theo mã hoặc mô tả"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -322,12 +325,12 @@ function VouchersPage() {
           <Table hover className="mb-0">
             <thead>
               <tr>
-                <th>Code</th>
-                <th>Discount</th>
-                <th>Expiry Date</th>
-                <th>Subscriber Only</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
+                <th>Mã</th>
+                <th>Giảm giá</th>
+                <th>Ngày hết hạn</th>
+                <th>Chỉ thành viên</th>
+                <th>Trạng thái</th>
+                <th className="text-end">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -336,12 +339,16 @@ function VouchersPage() {
                   <tr key={voucher._id}>
                     <td>{voucher.code}</td>
                     <td>
-                      {voucher.discount_percentage}%
+                      {voucher.discount_percentage}%{" "}
                       {voucher.max_discount > 0 &&
-                        ` (Max: $${voucher.max_discount})`}
+                        `(Tối đa: ${voucher.max_discount.toLocaleString(
+                          "vi-VN"
+                        )} VND)`}
                     </td>
-                    <td>{new Date(voucher.expires_at).toLocaleDateString()}</td>
-                    <td>{voucher.subscriberOnly ? "Yes" : "No"}</td>
+                    <td>
+                      {new Date(voucher.expires_at).toLocaleDateString("vi-VN")}
+                    </td>
+                    <td>{voucher.subscriberOnly ? "Có" : "Không"}</td>
                     <td>
                       <Badge
                         bg={
@@ -353,10 +360,10 @@ function VouchersPage() {
                         }
                       >
                         {isVoucherExpired(voucher.expires_at)
-                          ? "Expired"
+                          ? "Đã hết hạn"
                           : voucher.is_used
-                          ? "Used"
-                          : "Active"}
+                          ? "Đã sử dụng"
+                          : "Đang hoạt động"}
                       </Badge>
                     </td>
                     <td className="text-end">
@@ -365,21 +372,21 @@ function VouchersPage() {
                         className="text-success p-0 me-3"
                         onClick={() => handleEditVoucher(voucher)}
                       >
-                        Edit
+                        Sửa
                       </Button>
                       <Button
                         variant="link"
                         className="text-primary p-0 me-3"
                         onClick={() => handleAssignVoucher(voucher)}
                       >
-                        Assign
+                        Phân công
                       </Button>
                       <Button
                         variant="link"
                         className="text-danger p-0"
                         onClick={() => handleDeleteVoucher(voucher)}
                       >
-                        Delete
+                        Xóa
                       </Button>
                     </td>
                   </tr>
@@ -387,7 +394,7 @@ function VouchersPage() {
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center py-4">
-                    No vouchers found
+                    Không tìm thấy phiếu giảm giá
                   </td>
                 </tr>
               )}
@@ -396,7 +403,7 @@ function VouchersPage() {
         </div>
       </Card>
 
-      {/* Voucher Form Modal */}
+      {/* Modal thêm/sửa phiếu */}
       {isModalOpen && (
         <div
           className="modal show d-block"
@@ -407,7 +414,7 @@ function VouchersPage() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {currentVoucher ? "Edit Voucher" : "Add Voucher"}
+                  {currentVoucher ? "Chỉnh sửa phiếu" : "Thêm phiếu"}
                 </h5>
                 <button
                   type="button"
@@ -419,7 +426,7 @@ function VouchersPage() {
               <div className="modal-body">
                 <Form onSubmit={handleSubmit}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Voucher Code</Form.Label>
+                    <Form.Label>Mã phiếu</Form.Label>
                     <Form.Control
                       type="text"
                       name="code"
@@ -436,7 +443,7 @@ function VouchersPage() {
                   <div className="row">
                     <div className="col-md-6">
                       <Form.Group className="mb-3">
-                        <Form.Label>Discount Percentage (%)</Form.Label>
+                        <Form.Label>Phần trăm giảm giá (%)</Form.Label>
                         <Form.Control
                           type="number"
                           name="discount_percentage"
@@ -452,7 +459,7 @@ function VouchersPage() {
                     </div>
                     <div className="col-md-6">
                       <Form.Group className="mb-3">
-                        <Form.Label>Max Discount ($)</Form.Label>
+                        <Form.Label>Giảm tối đa (VND)</Form.Label>
                         <Form.Control
                           type="number"
                           name="max_discount"
@@ -468,7 +475,7 @@ function VouchersPage() {
                   </div>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Expiry Date</Form.Label>
+                    <Form.Label>Ngày hết hạn</Form.Label>
                     <Form.Control
                       type="date"
                       name="expiry_date"
@@ -486,14 +493,14 @@ function VouchersPage() {
                     <Form.Check
                       type="checkbox"
                       name="subscriberOnly"
-                      label="Subscriber Only"
+                      label="Chỉ thành viên"
                       checked={formData.subscriberOnly}
                       onChange={handleInputChange}
                     />
                   </Form.Group>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Description</Form.Label>
+                    <Form.Label>Mô tả</Form.Label>
                     <Form.Control
                       as="textarea"
                       rows={2}
@@ -510,14 +517,14 @@ function VouchersPage() {
                   onClick={() => setIsModalOpen(false)}
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   loading={formSubmitting}
                   disabled={formSubmitting}
                 >
-                  {currentVoucher ? "Update" : "Create"}
+                  {currentVoucher ? "Cập nhật" : "Tạo"}
                 </Button>
               </div>
             </div>
@@ -525,7 +532,7 @@ function VouchersPage() {
         </div>
       )}
 
-      {/* Assign Voucher Modal */}
+      {/* Modal phân công phiếu */}
       {isAssignModalOpen && (
         <div
           className="modal show d-block"
@@ -535,7 +542,7 @@ function VouchersPage() {
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Assign Voucher</h5>
+                <h5 className="modal-title">Phân công phiếu</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -546,7 +553,7 @@ function VouchersPage() {
               <div className="modal-body">
                 <Form onSubmit={handleAssignConfirm}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Voucher Code</Form.Label>
+                    <Form.Label>Mã phiếu</Form.Label>
                     <Form.Control
                       type="text"
                       value={currentVoucher?.code || ""}
@@ -555,14 +562,14 @@ function VouchersPage() {
                   </Form.Group>
 
                   <Form.Group className="mb-3">
-                    <Form.Label>Select User</Form.Label>
+                    <Form.Label>Chọn người dùng</Form.Label>
                     <Form.Select
                       name="userId"
                       value={assignFormData.userId}
                       onChange={handleAssignInputChange}
                       required
                     >
-                      <option value="">Choose a user</option>
+                      <option value="">Chọn người dùng</option>
                       {users.map((user) => (
                         <option key={user._id} value={user._id}>
                           {user.name || user.username} ({user.email})
@@ -578,7 +585,7 @@ function VouchersPage() {
                   onClick={() => setIsAssignModalOpen(false)}
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   variant="primary"
@@ -586,7 +593,7 @@ function VouchersPage() {
                   loading={formSubmitting}
                   disabled={formSubmitting}
                 >
-                  Assign
+                  Phân công
                 </Button>
               </div>
             </div>
@@ -594,7 +601,7 @@ function VouchersPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Modal xác nhận xóa */}
       {isDeleteModalOpen && (
         <div
           className="modal show d-block"
@@ -604,7 +611,7 @@ function VouchersPage() {
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Delete Voucher</h5>
+                <h5 className="modal-title">Xóa phiếu</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -614,11 +621,11 @@ function VouchersPage() {
               </div>
               <div className="modal-body">
                 <p>
-                  Are you sure you want to delete the voucher code "
-                  {currentVoucher?.code}"?
+                  Bạn có chắc chắn muốn xóa phiếu giảm giá "
+                  {currentVoucher?.code}" không?
                 </p>
                 <p className="text-danger mb-0">
-                  This action cannot be undone.
+                  Hành động này không thể hoàn tác.
                 </p>
               </div>
               <div className="modal-footer">
@@ -627,7 +634,7 @@ function VouchersPage() {
                   onClick={() => setIsDeleteModalOpen(false)}
                   disabled={formSubmitting}
                 >
-                  Cancel
+                  Hủy
                 </Button>
                 <Button
                   variant="danger"
@@ -635,7 +642,7 @@ function VouchersPage() {
                   loading={formSubmitting}
                   disabled={formSubmitting}
                 >
-                  Delete
+                  Xóa
                 </Button>
               </div>
             </div>

@@ -1,3 +1,4 @@
+// src/pages/RegisterPage.js
 "use client";
 
 import { useState } from "react";
@@ -34,7 +35,7 @@ function RegisterPage() {
 
   const handleRequestCode = async () => {
     if (!formData.email) {
-      setCodeError("Please enter your email first");
+      setCodeError("Vui lòng nhập email trước");
       return;
     }
     try {
@@ -43,7 +44,7 @@ function RegisterPage() {
       await authAPI.requestEmailVerification(formData.email);
       setCodeSent(true);
     } catch (err) {
-      setCodeError(err.response?.data?.message || "Failed to send code");
+      setCodeError(err.response?.data?.message || "Gửi mã thất bại");
     } finally {
       setCodeLoading(false);
     }
@@ -52,15 +53,15 @@ function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+      setError("Mật khẩu không khớp");
       return;
     }
     if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError("Mật khẩu phải có ít nhất 6 ký tự");
       return;
     }
     if (!formData.verificationCode) {
-      setError("Verification code is required");
+      setError("Mã xác thực là bắt buộc");
       return;
     }
 
@@ -71,7 +72,7 @@ function RegisterPage() {
       await register(userData);
       navigate("/");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to register");
+      setError(err.response?.data?.message || "Đăng ký thất bại");
     } finally {
       setLoading(false);
     }
@@ -83,14 +84,14 @@ function RegisterPage() {
         <Col md={8} lg={6} xl={5}>
           <Card>
             <Card.Header className="text-center bg-white py-3">
-              <h1 className="fs-4 fw-bold">Create Your Account</h1>
+              <h1 className="fs-4 fw-bold">Tạo tài khoản</h1>
             </Card.Header>
             <Card.Body className="p-4">
               {error && <Alert variant="danger">{error}</Alert>}
               <Form onSubmit={handleSubmit}>
                 {/* Username */}
                 <Form.Group className="mb-3" controlId="username">
-                  <Form.Label>Username</Form.Label>
+                  <Form.Label>Tên đăng nhập</Form.Label>
                   <Form.Control
                     type="text"
                     name="username"
@@ -102,7 +103,7 @@ function RegisterPage() {
 
                 {/* Full Name */}
                 <Form.Group className="mb-3" controlId="name">
-                  <Form.Label>Full Name</Form.Label>
+                  <Form.Label>Họ và tên</Form.Label>
                   <Form.Control
                     type="text"
                     name="name"
@@ -130,7 +131,7 @@ function RegisterPage() {
                       disabled={codeLoading}
                       size="sm"
                     >
-                      {codeLoading ? "Sending..." : "Get Code"}
+                      {codeLoading ? "Đang gửi..." : "Lấy mã"}
                     </Button>
                   </InputGroup>
                   {codeError && (
@@ -141,7 +142,7 @@ function RegisterPage() {
                   {codeSent && (
                     <div className="mt-1">
                       <small className="text-success">
-                        Code sent! Check your email.
+                        Mã đã được gửi! Vui lòng kiểm tra email.
                       </small>
                     </div>
                   )}
@@ -149,7 +150,7 @@ function RegisterPage() {
 
                 {/* Verification Code */}
                 <Form.Group className="mb-3" controlId="verificationCode">
-                  <Form.Label>Verification Code</Form.Label>
+                  <Form.Label>Mã xác thực</Form.Label>
                   <Form.Control
                     type="text"
                     name="verificationCode"
@@ -161,7 +162,7 @@ function RegisterPage() {
 
                 {/* Password */}
                 <Form.Group className="mb-3" controlId="password">
-                  <Form.Label>Password</Form.Label>
+                  <Form.Label>Mật khẩu</Form.Label>
                   <Form.Control
                     type="password"
                     name="password"
@@ -173,7 +174,7 @@ function RegisterPage() {
 
                 {/* Confirm Password */}
                 <Form.Group className="mb-3" controlId="confirmPassword">
-                  <Form.Label>Confirm Password</Form.Label>
+                  <Form.Label>Xác nhận mật khẩu</Form.Label>
                   <Form.Control
                     type="password"
                     name="confirmPassword"
@@ -185,7 +186,7 @@ function RegisterPage() {
 
                 {/* Address */}
                 <Form.Group className="mb-4" controlId="address">
-                  <Form.Label>Address (Optional)</Form.Label>
+                  <Form.Label>Địa chỉ (Tùy chọn)</Form.Label>
                   <Form.Control
                     type="text"
                     name="address"
@@ -201,15 +202,15 @@ function RegisterPage() {
                   loading={loading}
                   disabled={loading}
                 >
-                  {loading ? "Creating Account..." : "Sign up"}
+                  {loading ? "Đang tạo tài khoản..." : "Đăng ký"}
                 </Button>
               </Form>
             </Card.Body>
             <Card.Footer className="text-center bg-white py-3">
               <p className="mb-0">
-                Already have an account?{" "}
+                Đã có tài khoản?{" "}
                 <Link to="/login" className="text-decoration-none">
-                  Sign in
+                  Đăng nhập
                 </Link>
               </p>
             </Card.Footer>

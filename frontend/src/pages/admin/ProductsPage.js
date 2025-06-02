@@ -6,7 +6,7 @@ import {
   Row,
   Col,
   Form,
-  Button,
+  Button as BootstrapButton,
   Table,
   Modal,
   Spinner,
@@ -16,6 +16,7 @@ import {
 } from "react-bootstrap";
 import { toast } from "react-hot-toast";
 import { productAPI, categoryAPI } from "../../utils/api";
+import Button from "../../components/ui/Button";
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -50,8 +51,8 @@ const ProductsPage = () => {
       const response = await productAPI.getAllProducts();
       setProducts(response.data.products || []);
     } catch (error) {
-      console.error("Error fetching products:", error);
-      toast.error("Failed to load products");
+      console.error("Lỗi khi tải sản phẩm:", error);
+      toast.error("Không thể tải sản phẩm");
     } finally {
       setLoading(false);
     }
@@ -62,8 +63,8 @@ const ProductsPage = () => {
       const response = await categoryAPI.getAllCategories();
       setCategories(response.data.categories || []);
     } catch (error) {
-      console.error("Error fetching categories:", error);
-      toast.error("Failed to load categories");
+      console.error("Lỗi khi tải danh mục:", error);
+      toast.error("Không thể tải danh mục");
     }
   };
 
@@ -83,14 +84,14 @@ const ProductsPage = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
+      // Kiểm tra định dạng
       if (!file.type.startsWith("image/")) {
-        toast.error("Please select an image file");
+        toast.error("Vui lòng chọn tệp hình ảnh");
         return;
       }
-      // Validate file size (max 5MB)
+      // Kiểm tra kích thước (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size must be less than 5MB");
+        toast.error("Kích thước tệp phải dưới 5MB");
         return;
       }
       setImageFile(file);
@@ -100,14 +101,13 @@ const ProductsPage = () => {
 
   const validateForm = () => {
     const errors = {};
-    if (!formData.name.trim()) errors.name = "Product name is required";
-    if (!formData.description.trim())
-      errors.description = "Description is required";
+    if (!formData.name.trim()) errors.name = "Tên sản phẩm bắt buộc";
+    if (!formData.description.trim()) errors.description = "Mô tả bắt buộc";
     if (!formData.price || formData.price <= 0)
-      errors.price = "Price must be greater than 0";
+      errors.price = "Giá phải lớn hơn 0";
     if (!formData.stock || formData.stock < 0)
-      errors.stock = "Stock must be 0 or greater";
-    if (!formData.categories) errors.categories = "Category is required";
+      errors.stock = "Tồn kho phải ≥ 0";
+    if (!formData.categories) errors.categories = "Danh mục bắt buộc";
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -131,13 +131,13 @@ const ProductsPage = () => {
       }
 
       await productAPI.createProduct(formDataToSend);
-      toast.success("Product added successfully");
+      toast.success("Thêm sản phẩm thành công");
       setShowAddModal(false);
       resetForm();
       fetchProducts();
     } catch (error) {
-      console.error("Error adding product:", error);
-      toast.error(error.response?.data?.message || "Failed to add product");
+      console.error("Lỗi khi thêm sản phẩm:", error);
+      toast.error(error.response?.data?.message || "Không thể thêm sản phẩm");
     } finally {
       setSubmitting(false);
     }
@@ -164,13 +164,15 @@ const ProductsPage = () => {
         currentProduct._id || currentProduct.id,
         formDataToSend
       );
-      toast.success("Product updated successfully");
+      toast.success("Cập nhật sản phẩm thành công");
       setShowEditModal(false);
       resetForm();
       fetchProducts();
     } catch (error) {
-      console.error("Error updating product:", error);
-      toast.error(error.response?.data?.message || "Failed to update product");
+      console.error("Lỗi khi cập nhật sản phẩm:", error);
+      toast.error(
+        error.response?.data?.message || "Không thể cập nhật sản phẩm"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -180,12 +182,12 @@ const ProductsPage = () => {
     try {
       setSubmitting(true);
       await productAPI.deleteProduct(currentProduct._id || currentProduct.id);
-      toast.success("Product deleted successfully");
+      toast.success("Xóa sản phẩm thành công");
       setShowDeleteModal(false);
       fetchProducts();
     } catch (error) {
-      console.error("Error deleting product:", error);
-      toast.error(error.response?.data?.message || "Failed to delete product");
+      console.error("Lỗi khi xóa sản phẩm:", error);
+      toast.error(error.response?.data?.message || "Không thể xóa sản phẩm");
     } finally {
       setSubmitting(false);
     }
@@ -243,14 +245,14 @@ const ProductsPage = () => {
       <Card className="shadow-sm border-0 mb-4">
         <Card.Body>
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="h3 mb-0 text-gray-800">Product Management</h1>
+            <h1 className="h3 mb-0 text-gray-800">Quản lý sản phẩm</h1>
             <Button
               variant="success"
               onClick={openAddModal}
               className="d-flex align-items-center"
             >
               <i className="bi bi-plus-circle me-2"></i>
-              Add Product
+              Thêm sản phẩm
             </Button>
           </div>
 
@@ -262,7 +264,7 @@ const ProductsPage = () => {
                 </InputGroup.Text>
                 <Form.Control
                   type="text"
-                  placeholder="Search products..."
+                  placeholder="Tìm sản phẩm..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="border-start-0 bg-light"
@@ -274,16 +276,16 @@ const ProductsPage = () => {
           {loading ? (
             <div className="text-center py-5">
               <Spinner animation="border" variant="success" />
-              <p className="mt-2 text-muted">Loading products...</p>
+              <p className="mt-2 text-muted">Đang tải sản phẩm...</p>
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-5 bg-light rounded">
               <i className="bi bi-box-seam display-1 text-muted"></i>
-              <h5 className="mt-3">No products found</h5>
+              <h5 className="mt-3">Không tìm thấy sản phẩm</h5>
               <p className="text-muted">
                 {searchTerm
-                  ? "Try a different search term"
-                  : "Add your first product to get started"}
+                  ? "Vui lòng thử từ khóa khác"
+                  : "Thêm sản phẩm đầu tiên để bắt đầu"}
               </p>
             </div>
           ) : (
@@ -292,12 +294,12 @@ const ProductsPage = () => {
                 <thead className="bg-light">
                   <tr>
                     <th style={{ width: "60px" }}>#</th>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Price</th>
-                    <th>Stock</th>
-                    <th>Featured</th>
-                    <th style={{ width: "150px" }}>Actions</th>
+                    <th>Sản phẩm</th>
+                    <th>Danh mục</th>
+                    <th>Giá</th>
+                    <th>Tồn kho</th>
+                    <th>Nổi bật</th>
+                    <th style={{ width: "150px" }}>Hành động</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -354,7 +356,7 @@ const ProductsPage = () => {
                       </td>
                       <td>
                         <span className="fw-medium">
-                          ${product.price.toFixed(2)}
+                          {product.price.toLocaleString("vi-VN")} VND
                         </span>
                       </td>
                       <td>
@@ -368,14 +370,14 @@ const ProductsPage = () => {
                           }
                           className="px-2 py-1"
                         >
-                          {product.stock} in stock
+                          {product.stock}
                         </Badge>
                       </td>
                       <td>
                         {product.isFeatured ? (
                           <Badge bg="warning" className="px-2 py-1">
                             <i className="bi bi-star-fill me-1"></i>
-                            Featured
+                            Nổi bật
                           </Badge>
                         ) : (
                           <span className="text-muted">—</span>
@@ -410,7 +412,7 @@ const ProductsPage = () => {
         </Card.Body>
       </Card>
 
-      {/* Add Product Modal */}
+      {/* Thêm sản phẩm Modal */}
       <Modal
         show={showAddModal}
         onHide={() => setShowAddModal(false)}
@@ -418,14 +420,14 @@ const ProductsPage = () => {
         size="lg"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Add New Product</Modal.Title>
+          <Modal.Title>Thêm sản phẩm mới</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleAddProduct}>
           <Modal.Body>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Product Name</Form.Label>
+                  <Form.Label>Tên sản phẩm</Form.Label>
                   <Form.Control
                     type="text"
                     name="name"
@@ -439,7 +441,7 @@ const ProductsPage = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Description</Form.Label>
+                  <Form.Label>Mô tả</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={3}
@@ -456,7 +458,7 @@ const ProductsPage = () => {
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Price ($)</Form.Label>
+                      <Form.Label>Giá (VND)</Form.Label>
                       <Form.Control
                         type="number"
                         step="0.01"
@@ -473,7 +475,7 @@ const ProductsPage = () => {
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Stock</Form.Label>
+                      <Form.Label>Tồn kho</Form.Label>
                       <Form.Control
                         type="number"
                         min="0"
@@ -490,14 +492,14 @@ const ProductsPage = () => {
                 </Row>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Category</Form.Label>
+                  <Form.Label>Danh mục</Form.Label>
                   <Form.Select
                     name="categories"
                     value={formData.categories}
                     onChange={handleInputChange}
                     isInvalid={!!formErrors.categories}
                   >
-                    <option value="">Select a category</option>
+                    <option value="">Chọn danh mục</option>
                     {categories.map((category) => (
                       <option
                         key={category._id || category.id}
@@ -516,25 +518,25 @@ const ProductsPage = () => {
                   <Form.Check
                     type="checkbox"
                     name="isFeatured"
-                    label="Featured Product"
+                    label="Sản phẩm nổi bật"
                     checked={formData.isFeatured}
                     onChange={handleInputChange}
                   />
                   <Form.Text className="text-muted">
-                    Featured products will be highlighted on the homepage
+                    Sản phẩm nổi bật sẽ được hiển thị trên trang chủ
                   </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Product Image</Form.Label>
+                  <Form.Label>Ảnh sản phẩm</Form.Label>
                   <Form.Control
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
                   />
                   <Form.Text className="text-muted">
-                    Upload an image (max 5MB, JPG/PNG)
+                    Tải ảnh lên (max 5MB, JPG/PNG)
                   </Form.Text>
                 </Form.Group>
 
@@ -553,7 +555,7 @@ const ProductsPage = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowAddModal(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button variant="success" type="submit" disabled={submitting}>
               {submitting ? (
@@ -564,17 +566,17 @@ const ProductsPage = () => {
                     size="sm"
                     className="me-2"
                   />
-                  Adding...
+                  Đang thêm...
                 </>
               ) : (
-                "Add Product"
+                "Thêm sản phẩm"
               )}
             </Button>
           </Modal.Footer>
         </Form>
       </Modal>
 
-      {/* Edit Product Modal */}
+      {/* Chỉnh sửa sản phẩm Modal */}
       <Modal
         show={showEditModal}
         onHide={() => setShowEditModal(false)}
@@ -582,14 +584,14 @@ const ProductsPage = () => {
         size="lg"
       >
         <Modal.Header closeButton>
-          <Modal.Title>Edit Product</Modal.Title>
+          <Modal.Title>Chỉnh sửa sản phẩm</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleEditProduct}>
           <Modal.Body>
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Product Name</Form.Label>
+                  <Form.Label>Tên sản phẩm</Form.Label>
                   <Form.Control
                     type="text"
                     name="name"
@@ -603,7 +605,7 @@ const ProductsPage = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Description</Form.Label>
+                  <Form.Label>Mô tả</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={3}
@@ -620,7 +622,7 @@ const ProductsPage = () => {
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Price ($)</Form.Label>
+                      <Form.Label>Giá (VND)</Form.Label>
                       <Form.Control
                         type="number"
                         step="0.01"
@@ -637,7 +639,7 @@ const ProductsPage = () => {
                   </Col>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>Stock</Form.Label>
+                      <Form.Label>Tồn kho</Form.Label>
                       <Form.Control
                         type="number"
                         min="0"
@@ -654,14 +656,14 @@ const ProductsPage = () => {
                 </Row>
 
                 <Form.Group className="mb-3">
-                  <Form.Label>Category</Form.Label>
+                  <Form.Label>Danh mục</Form.Label>
                   <Form.Select
                     name="categories"
                     value={formData.categories}
                     onChange={handleInputChange}
                     isInvalid={!!formErrors.categories}
                   >
-                    <option value="">Select a category</option>
+                    <option value="">Chọn danh mục</option>
                     {categories.map((category) => (
                       <option
                         key={category._id || category.id}
@@ -680,26 +682,25 @@ const ProductsPage = () => {
                   <Form.Check
                     type="checkbox"
                     name="isFeatured"
-                    label="Featured Product"
+                    label="Sản phẩm nổi bật"
                     checked={formData.isFeatured}
                     onChange={handleInputChange}
                   />
                   <Form.Text className="text-muted">
-                    Featured products will be highlighted on the homepage
+                    Sản phẩm nổi bật sẽ được hiển thị trên trang chủ
                   </Form.Text>
                 </Form.Group>
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label>Product Image</Form.Label>
+                  <Form.Label>Ảnh sản phẩm</Form.Label>
                   <Form.Control
                     type="file"
                     accept="image/*"
                     onChange={handleImageChange}
                   />
                   <Form.Text className="text-muted">
-                    Upload a new image to replace the current one (max 5MB,
-                    JPG/PNG)
+                    Tải ảnh mới để thay thế (max 5MB, JPG/PNG)
                   </Form.Text>
                 </Form.Group>
 
@@ -718,7 +719,7 @@ const ProductsPage = () => {
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-              Cancel
+              Hủy
             </Button>
             <Button variant="primary" type="submit" disabled={submitting}>
               {submitting ? (
@@ -729,35 +730,35 @@ const ProductsPage = () => {
                     size="sm"
                     className="me-2"
                   />
-                  Updating...
+                  Đang cập nhật...
                 </>
               ) : (
-                "Update Product"
+                "Cập nhật sản phẩm"
               )}
             </Button>
           </Modal.Footer>
         </Form>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
+      {/* Xác nhận xóa sản phẩm Modal */}
       <Modal
         show={showDeleteModal}
         onHide={() => setShowDeleteModal(false)}
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>Confirm Delete</Modal.Title>
+          <Modal.Title>Xác nhận xóa</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p>
-            Are you sure you want to delete the product{" "}
+            Bạn có chắc muốn xóa sản phẩm{" "}
             <strong>{currentProduct?.name}</strong>?
           </p>
-          <p className="text-danger mb-0">This action cannot be undone.</p>
+          <p className="text-danger mb-0">Hành động không thể hoàn tác.</p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-            Cancel
+            Hủy
           </Button>
           <Button
             variant="danger"
@@ -772,10 +773,10 @@ const ProductsPage = () => {
                   size="sm"
                   className="me-2"
                 />
-                Deleting...
+                Đang xóa...
               </>
             ) : (
-              "Delete Product"
+              "Xóa sản phẩm"
             )}
           </Button>
         </Modal.Footer>

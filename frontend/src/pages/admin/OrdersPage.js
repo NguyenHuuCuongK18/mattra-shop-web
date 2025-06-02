@@ -23,8 +23,8 @@ function OrdersPage() {
         const response = await orderAPI.getAllOrders();
         setOrders(response.data.orders || []);
       } catch (error) {
-        console.error("Error fetching orders:", error);
-        setError("Failed to load orders. Please try again later.");
+        console.error("Lỗi khi tải đơn hàng:", error);
+        setError("Không thể tải đơn hàng. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
       }
@@ -41,11 +41,9 @@ function OrdersPage() {
   const handleUpdateStatus = async (orderId, newStatus) => {
     setFormSubmitting(true);
     try {
-      const response = await orderAPI.updateOrderStatus(orderId, {
-        status: newStatus,
-      });
+      await orderAPI.updateOrderStatus(orderId, { status: newStatus });
 
-      // Update order in the list
+      // Cập nhật lại trong danh sách
       setOrders((prevOrders) =>
         prevOrders.map((o) =>
           o._id === orderId ? { ...o, status: newStatus } : o
@@ -56,9 +54,9 @@ function OrdersPage() {
         setCurrentOrder({ ...currentOrder, status: newStatus });
       }
     } catch (error) {
-      console.error("Error updating order status:", error);
+      console.error("Lỗi khi cập nhật trạng thái đơn:", error);
       setError(
-        error.response?.data?.message || "Failed to update order status"
+        error.response?.data?.message || "Không thể cập nhật trạng thái đơn"
       );
     } finally {
       setFormSubmitting(false);
@@ -84,7 +82,7 @@ function OrdersPage() {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -107,7 +105,7 @@ function OrdersPage() {
         style={{ height: "200px" }}
       >
         <div className="spinner-border text-success" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
     );
@@ -115,7 +113,7 @@ function OrdersPage() {
 
   return (
     <div>
-      <h1 className="fs-4 fw-bold mb-4">Orders</h1>
+      <h1 className="fs-4 fw-bold mb-4">Đơn hàng</h1>
 
       {error && (
         <Alert variant="danger" className="mb-4">
@@ -131,7 +129,7 @@ function OrdersPage() {
                 <i className="bi bi-search"></i>
               </InputGroup.Text>
               <Form.Control
-                placeholder="Search by order ID or customer"
+                placeholder="Tìm theo Mã đơn hoặc Khách hàng"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -142,12 +140,12 @@ function OrdersPage() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="">All Statuses</option>
-              <option value="unverified">Unverified</option>
-              <option value="pending">Pending</option>
-              <option value="shipping">Shipping</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="">Tất cả trạng thái</option>
+              <option value="unverified">Chưa xác nhận</option>
+              <option value="pending">Đang chờ</option>
+              <option value="shipping">Đang giao</option>
+              <option value="delivered">Đã giao</option>
+              <option value="cancelled">Đã hủy</option>
             </Form.Select>
           </div>
         </div>
@@ -158,12 +156,12 @@ function OrdersPage() {
           <Table hover className="mb-0">
             <thead>
               <tr>
-                <th>Order ID</th>
-                <th>Customer</th>
-                <th>Date</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th className="text-end">Actions</th>
+                <th>Mã đơn</th>
+                <th>Khách hàng</th>
+                <th>Ngày</th>
+                <th>Tổng tiền</th>
+                <th>Trạng thái</th>
+                <th className="text-end">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -178,28 +176,40 @@ function OrdersPage() {
                     </td>
                     <td>{order.userId.username}</td>
                     <td>{formatDate(order.createdAt)}</td>
-                    <td>${order.totalAmount.toFixed(2)}</td>
+                    <td>
+                      {order.totalAmount.toLocaleString("vi-VN")}
+                      {" VND"}
+                    </td>
                     <td>
                       <Badge bg={getStatusBadgeVariant(order.status)}>
-                        {order.status.charAt(0).toUpperCase() +
-                          order.status.slice(1)}
+                        {order.status === "unverified"
+                          ? "Chưa xác nhận"
+                          : order.status === "pending"
+                          ? "Đang chờ"
+                          : order.status === "shipping"
+                          ? "Đang giao"
+                          : order.status === "delivered"
+                          ? "Đã giao"
+                          : order.status === "cancelled"
+                          ? "Đã hủy"
+                          : order.status}
                       </Badge>
                     </td>
-                    <td className="text-end">
+                    {/* <td className="text-end">
                       <Button
                         variant="link"
                         className="text-success p-0"
                         onClick={() => handleViewOrder(order)}
                       >
-                        View Details
+                        Xem chi tiết
                       </Button>
-                    </td>
+                    </td> */}
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center py-4">
-                    No orders found
+                    Không tìm thấy đơn hàng
                   </td>
                 </tr>
               )}
@@ -208,7 +218,7 @@ function OrdersPage() {
         </div>
       </Card>
 
-      {/* Order Details Modal */}
+      {/* Modal Chi tiết đơn hàng */}
       {isModalOpen && currentOrder && (
         <div
           className="modal show d-block"
@@ -219,7 +229,7 @@ function OrdersPage() {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  Order #
+                  Đơn hàng #
                   {currentOrder._id
                     ? currentOrder._id.substring(0, 8).toUpperCase()
                     : "N/A"}
@@ -233,53 +243,67 @@ function OrdersPage() {
               <div className="modal-body">
                 <div className="row mb-4">
                   <div className="col-md-6">
-                    <h6 className="fw-bold">Customer Information</h6>
-                    <p className="mb-1">Name: {currentOrder.userId.name}</p>
+                    <h6 className="fw-bold">Thông tin khách hàng</h6>
+                    <p className="mb-1">Tên: {currentOrder.userId.name}</p>
                     <p className="mb-1">Email: {currentOrder.userId.email}</p>
                     <p className="mb-0">
-                      Username: {currentOrder.userId.username}
+                      Tên đăng nhập: {currentOrder.userId.username}
                     </p>
                   </div>
                   <div className="col-md-6">
-                    <h6 className="fw-bold">Order Information</h6>
+                    <h6 className="fw-bold">Thông tin đơn hàng</h6>
                     <p className="mb-1">
-                      Date: {formatDate(currentOrder.createdAt)}
+                      Ngày: {formatDate(currentOrder.createdAt)}
                     </p>
                     <p className="mb-1">
-                      Payment Method: {currentOrder.paymentMethod}
+                      Phương thức thanh toán: {currentOrder.paymentMethod}
                     </p>
                     <p className="mb-0">
-                      Status:{" "}
+                      Trạng thái:{" "}
                       <Badge bg={getStatusBadgeVariant(currentOrder.status)}>
-                        {currentOrder.status.charAt(0).toUpperCase() +
-                          currentOrder.status.slice(1)}
+                        {currentOrder.status === "unverified"
+                          ? "Chưa xác nhận"
+                          : currentOrder.status === "pending"
+                          ? "Đang chờ"
+                          : currentOrder.status === "shipping"
+                          ? "Đang giao"
+                          : currentOrder.status === "delivered"
+                          ? "Đã giao"
+                          : currentOrder.status === "cancelled"
+                          ? "Đã hủy"
+                          : currentOrder.status}
                       </Badge>
                     </p>
                   </div>
                 </div>
 
-                <h6 className="fw-bold mb-3">Shipping Address</h6>
+                <h6 className="fw-bold mb-3">Địa chỉ giao hàng</h6>
                 <p className="mb-4">{currentOrder.shippingAddress}</p>
 
-                <h6 className="fw-bold mb-3">Order Items</h6>
+                <h6 className="fw-bold mb-3">Sản phẩm đã đặt</h6>
                 <div className="table-responsive mb-4">
                   <Table bordered size="sm">
                     <thead>
                       <tr>
-                        <th>Product</th>
-                        <th className="text-end">Price</th>
-                        <th className="text-end">Quantity</th>
-                        <th className="text-end">Total</th>
+                        <th>Sản phẩm</th>
+                        <th className="text-end">Giá</th>
+                        <th className="text-end">Số lượng</th>
+                        <th className="text-end">Tổng</th>
                       </tr>
                     </thead>
                     <tbody>
                       {currentOrder.items.map((item, index) => (
                         <tr key={index}>
                           <td>{item.productId.name}</td>
-                          <td className="text-end">${item.price.toFixed(2)}</td>
+                          <td className="text-end">
+                            {item.price.toLocaleString("vi-VN")} VND
+                          </td>
                           <td className="text-end">{item.quantity}</td>
                           <td className="text-end">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            {(item.price * item.quantity).toLocaleString(
+                              "vi-VN"
+                            )}{" "}
+                            VND
                           </td>
                         </tr>
                       ))}
@@ -287,17 +311,17 @@ function OrdersPage() {
                     <tfoot>
                       <tr>
                         <th colSpan="3" className="text-end">
-                          Total:
+                          Tổng cộng:
                         </th>
                         <th className="text-end">
-                          ${currentOrder.totalAmount.toFixed(2)}
+                          {currentOrder.totalAmount.toLocaleString("vi-VN")} VND
                         </th>
                       </tr>
                     </tfoot>
                   </Table>
                 </div>
 
-                <h6 className="fw-bold mb-3">Update Status</h6>
+                <h6 className="fw-bold mb-3">Cập nhật trạng thái</h6>
                 <div className="d-flex gap-2">
                   <Button
                     variant={
@@ -313,7 +337,7 @@ function OrdersPage() {
                       currentOrder.status === "unverified" || formSubmitting
                     }
                   >
-                    Unverified
+                    Chưa xác nhận
                   </Button>
                   <Button
                     variant={
@@ -329,7 +353,7 @@ function OrdersPage() {
                       currentOrder.status === "pending" || formSubmitting
                     }
                   >
-                    Pending
+                    Đang chờ
                   </Button>
                   <Button
                     variant={
@@ -345,7 +369,7 @@ function OrdersPage() {
                       currentOrder.status === "shipping" || formSubmitting
                     }
                   >
-                    Shipping
+                    Đang giao
                   </Button>
                   <Button
                     variant={
@@ -361,7 +385,7 @@ function OrdersPage() {
                       currentOrder.status === "delivered" || formSubmitting
                     }
                   >
-                    Delivered
+                    Đã giao
                   </Button>
                   <Button
                     variant={
@@ -377,7 +401,7 @@ function OrdersPage() {
                       currentOrder.status === "cancelled" || formSubmitting
                     }
                   >
-                    Cancelled
+                    Đã hủy
                   </Button>
                 </div>
               </div>
@@ -386,7 +410,7 @@ function OrdersPage() {
                   variant="secondary"
                   onClick={() => setIsModalOpen(false)}
                 >
-                  Close
+                  Đóng
                 </Button>
               </div>
             </div>
