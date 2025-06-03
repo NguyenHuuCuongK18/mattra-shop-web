@@ -30,7 +30,7 @@ const OrdersPage = () => {
       if (!user) return;
       setLoading(true);
       try {
-        const response = await orderAPI.getMyOrders();
+        const response = await orderAPI.getUserOrders();
         setOrders(response.data.orders || []);
       } catch (err) {
         console.error("Lỗi khi tải đơn hàng:", err);
