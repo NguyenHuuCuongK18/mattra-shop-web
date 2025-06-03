@@ -12,6 +12,9 @@ router.post("/apply-voucher", authMiddleware, orderController.applyVoucher);
 // Get user's orders
 router.get("/my-orders", authMiddleware, orderController.getUserOrders);
 
+// Get user's orders
+router.get("/:id", authMiddleware, orderController.getOrderById);
+
 // Get all orders (admin only)
 router.get("/", authMiddleware, orderController.getAllOrders);
 

@@ -100,6 +100,7 @@ export const cartAPI = {
 export const orderAPI = {
   getUserOrders: () => api.get("/api/order/my-orders"),
   getAllOrders: () => api.get("/api/order"),
+  getOrderById: (id) => api.get(`/api/order/${id}`),
   createOrder: (orderData) => api.post("/api/order/create", orderData),
   applyVoucher: (orderId, voucherCode) =>
     api.post("/api/order/apply-voucher", { orderId, voucherCode }),

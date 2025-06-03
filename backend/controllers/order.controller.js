@@ -20,11 +20,9 @@ exports.createOrder = async (req, res) => {
     const { paymentMethod, shippingAddress, voucherId, selectedItems } =
       req.body;
     if (!paymentMethod || !shippingAddress) {
-      return res
-        .status(400)
-        .json({
-          message: "Phương thức thanh toán và địa chỉ giao hàng là bắt buộc",
-        });
+      return res.status(400).json({
+        message: "Phương thức thanh toán và địa chỉ giao hàng là bắt buộc",
+      });
     }
 
     // Validate selected items & compute subtotal
@@ -469,5 +467,44 @@ exports.confirmDelivery = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Get order by ID
+exports.getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Tìm order và populate các trường liên quan
+    const order = await Order.findById(id)
+      .populate("items.productId", "name price image")
+      .populate("voucherId", "code discount_percentage max_discount")
+      .populate("userId", "username email"); // Có thể hiển thị thông tin user nếu admin gọi hoặc để kiểm tra
+
+    // 2. Nếu không tìm thấy đơn hàng
+    if (!order) {
+      return res.status(404).json({ message: "Đơn hàng không tồn tại" });
+    }
+
+    // 3. Kiểm tra quyền truy cập
+    //    - Admin có thể xem tất cả
+    //    - User thường chỉ xem được đơn hàng của chính họ
+    if (
+      req.user.role !== "admin" &&
+      order.userId._id.toString() !== req.user.id
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Bạn không có quyền xem đơn hàng này" });
+    }
+
+    // 4. Trả về đơn hàng
+    res.status(200).json({
+      message: "Lấy chi tiết đơn hàng thành công",
+      order,
+    });
+  } catch (error) {
+    console.error("getOrderById error:", error);
+    res.status(500).json({ message: "Không thể lấy chi tiết đơn hàng" });
   }
 };

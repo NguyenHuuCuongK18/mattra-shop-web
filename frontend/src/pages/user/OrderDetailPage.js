@@ -1,4 +1,4 @@
-"use client";
+// src/pages/OrderDetailPage.js
 
 import { useState, useEffect } from "react";
 import {
@@ -13,8 +13,8 @@ import {
   Alert,
 } from "react-bootstrap";
 import { useParams, useNavigate } from "react-router-dom";
-import { orderAPI } from "../../utils/api";
-import { useAuth } from "../../contexts/AuthContext";
+import { orderAPI } from "../utils/api";
+import { useAuth } from "../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 
 const OrderDetailPage = () => {
@@ -31,10 +31,10 @@ const OrderDetailPage = () => {
 
       setLoading(true);
       try {
-        const response = await orderAPI.getUserOrders();
-        const orders = response.data.orders || [];
-
-        const foundOrder = orders.find((o) => o.id === id);
+        // Gọi API lấy chi tiết order theo ID
+        const response = await orderAPI.getOrderById(id);
+        // Backend trả về { message, order }
+        const foundOrder = response.data.order;
 
         if (foundOrder) {
           setOrder(foundOrder);
@@ -44,8 +44,11 @@ const OrderDetailPage = () => {
         }
       } catch (err) {
         console.error("Lỗi khi tải chi tiết đơn hàng:", err);
-        setError("Không thể tải chi tiết đơn hàng");
-        toast.error("Không thể tải chi tiết đơn hàng");
+        // Lấy thông báo lỗi từ backend nếu có
+        const message =
+          err.response?.data?.message || "Không thể tải chi tiết đơn hàng";
+        setError(message);
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -205,14 +208,12 @@ const OrderDetailPage = () => {
 
             <Col md={6}>
               <h5>Địa chỉ giao hàng</h5>
-              {/* <-- Thông báo bổ sung --> */}
               <Alert variant="warning" className="mb-3">
                 <i className="bi bi-exclamation-circle me-2"></i>
                 <strong>
                   Các sản phẩm đồ uống hiện chỉ hỗ trợ ship ở khu vực Hòa Lạc
                 </strong>
               </Alert>
-              {/* <-- Kết thúc thông báo --> */}
               <p>{order.shippingAddress}</p>
             </Col>
           </Row>
@@ -273,7 +274,7 @@ const OrderDetailPage = () => {
                   <h5>Tóm tắt đơn hàng</h5>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Tạm tính:</span>
-                    <span>{order.totalAmount.toLocaleString("vi-VN")} VND</span>
+                    <span>{order.subtotal.toLocaleString("vi-VN")} VND</span>
                   </div>
 
                   {order.discountApplied > 0 && (
