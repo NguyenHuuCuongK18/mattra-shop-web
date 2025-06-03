@@ -98,7 +98,7 @@ export const cartAPI = {
 
 // Order API
 export const orderAPI = {
-  getMyOrders: () => api.get("/api/order/my-orders"),
+  getUserOrders: () => api.get("/api/order/my-orders"),
   getAllOrders: () => api.get("/api/order"),
   createOrder: (orderData) => api.post("/api/order/create", orderData),
   applyVoucher: (orderId, voucherCode) =>
