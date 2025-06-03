@@ -177,7 +177,7 @@ const ChatPage = () => {
               <div className="d-flex align-items-center">
                 <i className="bi bi-robot fs-3 me-3"></i>
                 <div>
-                  <h5 className="mb-0 fw-bold">Mật Trà AI Assistant</h5>
+                  <h5 className="mb-0 fw-bold">Mạt Trà AI Assistant</h5>
                   <p className="mb-0 small opacity-75">
                     Hỏi tôi bất cứ điều gì về trà và sức khỏe
                   </p>
