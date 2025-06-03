@@ -1,3 +1,5 @@
+// user.controller.js
+
 const User = require("../models/user.model");
 const BlacklistedToken = require("../models/blacklistedToken.model");
 const Subscription = require("../models/subscription.model");
@@ -11,76 +13,77 @@ const { put } = require("@vercel/blob");
 const EmailVerification = require("../models/emailVerification.model");
 
 // ------------------------------------------------------------
-// STEP 1: Send a 6-digit verification code to the user’s email
+// BƯỚC 1: Gửi mã xác minh 6 chữ số đến email người dùng
 exports.requestEmailVerification = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+      return res.status(400).json({ message: "Email là bắt buộc" });
     }
 
-    // Prevent issuing a code for an email already in use
+    // Ngăn không cấp mã cho email đã được sử dụng
     const existing = await User.findOne({ email });
     if (existing) {
-      return res.status(400).json({ message: "Email already in use" });
+      return res.status(400).json({ message: "Email đã được sử dụng" });
     }
 
-    // Generate and hash a 6-digit numeric code
+    // Tạo và hash một mã số 6 chữ số
     const plainCode = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedCode = await bcrypt.hash(plainCode, 10);
 
-    // Expire in 15 minutes
+    // Hết hạn sau 15 phút
     const expireAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    // Remove any previous codes for this email
+    // Xóa bất kỳ mã nào trước đó cho email này
     await EmailVerification.deleteMany({ email });
 
-    // Store the hashed code
+    // Lưu mã đã hash
     await new EmailVerification({ email, code: hashedCode, expireAt }).save();
 
-    // Send it
+    // Gửi mã
     await sendMail(
       email,
-      "Your Verification Code",
-      `Your 6-digit verification code is: ${plainCode}\nIt will expire in 15 minutes.`
+      "Mã xác minh của bạn",
+      `Mã xác minh 6 chữ số của bạn là: ${plainCode}\nMã sẽ hết hiệu lực sau 15 phút.`
     );
 
-    res.status(200).json({ message: "Verification code sent to email" });
+    res.status(200).json({ message: "Mã xác minh đã được gửi đến email" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// BƯỚC 2: Đăng ký người dùng
 exports.register = async (req, res) => {
   try {
     const { username, name, email, password, address, verificationCode } =
       req.body;
     if (!username || !name || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({ message: "Tất cả các trường là bắt buộc" });
     }
-    // STEP 2: Verify the emailed code
+    // Kiểm tra mã đã gửi qua email
     if (!verificationCode) {
-      return res.status(400).json({ message: "Verification code is required" });
+      return res.status(400).json({ message: "Mã xác minh là bắt buộc" });
     }
     const record = await EmailVerification.findOne({ email });
     if (!record) {
       return res
         .status(400)
-        .json({ message: "No verification code found for this email" });
+        .json({ message: "Không tìm thấy mã xác minh cho email này" });
     }
     const codeMatches = await bcrypt.compare(verificationCode, record.code);
     if (!codeMatches) {
-      return res.status(400).json({ message: "Invalid verification code" });
+      return res.status(400).json({ message: "Mã xác minh không hợp lệ" });
     }
-    // Consume the used code
+    // Xóa mã đã sử dụng
     await EmailVerification.deleteOne({ _id: record._id });
 
-    // Existing register logic
+    // Logic đăng ký thông thường
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res
         .status(400)
-        .json({ message: "Username or email already exists" });
+        .json({ message: "Tên đăng nhập hoặc email đã tồn tại" });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
@@ -92,7 +95,7 @@ exports.register = async (req, res) => {
     });
     await newUser.save();
     res.status(201).json({
-      message: "User registered successfully",
+      message: "Đăng ký người dùng thành công",
       user: {
         id: newUser._id,
         username: newUser.username,
@@ -107,13 +110,15 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Đăng nhập người dùng
 exports.login = async (req, res) => {
   try {
     const { identification, password } = req.body;
     if (!identification || !password) {
       return res
         .status(400)
-        .json({ message: "Identification and password are required" });
+        .json({ message: "Tên đăng nhập/email và mật khẩu là bắt buộc" });
     }
     const user = await User.findOne({
       $or: [{ email: identification }, { username: identification }],
@@ -127,11 +132,15 @@ exports.login = async (req, res) => {
         "code discount_percentage max_discount subscriberOnly expires_at"
       );
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res
+        .status(400)
+        .json({ message: "Thông tin đăng nhập không hợp lệ" });
     }
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res
+        .status(400)
+        .json({ message: "Thông tin đăng nhập không hợp lệ" });
     }
     const token = jwt.sign(
       { id: user._id, role: user.role },
@@ -139,7 +148,7 @@ exports.login = async (req, res) => {
       { expiresIn: "7d" }
     );
     res.status(200).json({
-      message: "User logged in successfully",
+      message: "Đăng nhập thành công",
       token,
       user: {
         id: user._id,
@@ -158,6 +167,7 @@ exports.login = async (req, res) => {
   }
 };
 
+// Lấy thông tin cá nhân người dùng
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
@@ -171,7 +181,7 @@ exports.getProfile = async (req, res) => {
         "code discount_percentage max_discount subscriberOnly expires_at"
       );
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
     res.json({
       id: user._id,
@@ -189,58 +199,61 @@ exports.getProfile = async (req, res) => {
   }
 };
 
+// Đổi mật khẩu
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) {
       return res
         .status(400)
-        .json({ message: "Current and new passwords are required" });
+        .json({ message: "Mật khẩu hiện tại và mật khẩu mới là bắt buộc" });
     }
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Current password is incorrect" });
+      return res.status(400).json({ message: "Mật khẩu hiện tại không đúng" });
     }
     user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
-    res.status(200).json({ message: "Password changed successfully" });
+    res.status(200).json({ message: "Đổi mật khẩu thành công" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Yêu cầu đặt lại mật khẩu
 exports.requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+      return res.status(400).json({ message: "Email là bắt buộc" });
     }
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
     const token = crypto.randomBytes(20).toString("hex");
     user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 giờ
     await user.save();
     const frontendUrl =
       process.env.FRONTEND_URL || "https://mattra-online-shop.vercel.app";
     const resetLink = `${frontendUrl}/reset-password/?token=${token}`;
     await sendMail(
       user.email,
-      "Password Reset Request",
-      `Click the following link to reset your password: ${resetLink}\nThis link will expire in 1 hour.`
+      "Yêu cầu đặt lại mật khẩu",
+      `Nhấn vào liên kết sau để đặt lại mật khẩu: ${resetLink}\nLiên kết này sẽ hết hạn sau 1 giờ.`
     );
-    res.status(200).json({ message: "Password reset email sent" });
+    res.status(200).json({ message: "Email đặt lại mật khẩu đã được gửi" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Đặt lại mật khẩu
 exports.resetPassword = async (req, res) => {
   try {
     const { token } = req.body;
@@ -248,12 +261,12 @@ exports.resetPassword = async (req, res) => {
     if (!token) {
       return res
         .status(400)
-        .json({ message: "Token is required in request body" });
+        .json({ message: "Token là bắt buộc trong request body" });
     }
     if (!newPassword) {
       return res
         .status(400)
-        .json({ message: "New password is required in request body" });
+        .json({ message: "Mật khẩu mới là bắt buộc trong request body" });
     }
     const user = await User.findOne({
       resetPasswordToken: token,
@@ -262,35 +275,36 @@ exports.resetPassword = async (req, res) => {
     if (!user) {
       return res
         .status(400)
-        .json({ message: "Token is invalid or has expired" });
+        .json({ message: "Token không hợp lệ hoặc đã hết hạn" });
     }
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
-    res.status(200).json({ message: "Password reset successfully" });
+    res.status(200).json({ message: "Đặt lại mật khẩu thành công" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Cập nhật thông tin người dùng
 exports.updateUserInfo = async (req, res) => {
   try {
     const { name, address } = req.body;
     if (!name && !address) {
       return res.status(400).json({
-        message: "At least one field (name or address) must be provided",
+        message: "Phải cung cấp ít nhất một trường (name hoặc address)",
       });
     }
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
     if (name) user.name = name;
     if (address) user.address = address;
     await user.save();
     res.status(200).json({
-      message: "User information updated successfully",
+      message: "Cập nhật thông tin người dùng thành công",
       user: {
         id: user._id,
         username: user.username,
@@ -306,31 +320,33 @@ exports.updateUserInfo = async (req, res) => {
   }
 };
 
+// Đăng xuất (lưu token vào blacklist)
 exports.logout = async (req, res) => {
   try {
     const token = req.header("Authorization")?.replace("Bearer ", "");
     if (!token) {
-      return res.status(400).json({ message: "No token provided" });
+      return res.status(400).json({ message: "Không có token" });
     }
     const decoded = jwt.decode(token);
     if (!decoded || !decoded.exp) {
-      return res.status(400).json({ message: "Invalid token" });
+      return res.status(400).json({ message: "Token không hợp lệ" });
     }
     const blacklistedToken = new BlacklistedToken({
       token,
       expiresAt: new Date(decoded.exp * 1000),
     });
     await blacklistedToken.save();
-    res.status(200).json({ message: "Logged out successfully" });
+    res.status(200).json({ message: "Đăng xuất thành công" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Lấy tất cả người dùng (chỉ admin)
 exports.getAllUsers = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
+      return res.status(403).json({ message: "Cần quyền admin" });
     }
     const users = await User.find({})
       .select("-password -resetPasswordToken -resetPasswordExpires")
@@ -343,50 +359,54 @@ exports.getAllUsers = async (req, res) => {
         "code discount_percentage max_discount subscriberOnly expires_at"
       );
     res.status(200).json({
-      message: "Users retrieved successfully",
+      message: "Lấy danh sách người dùng thành công",
       users,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Cập nhật trạng thái subscription cho user (chỉ admin)
 exports.updateSubscriptionStatus = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
+      return res.status(403).json({ message: "Cần quyền admin" });
     }
 
     const { subscriptionId, status, startDate } = req.body;
     if (!status || !["active", "inactive"].includes(status)) {
       return res
         .status(400)
-        .json({ message: "Valid status (active/inactive) is required" });
+        .json({ message: "Cần cung cấp status hợp lệ (active/inactive)" });
     }
 
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
     if (user.role === "admin") {
       return res
         .status(400)
-        .json({ message: "Cannot modify admin subscription" });
+        .json({ message: "Không thể sửa subscription của admin" });
     }
 
     if (status === "active") {
       if (!subscriptionId) {
         return res
           .status(400)
-          .json({ message: "subscriptionId is required for active status" });
+          .json({ message: "subscriptionId là bắt buộc khi active" });
       }
       const subscription = await Subscription.findById(subscriptionId);
       if (!subscription) {
-        return res.status(404).json({ message: "Subscription not found" });
+        return res
+          .status(404)
+          .json({ message: "Không tìm thấy gói subscription" });
       }
 
       const start = startDate ? new Date(startDate) : new Date();
       if (isNaN(start.getTime())) {
-        return res.status(400).json({ message: "Invalid startDate" });
+        return res.status(400).json({ message: "startDate không hợp lệ" });
       }
       const end = new Date(start);
       end.setMonth(end.getMonth() + subscription.duration);
@@ -413,7 +433,7 @@ exports.updateSubscriptionStatus = async (req, res) => {
       );
 
     res.status(200).json({
-      message: `User subscription updated to ${status}`,
+      message: `Cập nhật subscription cho user sang ${status} thành công`,
       user: {
         id: populatedUser._id,
         username: populatedUser.username,
@@ -429,7 +449,7 @@ exports.updateSubscriptionStatus = async (req, res) => {
   }
 };
 
-// Multer setup for avatar upload
+// Cấu hình multer để upload avatar
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
@@ -437,20 +457,23 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
     if (!allowedTypes.includes(file.mimetype)) {
-      return cb(new Error("Only JPEG and PNG files are allowed"), false);
+      return cb(new Error("Chỉ cho phép tệp JPEG và PNG"), false);
     }
     cb(null, true);
   },
 }).single("avatar");
 
+// Cập nhật avatar người dùng
 exports.updateAvatar = (req, res) => {
   upload(req, res, async (err) => {
     if (err) return res.status(400).json({ message: err.message });
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file)
+      return res.status(400).json({ message: "Không có tệp tải lên" });
 
     try {
       const user = await User.findById(req.user.id);
-      if (!user) return res.status(404).json({ message: "User not found" });
+      if (!user)
+        return res.status(404).json({ message: "Không tìm thấy người dùng" });
 
       const filename = `avatars/${user._id}_${Date.now()}${path.extname(
         req.file.originalname
@@ -465,33 +488,34 @@ exports.updateAvatar = (req, res) => {
 
       res
         .status(200)
-        .json({ message: "Profile picture updated", avatarUrl: blob.url });
+        .json({
+          message: "Cập nhật ảnh đại diện thành công",
+          avatarUrl: blob.url,
+        });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
   });
 };
 
-// Delete a user (admin only, cannot delete another admin)
+// Xóa người dùng (chỉ admin, không xóa admin khác)
 exports.deleteUser = async (req, res) => {
   try {
-    // only admins may delete users
     if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
+      return res.status(403).json({ message: "Cần quyền admin" });
     }
 
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Không tìm thấy người dùng" });
     }
 
-    // prevent deleting other admins
     if (user.role === "admin") {
-      return res.status(400).json({ message: "Cannot delete admin user" });
+      return res.status(400).json({ message: "Không thể xóa tài khoản admin" });
     }
 
     await User.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "User deleted successfully" });
+    res.status(200).json({ message: "Xóa người dùng thành công" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

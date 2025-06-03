@@ -5,6 +5,15 @@ const Voucher = require("../models/voucher.model");
 const User = require("../models/user.model");
 const { sendMail } = require("./mail.controller");
 
+// Bản đồ dịch trạng thái đơn hàng sang tiếng Việt
+const statusMap = {
+  unverified: "Chưa xác nhận",
+  pending: "Đang xử lý",
+  shipping: "Đang giao hàng",
+  delivered: "Đã giao hàng",
+  cancelled: "Đã hủy",
+};
+
 // Create a new order
 exports.createOrder = async (req, res) => {
   try {
@@ -13,7 +22,9 @@ exports.createOrder = async (req, res) => {
     if (!paymentMethod || !shippingAddress) {
       return res
         .status(400)
-        .json({ message: "Payment method and shipping address are required" });
+        .json({
+          message: "Phương thức thanh toán và địa chỉ giao hàng là bắt buộc",
+        });
     }
 
     // Validate selected items & compute subtotal
@@ -24,12 +35,12 @@ exports.createOrder = async (req, res) => {
       if (!product) {
         return res
           .status(404)
-          .json({ message: `Product ${item.productId} not found` });
+          .json({ message: `Không tìm thấy sản phẩm ${item.productId}` });
       }
       if (product.countInStock < item.quantity) {
         return res
           .status(400)
-          .json({ message: `Insufficient stock for product ${product.name}` });
+          .json({ message: `Sản phẩm ${product.name} không đủ số lượng` });
       }
       product.countInStock -= item.quantity;
       await product.save();
@@ -43,19 +54,17 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // Apply voucher if provided
+    // Áp dụng voucher nếu có
     let discountApplied = 0;
     let appliedVoucherId = null;
     if (voucherId) {
-      // 1) Load user + their vouchers
       const user = await User.findById(req.user.id).populate(
         "vouchers.voucherId"
       );
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ message: "Người dùng không tồn tại" });
       }
 
-      // 2) Find the specific voucher entry
       const userVoucher = user.vouchers.find(
         (v) =>
           v.voucherId._id.toString() === voucherId && v.status === "available"
@@ -63,23 +72,21 @@ exports.createOrder = async (req, res) => {
       if (!userVoucher) {
         return res
           .status(400)
-          .json({ message: "Voucher not available for this user" });
+          .json({ message: "Voucher không khả dụng cho người dùng này" });
       }
       const voucher = userVoucher.voucherId;
 
-      // 3) Check expiration & subscriber-only
       if (voucher.expires_at < new Date()) {
         userVoucher.status = "expired";
         await user.save();
-        return res.status(400).json({ message: "Voucher has expired" });
+        return res.status(400).json({ message: "Voucher đã hết hạn" });
       }
       if (voucher.subscriberOnly && user.role !== "subscriber") {
         return res
           .status(403)
-          .json({ message: "This voucher is exclusive to subscribers" });
+          .json({ message: "Voucher này chỉ dành cho người đăng ký" });
       }
 
-      // 4) Apply discount & mark _only_ the user’s voucher as used
       discountApplied = Math.min(
         (voucher.discount_percentage / 100) * totalAmount,
         voucher.max_discount || Infinity
@@ -90,7 +97,7 @@ exports.createOrder = async (req, res) => {
       await user.save();
     }
 
-    // Create the order
+    // Tạo đơn hàng
     const order = new Order({
       userId: req.user.id,
       items,
@@ -104,39 +111,45 @@ exports.createOrder = async (req, res) => {
     });
     await order.save();
 
-    // Clear the user's cart
+    // Xóa giỏ hàng của người dùng
     await Cart.findOneAndDelete({ userId: req.user.id });
 
-    // Send confirmation email
+    // Gửi email xác nhận bằng tiếng Việt
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
       .populate("userId", "username email")
       .populate("voucherId", "code discount_percentage max_discount");
     try {
+      const formattedTotal =
+        populatedOrder.totalAmount.toLocaleString("vi-VN") + "₫";
+      const formattedDiscount =
+        populatedOrder.discountApplied.toLocaleString("vi-VN") + "₫";
+
       await sendMail(
         populatedOrder.userId.email,
-        "Your order has been created – Mattra Shop",
-        `Hello ${populatedOrder.userId.username},\n\n` +
-          `Your order (ID: ${populatedOrder._id}) has been created successfully.\n` +
-          `Total Amount: $${populatedOrder.totalAmount.toFixed(2)}\n` +
-          `Discount Applied: $${populatedOrder.discountApplied.toFixed(2)}\n` +
-          `You can view all your orders here:\n` +
+        "Đơn hàng của bạn đã được tạo – Mattra Shop",
+        `Xin chào ${populatedOrder.userId.username},\n\n` +
+          `Đơn hàng của bạn (Mã: ${populatedOrder._id}) đã được tạo thành công.\n` +
+          `Tổng tiền: ${formattedTotal}\n` +
+          `Giảm giá: ${formattedDiscount}\n` +
+          `Bạn có thể xem tất cả đơn hàng tại:\n` +
           `https://mattra-online-shop.vercel.app/orders\n\n` +
-          `Thank you for shopping with us!`
+          `Cảm ơn bạn đã mua hàng!`
       );
     } catch (error) {
-      console.error("Error sending order creation email:", error);
+      console.error("Lỗi khi gửi email tạo đơn:", error);
     }
 
     res.status(201).json({
-      message: "Order created successfully",
+      message: "Tạo đơn hàng thành công",
       order: populatedOrder,
     });
   } catch (error) {
     console.error("Create order error:", error);
-    res.status(500).json({ message: "Failed to create order" });
+    res.status(500).json({ message: "Tạo đơn hàng thất bại" });
   }
 };
+
 // Apply a voucher to an existing order
 exports.applyVoucher = async (req, res) => {
   try {
@@ -144,36 +157,32 @@ exports.applyVoucher = async (req, res) => {
     if (!orderId || !voucherId) {
       return res
         .status(400)
-        .json({ message: "Order ID and voucher ID are required" });
+        .json({ message: "Mã đơn hàng và mã voucher là bắt buộc" });
     }
 
-    // 1) Find & validate order
     const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Đơn hàng không tồn tại" });
     }
     if (order.userId.toString() !== req.user.id) {
       return res
         .status(403)
-        .json({ message: "You can only apply vouchers to your own orders" });
+        .json({ message: "Bạn chỉ có thể áp dụng voucher cho đơn của mình" });
     }
     if (order.status !== "unverified") {
       return res
         .status(400)
-        .json({ message: "Vouchers can only be applied to unverified orders" });
+        .json({ message: "Chỉ có thể áp dụng voucher cho đơn chưa xác nhận" });
     }
     if (order.voucherId) {
-      return res
-        .status(400)
-        .json({ message: "Order already has a voucher applied" });
+      return res.status(400).json({ message: "Đơn hàng đã có voucher" });
     }
 
-    // 2) Load user + find matching voucher entry
     const user = await User.findById(req.user.id).populate(
       "vouchers.voucherId"
     );
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "Người dùng không tồn tại" });
     }
     const userVoucher = user.vouchers.find(
       (v) =>
@@ -182,23 +191,21 @@ exports.applyVoucher = async (req, res) => {
     if (!userVoucher) {
       return res
         .status(400)
-        .json({ message: "Voucher not available for this user" });
+        .json({ message: "Voucher không khả dụng cho người dùng này" });
     }
     const voucher = userVoucher.voucherId;
 
-    // 3) Per-user expiration & subscriber-only checks
     if (voucher.expires_at < new Date()) {
       userVoucher.status = "expired";
       await user.save();
-      return res.status(400).json({ message: "Voucher has expired" });
+      return res.status(400).json({ message: "Voucher đã hết hạn" });
     }
     if (voucher.subscriberOnly && user.role !== "subscriber") {
       return res
         .status(403)
-        .json({ message: "This voucher is exclusive to subscribers" });
+        .json({ message: "Voucher này chỉ dành cho người đăng ký" });
     }
 
-    // 4) Apply discount to the existing order
     const baseTotal = order.totalAmount + order.discountApplied;
     const discountApplied = Math.min(
       (voucher.discount_percentage / 100) * baseTotal,
@@ -209,37 +216,40 @@ exports.applyVoucher = async (req, res) => {
     order.voucherId = voucher._id;
     await order.save();
 
-    // 5) Mark _only_ the user’s voucher as used
     userVoucher.status = "used";
     await user.save();
 
-    // 6) (Optional) Send voucher-applied email
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
       .populate("userId", "username email");
     try {
+      const formattedDiscount =
+        populatedOrder.discountApplied.toLocaleString("vi-VN") + "₫";
+      const formattedTotal =
+        populatedOrder.totalAmount.toLocaleString("vi-VN") + "₫";
+
       await sendMail(
         populatedOrder.userId.email,
-        `Voucher applied to your order – Mattra Shop`,
-        `Hello ${populatedOrder.userId.username},\n\n` +
-          `A voucher (${voucher.code}) has been applied to your order (ID: ${populatedOrder._id}).\n` +
-          `Discount Applied: $${populatedOrder.discountApplied.toFixed(2)}\n` +
-          `New Total Amount: $${populatedOrder.totalAmount.toFixed(2)}\n` +
-          `You can view your order here:\n` +
+        "Voucher đã được áp dụng cho đơn hàng – Mattra Shop",
+        `Xin chào ${populatedOrder.userId.username},\n\n` +
+          `Mã voucher (${voucher.code}) đã được áp dụng cho đơn hàng (Mã: ${populatedOrder._id}).\n` +
+          `Giảm giá: ${formattedDiscount}\n` +
+          `Tổng tiền mới: ${formattedTotal}\n` +
+          `Bạn có thể xem chi tiết đơn hàng tại:\n` +
           `https://mattra-online-shop.vercel.app/orders\n\n` +
-          `Thank you for shopping with us!`
+          `Cảm ơn bạn!`
       );
     } catch (error) {
-      console.error("Error sending voucher applied email:", error);
+      console.error("Lỗi khi gửi email voucher:", error);
     }
 
     res.status(200).json({
-      message: "Voucher applied successfully",
+      message: "Áp dụng voucher thành công",
       order: populatedOrder,
     });
   } catch (error) {
     console.error("Apply voucher error:", error);
-    res.status(500).json({ message: "Failed to apply voucher" });
+    res.status(500).json({ message: "Không thể áp dụng voucher" });
   }
 };
 
@@ -251,7 +261,7 @@ exports.getUserOrders = async (req, res) => {
       .select("-__v");
 
     res.status(200).json({
-      message: "Orders retrieved successfully",
+      message: "Lấy danh sách đơn hàng thành công",
       orders,
     });
   } catch (error) {
@@ -262,7 +272,7 @@ exports.getUserOrders = async (req, res) => {
 exports.getAllOrders = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
+      return res.status(403).json({ message: "Cần quyền admin" });
     }
 
     const orders = await Order.find()
@@ -272,7 +282,7 @@ exports.getAllOrders = async (req, res) => {
       .select("-__v");
 
     res.status(200).json({
-      message: "Orders retrieved successfully",
+      message: "Lấy danh sách đơn hàng thành công",
       orders,
     });
   } catch (error) {
@@ -285,17 +295,17 @@ exports.cancelUserOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Đơn hàng không tồn tại" });
     }
     if (order.userId.toString() !== req.user.id) {
       return res
         .status(403)
-        .json({ message: "You can only cancel your own orders" });
+        .json({ message: "Bạn chỉ có thể hủy đơn của chính mình" });
     }
     if (order.status !== "unverified") {
       return res
         .status(400)
-        .json({ message: "Order can only be cancelled in unverified status" });
+        .json({ message: "Chỉ có thể hủy đơn ở trạng thái chưa xác nhận" });
     }
 
     // Restore voucher to user if one was applied
@@ -310,7 +320,6 @@ exports.cancelUserOrder = async (req, res) => {
       }
       order.voucherId = null;
       order.discountApplied = 0;
-      // Recompute totalAmount from line items
       order.totalAmount = order.items.reduce(
         (sum, item) => sum + item.price * item.quantity,
         0
@@ -320,22 +329,41 @@ exports.cancelUserOrder = async (req, res) => {
     order.status = "cancelled";
     await order.save();
 
-    res.status(200).json({ message: "Order cancelled successfully", order });
+    // Gửi email thông báo hủy đơn bằng tiếng Việt
+    try {
+      const user = await User.findById(req.user.id);
+      const formattedTotal = order.totalAmount.toLocaleString("vi-VN") + "₫";
+
+      await sendMail(
+        user.email,
+        "Bạn đã hủy đơn hàng – Mattra Shop",
+        `Xin chào ${user.username},\n\n` +
+          `Bạn đã hủy đơn hàng (Mã: ${order._id}).\n` +
+          `Tổng tiền của đơn: ${formattedTotal}\n` +
+          `Nếu bạn muốn yêu cầu hoàn tiền, vui lòng liên hệ chúng tôi tại:\n` +
+          `https://www.facebook.com/profile.php?id=61576949481579\n\n` +
+          `Cảm ơn bạn!`
+      );
+    } catch (error) {
+      console.error("Lỗi khi gửi email hủy đơn:", error);
+    }
+
+    res.status(200).json({ message: "Huỷ đơn hàng thành công", order });
   } catch (error) {
     console.error("Cancel order error:", error);
-    res.status(500).json({ message: "Failed to cancel order" });
+    res.status(500).json({ message: "Huỷ đơn hàng thất bại" });
   }
 };
 
 exports.updateOrderStatus = async (req, res) => {
   try {
     if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
+      return res.status(403).json({ message: "Cần quyền admin" });
     }
 
     const { status } = req.body;
     if (!status) {
-      return res.status(400).json({ message: "Status is required" });
+      return res.status(400).json({ message: "Trạng thái là bắt buộc" });
     }
 
     const validStatuses = [
@@ -346,18 +374,18 @@ exports.updateOrderStatus = async (req, res) => {
       "cancelled",
     ];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
+      return res.status(400).json({ message: "Trạng thái không hợp lệ" });
     }
 
     const order = await Order.findById(req.params.id);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Đơn hàng không tồn tại" });
     }
 
     if (order.status === status) {
       return res
         .status(400)
-        .json({ message: `Order is already in ${status} status` });
+        .json({ message: `Đơn đã ở trạng thái ${statusMap[status]}` });
     }
 
     const validTransitions = {
@@ -369,7 +397,9 @@ exports.updateOrderStatus = async (req, res) => {
     };
     if (!validTransitions[order.status].includes(status)) {
       return res.status(400).json({
-        message: `Cannot transition from ${order.status} to ${status}`,
+        message: `Không thể chuyển từ ${statusMap[order.status]} sang ${
+          statusMap[status]
+        }`,
       });
     }
 
@@ -381,23 +411,24 @@ exports.updateOrderStatus = async (req, res) => {
       .populate("userId", "username email")
       .populate("voucherId", "code discount_percentage max_discount");
 
-    // Send order status update email
+    // Gửi email cập nhật trạng thái đơn bằng tiếng Việt
     try {
+      const formattedStatus = statusMap[status];
       await sendMail(
         populatedOrder.userId.email,
-        `Order #${populatedOrder._id} status updated – Mattra Shop`,
-        `Hello ${populatedOrder.userId.username},\n\n` +
-          `The status of your order (ID: ${populatedOrder._id}) has been updated to "${status}".\n` +
-          `You can view your orders here:\n` +
+        `Đơn hàng #${populatedOrder._id} đã được cập nhật – Mattra Shop`,
+        `Xin chào ${populatedOrder.userId.username},\n\n` +
+          `Trạng thái của đơn hàng (Mã: ${populatedOrder._id}) đã được cập nhật sang "${formattedStatus}".\n` +
+          `Bạn có thể xem chi tiết đơn hàng tại:\n` +
           `https://mattra-online-shop.vercel.app/orders\n\n` +
-          `Thank you for shopping with us!`
+          `Cảm ơn bạn!`
       );
     } catch (error) {
-      console.error("Error sending order status update email:", error);
+      console.error("Lỗi khi gửi email cập nhật trạng thái:", error);
     }
 
     res.status(200).json({
-      message: "Order status updated successfully",
+      message: "Cập nhật trạng thái thành công",
       order: populatedOrder,
     });
   } catch (error) {
@@ -409,18 +440,18 @@ exports.confirmDelivery = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: "Đơn hàng không tồn tại" });
     }
 
     if (order.userId.toString() !== req.user.id) {
       return res
         .status(403)
-        .json({ message: "You can only confirm your own orders" });
+        .json({ message: "Bạn chỉ có thể xác nhận đơn của chính mình" });
     }
 
     if (order.status !== "shipping") {
       return res.status(400).json({
-        message: "Order must be in 'shipping' status to confirm delivery",
+        message: "Đơn phải ở trạng thái 'Đang giao hàng' để xác nhận",
       });
     }
 
@@ -433,7 +464,7 @@ exports.confirmDelivery = async (req, res) => {
       .populate("voucherId", "code discount_percentage max_discount");
 
     res.status(200).json({
-      message: "Delivery confirmed successfully",
+      message: "Xác nhận giao hàng thành công",
       order: populatedOrder,
     });
   } catch (error) {
