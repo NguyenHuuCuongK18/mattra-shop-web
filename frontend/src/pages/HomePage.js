@@ -70,9 +70,7 @@ function HomePage() {
             </h1>
 
             {/* Subheading */}
-            <h3 className="fw-semibold mb-3">
-              CÂU CHUYỆN THƯƠNG HIỆU: Câu Chuyện Thương Hiệu Mạt Trà
-            </h3>
+            <h3 className="fw-semibold mb-3">Câu Chuyện Thương Hiệu Mạt Trà</h3>
 
             {/* Paragraphs */}
             <p className="mb-3">
