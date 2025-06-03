@@ -157,6 +157,12 @@ const OrderDetailPage = () => {
     );
   }
 
+  // Tính subtotal bằng cách cộng (price * quantity) của từng item
+  const subtotal = order.items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
   return (
     <Container className="py-5">
       <Button
@@ -169,7 +175,10 @@ const OrderDetailPage = () => {
 
       <Card className="mb-4">
         <Card.Header className="d-flex justify-content-between align-items-center">
-          <h4 className="mb-0">Đơn hàng #{order.id.substring(0, 8)}...</h4>
+          {/* Sử dụng _id thay vì id, vì Mongoose lưu khóa chính trong _id */}
+          <h4 className="mb-0">
+            Đơn hàng #{order._id.toString().substring(0, 8)}...
+          </h4>
           {getStatusBadge(order.status)}
         </Card.Header>
 
@@ -274,7 +283,7 @@ const OrderDetailPage = () => {
                   <h5>Tóm tắt đơn hàng</h5>
                   <div className="d-flex justify-content-between mb-2">
                     <span>Tạm tính:</span>
-                    <span>{order.subtotal.toLocaleString("vi-VN")} VND</span>
+                    <span>{subtotal.toLocaleString("vi-VN")} VND</span>
                   </div>
 
                   {order.discountApplied > 0 && (
