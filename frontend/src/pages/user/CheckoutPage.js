@@ -33,7 +33,7 @@ const CheckoutPage = () => {
   );
   const [discountAmount, setDiscountAmount] = useState(0);
   const [shippingAddress, setShippingAddress] = useState(user?.address || "");
-  const [paymentMethod, setPaymentMethod] = useState("Ngân hàng trực tuyến");
+  const [paymentMethod, setPaymentMethod] = useState("Online Banking");
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
 
@@ -156,7 +156,7 @@ const CheckoutPage = () => {
     try {
       // 1. Tạo đơn hàng
       const orderData = {
-        paymentMethod: "Ngân hàng trực tuyến",
+        paymentMethod: "Online Banking",
         shippingAddress,
         selectedItems: cart.items.map((item) => ({
           productId: item.productId._id || item.productId.id,
@@ -288,10 +288,10 @@ const CheckoutPage = () => {
                     <Form.Check
                       type="radio"
                       id="online"
-                      label="Ngân hàng trực tuyến"
+                      label="Online Banking"
                       name="paymentMethod"
-                      value="Ngân hàng trực tuyến"
-                      checked={paymentMethod === "Ngân hàng trực tuyến"}
+                      value="Online Banking"
+                      checked={paymentMethod === "Online Banking"}
                       onChange={(e) => setPaymentMethod(e.target.value)}
                     />
                   </div>
