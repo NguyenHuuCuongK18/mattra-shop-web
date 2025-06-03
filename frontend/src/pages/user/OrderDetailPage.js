@@ -14,7 +14,7 @@ import {
 } from "react-bootstrap";
 import { useParams, useNavigate } from "react-router-dom";
 import { orderAPI } from "../../utils/api";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "react-hot-toast";
 
 const OrderDetailPage = () => {
