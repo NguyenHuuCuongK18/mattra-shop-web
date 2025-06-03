@@ -229,37 +229,61 @@ const OrderDetailPage = () => {
 
           <h5>Sản phẩm đã đặt</h5>
           <ListGroup className="mb-4">
-            {order.items.map((item, index) => (
-              <ListGroup.Item key={index}>
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center">
-                    {item.productId.image && (
-                      <img
-                        src={item.productId.image || "/placeholder.svg"}
-                        alt={item.productId.name}
-                        style={{
-                          width: "50px",
-                          height: "50px",
-                          objectFit: "cover",
-                          marginRight: "15px",
-                        }}
-                        className="rounded"
-                      />
-                    )}
-                    <div>
-                      <h6 className="mb-0">{item.productId.name}</h6>
-                      <small className="text-muted">
-                        {item.price.toLocaleString("vi-VN")} VND x{" "}
-                        {item.quantity}
-                      </small>
+            {order.items.map((item, index) => {
+              // Lấy thông tin product, có thể null nếu sản phẩm đã bị xóa
+              const product = item.productId || null;
+              return (
+                <ListGroup.Item key={index}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <div className="d-flex align-items-center">
+                      {product?.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          style={{
+                            width: "50px",
+                            height: "50px",
+                            objectFit: "cover",
+                            marginRight: "15px",
+                          }}
+                          className="rounded"
+                        />
+                      ) : (
+                        // Nếu không có hình, hiển thị placeholder hoặc icon
+                        <div
+                          style={{
+                            width: "50px",
+                            height: "50px",
+                            backgroundColor: "#e9ecef",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginRight: "15px",
+                            borderRadius: "4px",
+                            color: "#6c757d",
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          No Image
+                        </div>
+                      )}
+                      <div>
+                        <h6 className="mb-0">
+                          {product?.name || "Sản phẩm không tồn tại"}
+                        </h6>
+                        <small className="text-muted">
+                          {item.price.toLocaleString("vi-VN")} VND x{" "}
+                          {item.quantity}
+                        </small>
+                      </div>
                     </div>
+                    <span>
+                      {(item.price * item.quantity).toLocaleString("vi-VN")} VND
+                    </span>
                   </div>
-                  <span>
-                    {(item.price * item.quantity).toLocaleString("vi-VN")} VND
-                  </span>
-                </div>
-              </ListGroup.Item>
-            ))}
+                </ListGroup.Item>
+              );
+            })}
           </ListGroup>
 
           <Row>
