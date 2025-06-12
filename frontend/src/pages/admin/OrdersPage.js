@@ -195,7 +195,7 @@ function OrdersPage() {
                           : order.status}
                       </Badge>
                     </td>
-                    {/* <td className="text-end">
+                    <td className="text-end">
                       <Button
                         variant="link"
                         className="text-success p-0"
@@ -203,7 +203,7 @@ function OrdersPage() {
                       >
                         Xem chi tiết
                       </Button>
-                    </td> */}
+                    </td>
                   </tr>
                 ))
               ) : (
