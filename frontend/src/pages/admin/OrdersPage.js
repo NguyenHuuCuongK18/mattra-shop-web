@@ -6,6 +6,13 @@ import { orderAPI } from "../../utils/api";
 import Button from "../../components/ui/Button";
 import Card from "../../components/ui/Card";
 
+/**
+ * Displays and manages the orders page, allowing users to view, search, filter, and update order statuses.
+ *
+ * Fetches orders from the API on mount, supports searching by order ID or customer username, and filtering by order status. Provides a detailed modal view for each order, including customer and order information, shipping address, ordered products, and status update controls.
+ *
+ * @returns {JSX.Element} The rendered orders management page.
+ */
 function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
