@@ -1,5 +1,3 @@
-// user.controller.js
-
 const User = require("../models/user.model");
 const BlacklistedToken = require("../models/blacklistedToken.model");
 const Subscription = require("../models/subscription.model");
@@ -12,7 +10,6 @@ const path = require("path");
 const { put } = require("@vercel/blob");
 const EmailVerification = require("../models/emailVerification.model");
 
-// ------------------------------------------------------------
 // BƯỚC 1: Gửi mã xác minh 6 chữ số đến email người dùng
 exports.requestEmailVerification = async (req, res) => {
   try {
@@ -56,44 +53,60 @@ exports.requestEmailVerification = async (req, res) => {
 // BƯỚC 2: Đăng ký người dùng
 exports.register = async (req, res) => {
   try {
-    const { username, name, email, password, address, verificationCode } =
-      req.body;
-    if (!username || !name || !email || !password) {
-      return res.status(400).json({ message: "Tất cả các trường là bắt buộc" });
+    const {
+      username,
+      name,
+      email,
+      password,
+      phone,
+      address,
+      verificationCode,
+    } = req.body;
+
+    // Bắt buộc nhập số điện thoại
+    if (!username || !name || !email || !password || !phone) {
+      return res.status(400).json({
+        message: "Tất cả các trường (bao gồm số điện thoại) là bắt buộc",
+      });
     }
-    // Kiểm tra mã đã gửi qua email
+
+    // Kiểm tra mã xác minh
     if (!verificationCode) {
       return res.status(400).json({ message: "Mã xác minh là bắt buộc" });
     }
     const record = await EmailVerification.findOne({ email });
-    if (!record) {
-      return res
-        .status(400)
-        .json({ message: "Không tìm thấy mã xác minh cho email này" });
-    }
-    const codeMatches = await bcrypt.compare(verificationCode, record.code);
-    if (!codeMatches) {
+    if (!record || !(await bcrypt.compare(verificationCode, record.code))) {
       return res.status(400).json({ message: "Mã xác minh không hợp lệ" });
     }
-    // Xóa mã đã sử dụng
-    await EmailVerification.deleteOne({ _id: record._id });
 
-    // Logic đăng ký thông thường
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "Tên đăng nhập hoặc email đã tồn tại" });
+    // Kiểm tra trùng email/username
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res.status(400).json({ message: "Tên đăng nhập đã được sử dụng" });
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ message: "Email đã được sử dụng" });
+    }
+
+    // Hash mật khẩu
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Tạo người dùng mới
     const newUser = new User({
       username,
       name,
       email,
       password: hashedPassword,
+      phone,
       address,
     });
     await newUser.save();
+
+    // Xóa record xác minh
+    await EmailVerification.deleteOne({ email });
+
     res.status(201).json({
       message: "Đăng ký người dùng thành công",
       user: {
@@ -101,12 +114,14 @@ exports.register = async (req, res) => {
         username: newUser.username,
         name: newUser.name,
         email: newUser.email,
+        phone: newUser.phone,
         address: newUser.address,
         role: newUser.role,
         subscription: newUser.subscription,
       },
     });
   } catch (error) {
+    console.error("register error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -156,6 +171,7 @@ exports.login = async (req, res) => {
         name: user.name,
         avatar: user.avatar,
         email: user.email,
+        phone: user.phone,
         address: user.address,
         role: user.role,
         subscription: user.subscription,
@@ -189,6 +205,7 @@ exports.getProfile = async (req, res) => {
       name: user.name,
       avatar: user.avatar,
       email: user.email,
+      phone: user.phone,
       address: user.address,
       role: user.role,
       subscription: user.subscription,
@@ -256,8 +273,7 @@ exports.requestPasswordReset = async (req, res) => {
 // Đặt lại mật khẩu
 exports.resetPassword = async (req, res) => {
   try {
-    const { token } = req.body;
-    const { newPassword } = req.body;
+    const { token, newPassword } = req.body;
     if (!token) {
       return res
         .status(400)
@@ -290,10 +306,10 @@ exports.resetPassword = async (req, res) => {
 // Cập nhật thông tin người dùng
 exports.updateUserInfo = async (req, res) => {
   try {
-    const { name, address } = req.body;
-    if (!name && !address) {
+    const { name, address, phone } = req.body;
+    if (!name && !address && !phone) {
       return res.status(400).json({
-        message: "Phải cung cấp ít nhất một trường (name hoặc address)",
+        message: "Phải cung cấp ít nhất một trường (name, address hoặc phone)",
       });
     }
     const user = await User.findById(req.user.id);
@@ -302,6 +318,15 @@ exports.updateUserInfo = async (req, res) => {
     }
     if (name) user.name = name;
     if (address) user.address = address;
+    if (phone) {
+      // Validate phone number
+      if (!/^\d{10,11}$/.test(phone)) {
+        return res
+          .status(400)
+          .json({ message: "Số điện thoại không hợp lệ (10-11 chữ số)" });
+      }
+      user.phone = phone;
+    }
     await user.save();
     res.status(200).json({
       message: "Cập nhật thông tin người dùng thành công",
@@ -310,7 +335,9 @@ exports.updateUserInfo = async (req, res) => {
         username: user.username,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         address: user.address,
+        avatar: user.avatar,
         role: user.role,
         subscription: user.subscription,
       },
@@ -439,6 +466,7 @@ exports.updateSubscriptionStatus = async (req, res) => {
         username: populatedUser.username,
         email: populatedUser.email,
         name: populatedUser.name,
+        phone: populatedUser.phone,
         address: populatedUser.address,
         role: populatedUser.role,
         subscription: populatedUser.subscription,
@@ -486,12 +514,10 @@ exports.updateAvatar = (req, res) => {
       user.avatar = blob.url;
       await user.save();
 
-      res
-        .status(200)
-        .json({
-          message: "Cập nhật ảnh đại diện thành công",
-          avatarUrl: blob.url,
-        });
+      res.status(200).json({
+        message: "Cập nhật ảnh đại diện thành công",
+        avatarUrl: blob.url,
+      });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }

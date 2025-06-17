@@ -175,7 +175,6 @@ const OrderDetailPage = () => {
 
       <Card className="mb-4">
         <Card.Header className="d-flex justify-content-between align-items-center">
-          {/* Sử dụng _id thay vì id, vì Mongoose lưu khóa chính trong _id */}
           <h4 className="mb-0">
             Đơn hàng #{order._id.toString().substring(0, 8)}...
           </h4>
@@ -198,6 +197,9 @@ const OrderDetailPage = () => {
               </p>
               <p>
                 <strong>Phương thức thanh toán:</strong> {order.paymentMethod}
+              </p>
+              <p>
+                <strong>Số điện thoại:</strong> {order.phone || "Không có"}
               </p>
               <p>
                 <strong>Trạng thái:</strong>{" "}

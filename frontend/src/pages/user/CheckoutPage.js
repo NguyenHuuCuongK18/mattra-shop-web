@@ -33,6 +33,8 @@ const CheckoutPage = () => {
   );
   const [discountAmount, setDiscountAmount] = useState(0);
   const [shippingAddress, setShippingAddress] = useState(user?.address || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [phoneError, setPhoneError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Online Banking");
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
@@ -82,10 +84,13 @@ const CheckoutPage = () => {
     fetchVouchers();
   }, [user, cart, navigate]);
 
-  // Cập nhật địa chỉ khi user thay đổi
+  // Cập nhật địa chỉ và số điện thoại khi user thay đổi
   useEffect(() => {
     if (user?.address) {
       setShippingAddress(user.address);
+    }
+    if (user?.phone) {
+      setPhone(user.phone);
     }
   }, [user]);
 
@@ -144,11 +149,28 @@ const CheckoutPage = () => {
     setCouponError("");
   };
 
+  const validatePhone = () => {
+    if (!phone.trim()) {
+      setPhoneError("Số điện thoại là bắt buộc");
+      return false;
+    }
+    if (!/^\d{10,11}$/.test(phone)) {
+      setPhoneError("Số điện thoại không hợp lệ (10-11 chữ số)");
+      return false;
+    }
+    setPhoneError("");
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!shippingAddress.trim()) {
       toast.error("Vui lòng nhập địa chỉ giao hàng");
+      return;
+    }
+
+    if (!validatePhone()) {
       return;
     }
 
@@ -158,6 +180,7 @@ const CheckoutPage = () => {
       const orderData = {
         paymentMethod: "Online Banking",
         shippingAddress,
+        phone, // Include phone number in order data
         selectedItems: cart.items.map((item) => ({
           productId: item.productId._id || item.productId.id,
           quantity: item.quantity,
@@ -200,6 +223,7 @@ const CheckoutPage = () => {
       navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
     } catch (error) {
       console.error("Lỗi khi thanh toán:", error);
+      toast.error(error.response?.data?.message || "Đặt hàng thất bại");
     } finally {
       setLoading(false);
     }
@@ -234,14 +258,13 @@ const CheckoutPage = () => {
               <h5 className="mb-0">Thông tin giao hàng</h5>
             </Card.Header>
             <Card.Body>
-              {/* <-- Thông báo bổ sung --> */}
+              {/* Thông báo bổ sung */}
               <Alert variant="warning" className="mb-4">
                 <i className="bi bi-exclamation-circle me-2"></i>
                 <strong>
                   Các sản phẩm đồ uống hiện chỉ hỗ trợ ship ở khu vực Hòa Lạc
                 </strong>
               </Alert>
-              {/* <-- Kết thúc thông báo --> */}
 
               <Form onSubmit={handleSubmit}>
                 <Form.Group className="mb-3">
@@ -254,6 +277,27 @@ const CheckoutPage = () => {
                     placeholder="Nhập địa chỉ giao hàng đầy đủ"
                     required
                   />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Số điện thoại</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      setPhoneError("");
+                    }}
+                    placeholder="Nhập số điện thoại (10-11 chữ số)"
+                    isInvalid={!!phoneError}
+                    required
+                  />
+                  <Form.Text className="text-muted">
+                    Mặc định: {user?.phone || "Chưa có số điện thoại"}
+                  </Form.Text>
+                  <Form.Control.Feedback type="invalid">
+                    {phoneError}
+                  </Form.Control.Feedback>
                 </Form.Group>
 
                 <Form.Group className="mb-4">
@@ -299,7 +343,7 @@ const CheckoutPage = () => {
 
                 <Button
                   type="submit"
-                  disabled={loading || !shippingAddress.trim()}
+                  disabled={loading || !shippingAddress.trim() || !!phoneError}
                   className="w-100"
                 >
                   {loading ? (

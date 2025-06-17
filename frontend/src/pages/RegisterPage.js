@@ -1,4 +1,3 @@
-// src/pages/RegisterPage.js
 "use client";
 
 import { useState } from "react";
@@ -14,6 +13,7 @@ function RegisterPage() {
     username: "",
     name: "",
     email: "",
+    phone: "",
     verificationCode: "",
     password: "",
     confirmPassword: "",
@@ -62,6 +62,14 @@ function RegisterPage() {
     }
     if (!formData.verificationCode) {
       setError("Mã xác thực là bắt buộc");
+      return;
+    }
+    if (!formData.phone) {
+      setError("Số điện thoại là bắt buộc");
+      return;
+    }
+    if (!/^\d{10,11}$/.test(formData.phone)) {
+      setError("Số điện thoại không hợp lệ (10-11 chữ số)");
       return;
     }
 
@@ -157,6 +165,19 @@ function RegisterPage() {
                     value={formData.verificationCode}
                     onChange={handleChange}
                     required
+                  />
+                </Form.Group>
+
+                {/* Phone */}
+                <Form.Group className="mb-3" controlId="phone">
+                  <Form.Label>Số điện thoại</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                    placeholder="Nhập số điện thoại (10-11 chữ số)"
                   />
                 </Form.Group>
 
