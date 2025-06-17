@@ -22,6 +22,7 @@ function ProfilePage() {
 
   const [profileData, setProfileData] = useState({
     name: user?.name || "",
+    phone: user?.phone || "",
     address: user?.address || "",
   });
 
@@ -90,11 +91,21 @@ function ProfilePage() {
     setAvatarError("");
     setAvatarSuccess("");
 
+    // Validate phone number if provided
+    if (profileData.phone && !/^\d{10,11}$/.test(profileData.phone)) {
+      setProfileError("Số điện thoại không hợp lệ (10-11 chữ số)");
+      setProfileLoading(false);
+      return;
+    }
+
     try {
+      // Update profile information (name, phone, address)
       await updateProfile(profileData);
       setProfileSuccess("Cập nhật thông tin thành công!");
 
+      // Only update avatar if a new file is selected
       if (avatarFile) {
+        setAvatarLoading(true);
         await uploadAvatar(avatarFile);
         setAvatarSuccess("Đã cập nhật ảnh đại diện!");
         setAvatarFile(null);
@@ -103,9 +114,14 @@ function ProfilePage() {
       console.error("Lỗi cập nhật hồ sơ:", error);
       const errorMessage =
         error.response?.data?.message || "Không thể cập nhật hồ sơ";
-      setProfileError(errorMessage);
+      if (error.message.includes("avatar")) {
+        setAvatarError(errorMessage);
+      } else {
+        setProfileError(errorMessage);
+      }
     } finally {
       setProfileLoading(false);
+      setAvatarLoading(false);
     }
   };
 
@@ -152,7 +168,12 @@ function ProfilePage() {
 
   useEffect(() => {
     setAvatarPreview(user?.avatar || "");
-  }, [user?.avatar]);
+    setProfileData({
+      name: user?.name || "",
+      phone: user?.phone || "",
+      address: user?.address || "",
+    });
+  }, [user]);
 
   useEffect(() => {
     const fetchVouchers = async () => {
@@ -349,6 +370,29 @@ function ProfilePage() {
                       </Col>
                       <Col md={6} className="mb-3">
                         <div className="form-group-modern">
+                          <label className="form-label fw-bold">
+                            Số điện thoại
+                          </label>
+                          <div className="input-group-modern">
+                            <span className="input-group-text-modern">
+                              <i className="bi bi-telephone"></i>
+                            </span>
+                            <input
+                              type="text"
+                              className="form-control-modern"
+                              id="phone"
+                              name="phone"
+                              value={profileData.phone}
+                              onChange={handleProfileChange}
+                            />
+                          </div>
+                        </div>
+                      </Col>
+                    </Row>
+
+                    <Row>
+                      <Col md={12} className="mb-3">
+                        <div className="form-group-modern">
                           <label className="form-label fw-bold">Địa chỉ</label>
                           <div className="input-group-modern">
                             <span className="input-group-text-modern">
@@ -370,8 +414,8 @@ function ProfilePage() {
                     <div className="d-flex justify-content-end mt-4">
                       <Button
                         type="submit"
-                        loading={profileLoading}
-                        disabled={profileLoading}
+                        loading={profileLoading || avatarLoading}
+                        disabled={profileLoading || avatarLoading}
                         className="btn-modern"
                       >
                         <i className="bi bi-check-circle me-2"></i>

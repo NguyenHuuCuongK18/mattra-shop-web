@@ -17,13 +17,18 @@ const statusMap = {
 // Create a new order
 exports.createOrder = async (req, res) => {
   try {
-    const { paymentMethod, shippingAddress, voucherId, selectedItems } =
+    const { paymentMethod, shippingAddress, voucherId, selectedItems, phone } =
       req.body;
+
     if (!paymentMethod || !shippingAddress) {
       return res.status(400).json({
         message: "Phương thức thanh toán và địa chỉ giao hàng là bắt buộc",
       });
     }
+
+    // Lấy số điện thoại: nếu client gửi lên thì dùng, ngược lại lấy từ profile user
+    const userDoc = await User.findById(req.user.id);
+    const phoneNumber = phone?.trim() || userDoc.phone;
 
     // Validate selected items & compute subtotal
     let totalAmount = 0;
@@ -32,19 +37,15 @@ exports.createOrder = async (req, res) => {
       const product = await Product.findById(item.productId);
       if (!product) {
         return res
-          .status(404)
-          .json({ message: `Không tìm thấy sản phẩm ${item.productId}` });
+          .status(400)
+          .json({ message: `Sản phẩm không tồn tại: ${item.productId}` });
       }
-      if (product.countInStock < item.quantity) {
+      if (product.stock < item.quantity) {
         return res
           .status(400)
           .json({ message: `Sản phẩm ${product.name} không đủ số lượng` });
       }
-      product.countInStock -= item.quantity;
-      await product.save();
-
-      const lineTotal = product.price * item.quantity;
-      totalAmount += lineTotal;
+      totalAmount += product.price * item.quantity;
       items.push({
         productId: product._id,
         quantity: item.quantity,
@@ -53,16 +54,12 @@ exports.createOrder = async (req, res) => {
     }
 
     // Áp dụng voucher nếu có
-    let discountApplied = 0;
     let appliedVoucherId = null;
+    let discountApplied = 0;
     if (voucherId) {
       const user = await User.findById(req.user.id).populate(
         "vouchers.voucherId"
       );
-      if (!user) {
-        return res.status(404).json({ message: "Người dùng không tồn tại" });
-      }
-
       const userVoucher = user.vouchers.find(
         (v) =>
           v.voucherId._id.toString() === voucherId && v.status === "available"
@@ -98,6 +95,7 @@ exports.createOrder = async (req, res) => {
     // Tạo đơn hàng
     const order = new Order({
       userId: req.user.id,
+      phone: phoneNumber, // ← Lưu số điện thoại vào Order
       items,
       paymentMethod,
       shippingAddress,
@@ -109,14 +107,15 @@ exports.createOrder = async (req, res) => {
     });
     await order.save();
 
-    // Xóa giỏ hàng của người dùng
+    // Xóa giỏ hàng
     await Cart.findOneAndDelete({ userId: req.user.id });
 
-    // Gửi email xác nhận bằng tiếng Việt
+    // Gửi email xác nhận
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
       .populate("userId", "username email")
       .populate("voucherId", "code discount_percentage max_discount");
+
     try {
       const formattedTotal =
         populatedOrder.totalAmount.toLocaleString("vi-VN") + "₫";
@@ -125,23 +124,19 @@ exports.createOrder = async (req, res) => {
 
       await sendMail(
         populatedOrder.userId.email,
-        "Đơn hàng của bạn đã được tạo – Mattra Shop",
+        "Đơn hàng của bạn đã được tạo - Mattra Shop",
         `Xin chào ${populatedOrder.userId.username},\n\n` +
           `Đơn hàng của bạn (Mã: ${populatedOrder._id}) đã được tạo thành công.\n` +
           `Tổng tiền: ${formattedTotal}\n` +
           `Giảm giá: ${formattedDiscount}\n` +
-          `Bạn có thể xem tất cả đơn hàng tại:\n` +
-          `https://mattra-online-shop.vercel.app/orders\n\n` +
+          `Nếu có bất kỳ thắc mắc gì, chúng tôi sẽ liên hệ lại qua số điện thoại ${phoneNumber}.\n\n` +
           `Cảm ơn bạn đã mua hàng!`
       );
     } catch (error) {
       console.error("Lỗi khi gửi email tạo đơn:", error);
     }
 
-    res.status(201).json({
-      message: "Tạo đơn hàng thành công",
-      order: populatedOrder,
-    });
+    res.status(201).json({ message: "Tạo đơn hàng thành công", order });
   } catch (error) {
     console.error("Create order error:", error);
     res.status(500).json({ message: "Tạo đơn hàng thất bại" });
@@ -226,17 +221,17 @@ exports.applyVoucher = async (req, res) => {
       const formattedTotal =
         populatedOrder.totalAmount.toLocaleString("vi-VN") + "₫";
 
-      await sendMail(
-        populatedOrder.userId.email,
-        "Voucher đã được áp dụng cho đơn hàng – Mattra Shop",
-        `Xin chào ${populatedOrder.userId.username},\n\n` +
-          `Mã voucher (${voucher.code}) đã được áp dụng cho đơn hàng (Mã: ${populatedOrder._id}).\n` +
-          `Giảm giá: ${formattedDiscount}\n` +
-          `Tổng tiền mới: ${formattedTotal}\n` +
-          `Bạn có thể xem chi tiết đơn hàng tại:\n` +
-          `https://mattra-online-shop.vercel.app/orders\n\n` +
-          `Cảm ơn bạn!`
-      );
+      // await sendMail(
+      //   populatedOrder.userId.email,
+      //   "Voucher đã được áp dụng cho đơn hàng – Mattra Shop",
+      //   `Xin chào ${populatedOrder.userId.username},\n\n` +
+      //     `Mã voucher (${voucher.code}) đã được áp dụng cho đơn hàng (Mã: ${populatedOrder._id}).\n` +
+      //     `Giảm giá: ${formattedDiscount}\n` +
+      //     `Tổng tiền mới: ${formattedTotal}\n` +
+      //     `Bạn có thể xem chi tiết đơn hàng tại:\n` +
+      //     `https://mattra-online-shop.vercel.app/orders\n\n` +
+      //     `Cảm ơn bạn!`
+      // );
     } catch (error) {
       console.error("Lỗi khi gửi email voucher:", error);
     }

@@ -246,6 +246,9 @@ function OrdersPage() {
                     <h6 className="fw-bold">Thông tin khách hàng</h6>
                     <p className="mb-1">Tên: {currentOrder.userId.name}</p>
                     <p className="mb-1">Email: {currentOrder.userId.email}</p>
+                    <p className="mb-1">
+                      Số điện thoại: {currentOrder.phone || "Không có"}
+                    </p>
                     <p className="mb-0">
                       Tên đăng nhập: {currentOrder.userId.username}
                     </p>
