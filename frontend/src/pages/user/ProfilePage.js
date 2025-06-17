@@ -17,6 +17,14 @@ import {
 import { voucherAPI } from "../../utils/api";
 import { toast } from "react-hot-toast";
 
+/**
+ * Displays and manages the user's profile page, including personal information, password changes, subscription details, vouchers, and account settings.
+ *
+ * Provides forms for updating profile data (name, phone, address, avatar), changing the password, and managing subscription and vouchers. Handles validation, loading states, and error or success feedback for each operation. Also includes toggles for email and marketing notifications, and an option to delete the account.
+ *
+ * @remark
+ * Phone number updates are validated to require 10–11 digits. Avatar uploads are limited to image files under 5MB. Profile and avatar updates are processed independently, and error messages are shown for each specific failure.
+ */
 function ProfilePage() {
   const { user, updateProfile, changePassword, uploadAvatar } = useAuth();
 
