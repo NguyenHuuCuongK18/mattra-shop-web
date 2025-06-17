@@ -36,8 +36,9 @@ const CheckoutPage = () => {
   const [phone, setPhone] = useState(user?.phone || "");
   const [phoneError, setPhoneError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Online Banking");
-  const [couponCode, setCouponCode] = useState("");
-  const [couponError, setCouponError] = useState("");
+
+  // Định nghĩa phí vận chuyển
+  const shippingFee = 20000;
 
   // Tính subtotal
   const calculateSubtotal = () => {
@@ -50,7 +51,6 @@ const CheckoutPage = () => {
   };
 
   const subtotal = calculateSubtotal();
-  const shippingFee = 10000;
   const total = subtotal + shippingFee - discountAmount;
 
   useEffect(() => {
@@ -63,15 +63,21 @@ const CheckoutPage = () => {
 
     // Lấy voucher của user
     const fetchVouchers = async () => {
-      if (!user?._id) return;
+      if (!user) return;
       setLoadingVouchers(true);
       try {
         const response = await voucherAPI.getUserVouchers();
-        const availableVouchers = response.data.vouchers.filter(
-          (v) =>
-            v.status === "available" &&
-            new Date(v.voucherId.expires_at) > new Date()
-        );
+        console.log("Raw vouchers:", response.data.vouchers); // Debug
+        const availableVouchers = response.data.vouchers.filter((v) => {
+          if (!v.voucherId || !v.voucherId.expires_at) return false;
+          const expiresAt = new Date(v.voucherId.expires_at);
+          const now = new Date();
+          const isValid = v.status === "available" && expiresAt >= now;
+          console.log(
+            `Voucher ${v.voucherId.code}: status=${v.status}, expires_at=${expiresAt}, now=${now}, valid=${isValid}`
+          ); // Debug
+          return isValid;
+        });
         setVouchers(availableVouchers);
       } catch (error) {
         console.error("Lỗi khi tải voucher:", error);
@@ -109,44 +115,21 @@ const CheckoutPage = () => {
     }
   }, [selectedVoucher, subtotal]);
 
-  const handleApplyCoupon = async (e) => {
-    e.preventDefault();
-    setCouponError("");
-    setSelectedVoucher(null);
-    setDiscountAmount(0);
-
-    if (!couponCode.trim()) {
-      setCouponError("Vui lòng nhập mã voucher");
-      return;
-    }
-
-    try {
-      const response = await voucherAPI.validateVoucher(couponCode);
-      const voucher = response.data.voucher;
-      if (
-        voucher &&
-        new Date(voucher.expires_at) > new Date() &&
-        !voucher.is_used
-      ) {
-        setSelectedVoucher(voucher);
-        toast.success(`Voucher "${voucher.code}" đã áp dụng thành công`);
-      } else {
-        setCouponError("Mã voucher không hợp lệ hoặc đã hết hạn");
+  // Xử lý chọn voucher từ dropdown
+  const handleSelectVoucher = (e) => {
+    const voucherId = e.target.value;
+    if (voucherId === "") {
+      setSelectedVoucher(null);
+      setDiscountAmount(0);
+    } else {
+      const selected = vouchers.find(
+        (v) => v.voucherId._id === voucherId
+      )?.voucherId;
+      setSelectedVoucher(selected || null);
+      if (selected) {
+        toast.success(`Đã áp dụng voucher "${selected.code}"`);
       }
-    } catch (error) {
-      setCouponError(
-        error.response?.data?.message || "Mã voucher không hợp lệ"
-      );
     }
-  };
-
-  const handleSelectVoucher = (voucherId) => {
-    const voucher = vouchers.find(
-      (v) => v.voucherId._id === voucherId
-    )?.voucherId;
-    setSelectedVoucher(voucher || null);
-    setCouponCode("");
-    setCouponError("");
   };
 
   const validatePhone = () => {
@@ -176,35 +159,28 @@ const CheckoutPage = () => {
 
     setLoading(true);
     try {
-      // 1. Tạo đơn hàng
+      // Tạo đơn hàng với voucherId nếu có
       const orderData = {
         paymentMethod: "Online Banking",
         shippingAddress,
-        phone, // Include phone number in order data
+        phone,
+        shippingFee,
         selectedItems: cart.items.map((item) => ({
           productId: item.productId._id || item.productId.id,
           quantity: item.quantity,
         })),
+        voucherId: selectedVoucher?._id || null,
       };
       const orderResponse = await orderAPI.createOrder(orderData);
       const order = orderResponse.data.order;
 
-      // 2. Áp dụng voucher nếu có (nếu lỗi thì im lặng)
-      if (selectedVoucher) {
-        try {
-          await orderAPI.applyVoucher(order._id, selectedVoucher._id);
-        } catch (err) {
-          console.error("Áp dụng voucher thất bại:", err);
-        }
-      }
-
-      // 3. Tạo VietQR để thanh toán
+      // Tạo VietQR để thanh toán
       const paymentResponse = await paymentAPI.generateVietQR({
         orderId: order._id,
       });
       const { paymentId, paymentImgUrl, expiresAt } = paymentResponse.data;
 
-      // 4. Lưu thông tin thanh toán vào localStorage
+      // Lưu thông tin thanh toán vào localStorage
       localStorage.setItem(
         "currentPayment",
         JSON.stringify({
@@ -216,10 +192,10 @@ const CheckoutPage = () => {
         })
       );
 
-      // 5. Xóa giỏ hàng
+      // Xóa giỏ hàng
       await clearCart();
 
-      // 6. Chuyển hướng ngay đến trang thanh toán
+      // Chuyển hướng ngay đến trang thanh toán
       navigate(`/payment?paymentId=${paymentId}&orderId=${order._id}`);
     } catch (error) {
       console.error("Lỗi khi thanh toán:", error);
@@ -301,29 +277,35 @@ const CheckoutPage = () => {
                 </Form.Group>
 
                 <Form.Group className="mb-4">
-                  <Form.Label>Mã voucher</Form.Label>
-                  <Row>
-                    <Col>
-                      <Form.Control
-                        type="text"
-                        placeholder="Nhập mã voucher"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        isInvalid={!!couponError}
-                      />
-                      <Form.Control.Feedback type="invalid">
-                        {couponError}
-                      </Form.Control.Feedback>
-                    </Col>
-                    <Col xs="auto">
-                      <BootstrapButton
-                        onClick={handleApplyCoupon}
-                        disabled={!couponCode.trim()}
-                      >
-                        Áp dụng
-                      </BootstrapButton>
-                    </Col>
-                  </Row>
+                  <Form.Label>Chọn mã voucher</Form.Label>
+                  {loadingVouchers ? (
+                    <Spinner animation="border" size="sm" />
+                  ) : (
+                    <Form.Select
+                      value={selectedVoucher?._id || ""}
+                      onChange={handleSelectVoucher}
+                    >
+                      <option value="">Không sử dụng voucher</option>
+                      {vouchers.length > 0 ? (
+                        vouchers.map((voucher) => (
+                          <option
+                            key={voucher.voucherId._id}
+                            value={voucher.voucherId._id}
+                          >
+                            {voucher.voucherId.code} -{" "}
+                            {voucher.voucherId.discount_percentage}% giảm, tối
+                            đa{" "}
+                            {(
+                              voucher.voucherId.max_discount || 0
+                            ).toLocaleString("vi-VN")}{" "}
+                            VND
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>Không có voucher khả dụng</option>
+                      )}
+                    </Form.Select>
+                  )}
                 </Form.Group>
 
                 <Form.Group className="mb-4">

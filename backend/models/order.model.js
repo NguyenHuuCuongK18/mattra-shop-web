@@ -21,6 +21,7 @@ const orderSchema = new mongoose.Schema(
         price: { type: Number, required: true, min: 0 },
       },
     ],
+    shippingFee: { type: Number, default: 0, min: 0 },
     totalAmount: { type: Number, required: true, min: 0 },
     discountApplied: { type: Number, default: 0 },
     voucherId: { type: mongoose.Schema.Types.ObjectId, ref: "Voucher" },

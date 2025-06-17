@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Container, Row, Col, InputGroup, Form } from "react-bootstrap";
+import { Container, Row, Col, Form } from "react-bootstrap";
 import { useCart } from "../../contexts/CartContext";
+import { useAuth } from "../../contexts/AuthContext";
 import Button from "../../components/ui/Button";
 import { voucherAPI } from "../../utils/api";
 import { toast } from "react-hot-toast";
@@ -11,17 +12,20 @@ import { toast } from "react-hot-toast";
 function CartPage() {
   const { cart, loading, updateCartItem, removeFromCart, clearCart } =
     useCart();
-  const [total, setTotal] = useState(0);
-  const [couponCode, setCouponCode] = useState("");
-  const [couponError, setCouponError] = useState("");
-  const [couponSuccess, setCouponSuccess] = useState("");
-  const [discountPercentage, setDiscountPercentage] = useState(0);
-  const [maxDiscount, setMaxDiscount] = useState(0);
-  const [voucherApplied, setVoucherApplied] = useState(false);
-  const [selectedVoucher, setSelectedVoucher] = useState(null);
+  const { user } = useAuth();
   const navigate = useNavigate();
 
+  const [total, setTotal] = useState(0);
+  const [vouchers, setVouchers] = useState([]);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+
+  // Định nghĩa phí vận chuyển (hài hòa với CheckoutPage.js)
+  const shippingFee = 30000;
+
   useEffect(() => {
+    // Tính tổng tiền giỏ hàng
     if (cart && Array.isArray(cart.items)) {
       const calculatedTotal = cart.items.reduce((sum, item) => {
         const price = item.productId?.price || item.price;
@@ -30,6 +34,51 @@ function CartPage() {
       setTotal(calculatedTotal);
     }
   }, [cart]);
+
+  useEffect(() => {
+    // Lấy voucher của user
+    const fetchVouchers = async () => {
+      if (!user) return;
+      setLoadingVouchers(true);
+      try {
+        const response = await voucherAPI.getUserVouchers();
+        console.log("Raw vouchers:", response.data.vouchers); // Debug
+        const availableVouchers = response.data.vouchers.filter((v) => {
+          if (!v.voucherId || !v.voucherId.expires_at) return false;
+          const expiresAt = new Date(v.voucherId.expires_at);
+          const now = new Date();
+          const isValid = v.status === "available" && expiresAt >= now;
+          console.log(
+            `Voucher ${v.voucherId.code}: status=${v.status}, expires_at=${expiresAt}, now=${now}, valid=${isValid}`
+          ); // Debug
+          return isValid;
+        });
+        setVouchers(availableVouchers);
+      } catch (error) {
+        console.error("Lỗi khi tải voucher:", error);
+        toast.error(error.response?.data?.message || "Không thể tải voucher");
+      } finally {
+        setLoadingVouchers(false);
+      }
+    };
+
+    fetchVouchers();
+  }, [user]);
+
+  useEffect(() => {
+    // Tính toán giảm giá dựa trên voucher
+    if (selectedVoucher) {
+      const discountPercentage = selectedVoucher.discount_percentage / 100;
+      const calculatedDiscount = total * discountPercentage;
+      const finalDiscount =
+        selectedVoucher.max_discount > 0
+          ? Math.min(calculatedDiscount, selectedVoucher.max_discount)
+          : calculatedDiscount;
+      setDiscountAmount(finalDiscount);
+    } else {
+      setDiscountAmount(0);
+    }
+  }, [selectedVoucher, total]);
 
   const handleQuantityChange = (productId, quantity) => {
     if (quantity < 1) return;
@@ -45,43 +94,26 @@ function CartPage() {
   };
 
   const handleCheckout = () => {
-    if (voucherApplied && selectedVoucher) {
+    if (selectedVoucher) {
       navigate("/checkout", { state: { voucher: selectedVoucher } });
     } else {
       navigate("/checkout");
     }
   };
 
-  const handleApplyCoupon = async (e) => {
-    e.preventDefault();
-    setCouponError("");
-    setCouponSuccess("");
-    setVoucherApplied(false);
-    setSelectedVoucher(null);
-
-    if (!couponCode) {
-      setCouponError("Vui lòng nhập mã voucher");
-      return;
-    }
-
-    try {
-      const { data } = await voucherAPI.validateVoucher(couponCode);
-      const { discount_percentage, max_discount, code, _id } = data.voucher;
-      setDiscountPercentage(discount_percentage);
-      setMaxDiscount(max_discount || Infinity);
-      setSelectedVoucher({ _id, code, discount_percentage, max_discount });
-      setVoucherApplied(true);
-      setCouponSuccess(
-        `Voucher "${code}" đã áp dụng: Giảm ${discount_percentage}%${
-          max_discount
-            ? ` (tối đa ${max_discount.toLocaleString("vi-VN")} VND)`
-            : ""
-        }`
-      );
-    } catch (err) {
-      setCouponError(err.response?.data?.message || "Mã voucher không hợp lệ");
-      setDiscountPercentage(0);
-      setMaxDiscount(0);
+  const handleSelectVoucher = (e) => {
+    const voucherId = e.target.value;
+    if (voucherId === "") {
+      setSelectedVoucher(null);
+      setDiscountAmount(0);
+    } else {
+      const selected = vouchers.find(
+        (v) => v.voucherId._id === voucherId
+      )?.voucherId;
+      setSelectedVoucher(selected || null);
+      if (selected) {
+        toast.success(`Đã áp dụng voucher "${selected.code}"`);
+      }
     }
   };
 
@@ -115,10 +147,6 @@ function CartPage() {
       </Container>
     );
   }
-
-  const discountAmount = voucherApplied
-    ? Math.min((total * discountPercentage) / 100, maxDiscount)
-    : 0;
 
   return (
     <Container className="py-5 fade-in">
@@ -250,15 +278,14 @@ function CartPage() {
               </div>
               <div className="mb-3 d-flex justify-content-between">
                 <span className="text-secondary">Phí vận chuyển</span>
-                <span>
-                  {total > 10000
-                    ? "Miễn phí"
-                    : `${(10000).toLocaleString("vi-VN")} VND`}
-                </span>
+                <span>{shippingFee.toLocaleString("vi-VN")} VND</span>
               </div>
-              {voucherApplied && (
+              {discountAmount > 0 && (
                 <div className="mb-3 d-flex justify-content-between text-success">
-                  <span>Giảm giá ({discountPercentage}%)</span>
+                  <span>
+                    Giảm giá ({selectedVoucher?.discount_percentage || 0}
+                    %)
+                  </span>
                   <span>-{discountAmount.toLocaleString("vi-VN")} VND</span>
                 </div>
               )}
@@ -266,40 +293,51 @@ function CartPage() {
               <div className="d-flex justify-content-between fw-bold fs-5 mb-3">
                 <span>Tổng cộng</span>
                 <span>
-                  {(
-                    total +
-                    (total > 10000 ? 0 : 10000) -
-                    discountAmount
-                  ).toLocaleString("vi-VN")}{" "}
+                  {(total + shippingFee - discountAmount).toLocaleString(
+                    "vi-VN"
+                  )}{" "}
                   VND
                 </span>
               </div>
 
-              <form onSubmit={handleApplyCoupon} className="mb-4">
-                <div className="mb-2">
-                  <label className="form-label small">Mã voucher</label>
-                  <div className="d-flex">
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value)}
-                      placeholder="Nhập mã voucher"
-                    />
-                    <Button type="submit" className="ms-2">
-                      Áp dụng
-                    </Button>
-                  </div>
-                  {couponError && (
-                    <div className="text-danger small mt-1">{couponError}</div>
-                  )}
-                  {couponSuccess && (
-                    <div className="text-success small mt-1">
-                      {couponSuccess}
+              <div className="mb-4">
+                <label className="form-label small">Chọn mã voucher</label>
+                {loadingVouchers ? (
+                  <div className="d-flex align-items-center">
+                    <div
+                      className="spinner-border spinner-border-sm text-success"
+                      role="status"
+                    >
+                      <span className="visually-hidden">Đang tải...</span>
                     </div>
-                  )}
-                </div>
-              </form>
+                    <span className="ms-2">Đang tải voucher...</span>
+                  </div>
+                ) : (
+                  <Form.Select
+                    value={selectedVoucher?._id || ""}
+                    onChange={handleSelectVoucher}
+                  >
+                    <option value="">Không sử dụng voucher</option>
+                    {vouchers.length > 0 ? (
+                      vouchers.map((voucher) => (
+                        <option
+                          key={voucher.voucherId._id}
+                          value={voucher.voucherId._id}
+                        >
+                          {voucher.voucherId.code} -{" "}
+                          {voucher.voucherId.discount_percentage}% giảm, tối đa{" "}
+                          {(voucher.voucherId.max_discount || 0).toLocaleString(
+                            "vi-VN"
+                          )}{" "}
+                          VND
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>Không có voucher khả dụng</option>
+                    )}
+                  </Form.Select>
+                )}
+              </div>
 
               <Button className="w-100 py-2" onClick={handleCheckout}>
                 Tiến hành thanh toán
@@ -312,37 +350,11 @@ function CartPage() {
                 </div>
                 <div className="d-flex align-items-center mb-2 small">
                   <i className="bi bi-truck text-success me-2"></i>
-                  <span>Phí vận chuyển chỉ 10.000 VND</span>
+                  <span>Phí vận chuyển 20.000 VND</span>
                 </div>
-                {/* <div className="d-flex align-items-center small">
-                  <i className="bi bi-arrow-return-left text-success me-2"></i>
-                  <span>Chính sách hoàn trả trong 30 ngày</span>
-                </div> */}
               </div>
             </div>
           </div>
-
-          {/* <div className="bg-white rounded-4 shadow-sm overflow-hidden">
-            <div className="p-4 border-bottom">
-              <h2 className="fs-5 fw-semibold mb-0">Chúng tôi chấp nhận</h2>
-            </div>
-            <div className="p-4">
-              <div className="d-flex gap-2 flex-wrap">
-                <div className="bg-light rounded p-2">
-                  <i className="bi bi-credit-card fs-4"></i>
-                </div>
-                <div className="bg-light rounded p-2">
-                  <i className="bi bi-paypal fs-4"></i>
-                </div>
-                <div className="bg-light rounded p-2">
-                  <i className="bi bi-wallet2 fs-4"></i>
-                </div>
-                <div className="bg-light rounded p-2">
-                  <i className="bi bi-bank fs-4"></i>
-                </div>
-              </div>
-            </div>
-          </div> */}
         </Col>
       </Row>
     </Container>

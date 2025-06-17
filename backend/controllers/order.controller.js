@@ -14,11 +14,20 @@ const statusMap = {
   cancelled: "Đã hủy",
 };
 
+// Mặc định phí vận chuyển
+const DEFAULT_SHIPPING_FEE = 30000; // Phí vận chuyển mặc định 30,000 VND
+
 // Create a new order
 exports.createOrder = async (req, res) => {
   try {
-    const { paymentMethod, shippingAddress, voucherId, selectedItems, phone } =
-      req.body;
+    const {
+      paymentMethod,
+      shippingAddress,
+      voucherId,
+      selectedItems,
+      phone,
+      shippingFee,
+    } = req.body;
 
     if (!paymentMethod || !shippingAddress) {
       return res.status(400).json({
@@ -30,8 +39,12 @@ exports.createOrder = async (req, res) => {
     const userDoc = await User.findById(req.user.id);
     const phoneNumber = phone?.trim() || userDoc.phone;
 
+    // Lấy phí vận chuyển từ request hoặc sử dụng mặc định
+    const finalShippingFee =
+      shippingFee && shippingFee >= 0 ? shippingFee : DEFAULT_SHIPPING_FEE;
+
     // Validate selected items & compute subtotal
-    let totalAmount = 0;
+    let subtotal = 0;
     const items = [];
     for (const item of selectedItems) {
       const product = await Product.findById(item.productId);
@@ -45,7 +58,7 @@ exports.createOrder = async (req, res) => {
           .status(400)
           .json({ message: `Sản phẩm ${product.name} không đủ số lượng` });
       }
-      totalAmount += product.price * item.quantity;
+      subtotal += product.price * item.quantity;
       items.push({
         productId: product._id,
         quantity: item.quantity,
@@ -83,22 +96,25 @@ exports.createOrder = async (req, res) => {
       }
 
       discountApplied = Math.min(
-        (voucher.discount_percentage / 100) * totalAmount,
+        (voucher.discount_percentage / 100) * subtotal,
         voucher.max_discount || Infinity
       );
-      totalAmount -= discountApplied;
       userVoucher.status = "used";
       appliedVoucherId = voucher._id;
       await user.save();
     }
 
+    // Tính tổng tiền: subtotal - discount + shippingFee
+    const totalAmount = subtotal - discountApplied + finalShippingFee;
+
     // Tạo đơn hàng
     const order = new Order({
       userId: req.user.id,
-      phone: phoneNumber, // ← Lưu số điện thoại vào Order
+      phone: phoneNumber,
       items,
       paymentMethod,
       shippingAddress,
+      shippingFee: finalShippingFee,
       totalAmount,
       discountApplied,
       voucherId: appliedVoucherId,
@@ -110,7 +126,29 @@ exports.createOrder = async (req, res) => {
     // Xóa giỏ hàng
     await Cart.findOneAndDelete({ userId: req.user.id });
 
-    // Gửi email xác nhận
+    // Gửi email thông báo cho admin
+    try {
+      const formattedTotal = order.totalAmount.toLocaleString("vi-VN") + "₫";
+      const formattedShippingFee =
+        finalShippingFee.toLocaleString("vi-VN") + "₫";
+      await sendMail(
+        "cuongnhhe186494@fpt.edu.vn",
+        "Thông Báo Đơn Hàng Mới – Mattra Shop",
+        `Một đơn hàng mới đã được tạo:\n\n` +
+          `Mã đơn hàng: ${order._id}\n` +
+          `Tổng tiền: ${formattedTotal}\n` +
+          `Phí vận chuyển: ${formattedShippingFee}\n` +
+          `Phương thức thanh toán: ${paymentMethod}\n` +
+          `Số điện thoại liên hệ: ${phoneNumber}\n\n` +
+          `Vui lòng kiểm tra thanh toán và cập nhật trạng thái đơn hàng tại:\n` +
+          `https://mattra-online-shop.vercel.app/admin/orders\n\n` +
+          `Cảm ơn bạn!`
+      );
+    } catch (error) {
+      console.error("Lỗi khi gửi email thông báo cho admin:", error);
+    }
+
+    // Gửi email xác nhận cho người dùng
     const populatedOrder = await Order.findById(order._id)
       .populate("items.productId", "name price image")
       .populate("userId", "username email")
@@ -121,6 +159,8 @@ exports.createOrder = async (req, res) => {
         populatedOrder.totalAmount.toLocaleString("vi-VN") + "₫";
       const formattedDiscount =
         populatedOrder.discountApplied.toLocaleString("vi-VN") + "₫";
+      const formattedShippingFee =
+        populatedOrder.shippingFee.toLocaleString("vi-VN") + "₫";
 
       await sendMail(
         populatedOrder.userId.email,
@@ -128,6 +168,7 @@ exports.createOrder = async (req, res) => {
         `Xin chào ${populatedOrder.userId.username},\n\n` +
           `Đơn hàng của bạn (Mã: ${populatedOrder._id}) đã được tạo thành công.\n` +
           `Tổng tiền: ${formattedTotal}\n` +
+          `Phí vận chuyển: ${formattedShippingFee}\n` +
           `Giảm giá: ${formattedDiscount}\n` +
           `Nếu có bất kỳ thắc mắc gì, chúng tôi sẽ liên hệ lại qua số điện thoại ${phoneNumber}.\n\n` +
           `Cảm ơn bạn đã mua hàng!`
@@ -199,12 +240,15 @@ exports.applyVoucher = async (req, res) => {
         .json({ message: "Voucher này chỉ dành cho người đăng ký" });
     }
 
-    const baseTotal = order.totalAmount + order.discountApplied;
+    const subtotal = order.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
     const discountApplied = Math.min(
-      (voucher.discount_percentage / 100) * baseTotal,
+      (voucher.discount_percentage / 100) * subtotal,
       voucher.max_discount || Infinity
     );
-    order.totalAmount = baseTotal - discountApplied;
+    order.totalAmount = subtotal - discountApplied + order.shippingFee;
     order.discountApplied = discountApplied;
     order.voucherId = voucher._id;
     await order.save();
@@ -313,10 +357,9 @@ exports.cancelUserOrder = async (req, res) => {
       }
       order.voucherId = null;
       order.discountApplied = 0;
-      order.totalAmount = order.items.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0
-      );
+      order.totalAmount =
+        order.items.reduce((sum, item) => sum + item.price * item.quantity, 0) +
+        order.shippingFee;
     }
 
     order.status = "cancelled";
@@ -326,6 +369,8 @@ exports.cancelUserOrder = async (req, res) => {
     try {
       const user = await User.findById(req.user.id);
       const formattedTotal = order.totalAmount.toLocaleString("vi-VN") + "₫";
+      const formattedShippingFee =
+        order.shippingFee.toLocaleString("vi-VN") + "₫";
 
       await sendMail(
         user.email,
@@ -333,6 +378,7 @@ exports.cancelUserOrder = async (req, res) => {
         `Xin chào ${user.username},\n\n` +
           `Bạn đã hủy đơn hàng (Mã: ${order._id}).\n` +
           `Tổng tiền của đơn: ${formattedTotal}\n` +
+          `Phí vận chuyển: ${formattedShippingFee}\n` +
           `Nếu bạn muốn yêu cầu hoàn tiền, vui lòng liên hệ chúng tôi tại:\n` +
           `https://www.facebook.com/profile.php?id=61576949481579\n\n` +
           `Cảm ơn bạn!`
@@ -407,11 +453,18 @@ exports.updateOrderStatus = async (req, res) => {
     // Gửi email cập nhật trạng thái đơn bằng tiếng Việt
     try {
       const formattedStatus = statusMap[status];
+      const formattedTotal =
+        populatedOrder.totalAmount.toLocaleString("vi-VN") + "₫";
+      const formattedShippingFee =
+        populatedOrder.shippingFee.toLocaleString("vi-VN") + "₫";
+
       await sendMail(
         populatedOrder.userId.email,
         `Đơn hàng #${populatedOrder._id} đã được cập nhật – Mattra Shop`,
         `Xin chào ${populatedOrder.userId.username},\n\n` +
           `Trạng thái của đơn hàng (Mã: ${populatedOrder._id}) đã được cập nhật sang "${formattedStatus}".\n` +
+          `Tổng tiền: ${formattedTotal}\n` +
+          `Phí vận chuyển: ${formattedShippingFee}\n` +
           `Bạn có thể xem chi tiết đơn hàng tại:\n` +
           `https://mattra-online-shop.vercel.app/orders\n\n` +
           `Cảm ơn bạn!`
@@ -474,7 +527,7 @@ exports.getOrderById = async (req, res) => {
     const order = await Order.findById(id)
       .populate("items.productId", "name price image")
       .populate("voucherId", "code discount_percentage max_discount")
-      .populate("userId", "username email"); // Có thể hiển thị thông tin user nếu admin gọi hoặc để kiểm tra
+      .populate("userId", "username email");
 
     // 2. Nếu không tìm thấy đơn hàng
     if (!order) {
