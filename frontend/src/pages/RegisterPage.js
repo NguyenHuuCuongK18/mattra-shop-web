@@ -8,6 +8,11 @@ import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
 import { authAPI } from "../utils/api";
 
+/**
+ * Renders the user registration page with a form for account creation, including email verification and phone number validation.
+ *
+ * The form collects username, full name, email, phone number, verification code, password, confirm password, and an optional address. Users must request and enter an email verification code before registering. The phone number must be 10 or 11 digits. Displays validation and API error messages as needed, and navigates to the home page upon successful registration.
+ */
 function RegisterPage() {
   const [formData, setFormData] = useState({
     username: "",
